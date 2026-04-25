@@ -1,4 +1,6 @@
 import {
+  FUEL_USE_LINEAR_THRUSTER_PER_SECOND,
+  FUEL_USE_ROTATION_THRUSTER_PER_SECOND,
   PLACEHOLDER_ANGULAR_DAMPING,
   PLACEHOLDER_LINEAR_DAMPING,
   PLACEHOLDER_ROTATE_TORQUE,
@@ -28,6 +30,10 @@ export class ShipEntity {
   private accumulatedTorque = 0;
   private autoBrakeLinear = false;
   private autoBrakeRotation = false;
+  private forwardThrusterRequested = false;
+  private reverseThrusterRequested = false;
+  private rotateCWThrusterRequested = false;
+  private rotateCCWThrusterRequested = false;
   private linearThrustersActive = false;
   private rotationThrustersActive = false;
 
@@ -51,23 +57,12 @@ export class ShipEntity {
     autoBrakeLinear: boolean;
     autoBrakeRotation: boolean;
   }): void {
-    const forwardVector = Vector2.fromAngle(this.state.angle);
-    if (inputs.forward) {
-      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(PLACEHOLDER_THRUST_FORCE));
-    }
-    if (inputs.reverse) {
-      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(-PLACEHOLDER_THRUST_FORCE));
-    }
-    if (inputs.rotateCW) {
-      this.accumulatedTorque += PLACEHOLDER_ROTATE_TORQUE;
-    }
-    if (inputs.rotateCCW) {
-      this.accumulatedTorque -= PLACEHOLDER_ROTATE_TORQUE;
-    }
     this.autoBrakeLinear = inputs.autoBrakeLinear;
     this.autoBrakeRotation = inputs.autoBrakeRotation;
-    this.linearThrustersActive = inputs.forward || inputs.reverse;
-    this.rotationThrustersActive = inputs.rotateCW || inputs.rotateCCW;
+    this.forwardThrusterRequested = inputs.forward;
+    this.reverseThrusterRequested = inputs.reverse;
+    this.rotateCWThrusterRequested = inputs.rotateCW;
+    this.rotateCCWThrusterRequested = inputs.rotateCCW;
   }
 
   applyExternalForce(force: Vector2): void {
@@ -75,6 +70,33 @@ export class ShipEntity {
   }
 
   update(dt: number): void {
+    const activeLinearThrusters =
+      (this.forwardThrusterRequested ? 1 : 0) + (this.reverseThrusterRequested ? 1 : 0);
+    const activeRotationThrusters =
+      (this.rotateCWThrusterRequested ? 1 : 0) + (this.rotateCCWThrusterRequested ? 1 : 0);
+    const requestedFuel =
+      activeLinearThrusters * FUEL_USE_LINEAR_THRUSTER_PER_SECOND * dt +
+      activeRotationThrusters * FUEL_USE_ROTATION_THRUSTER_PER_SECOND * dt;
+    const availableFuel = Math.max(0, this.state.fuel);
+    const fuelScale = requestedFuel > 0 ? Math.min(1, availableFuel / requestedFuel) : 1;
+
+    const forwardVector = Vector2.fromAngle(this.state.angle);
+    if (this.forwardThrusterRequested && fuelScale > 0) {
+      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(PLACEHOLDER_THRUST_FORCE * fuelScale));
+    }
+    if (this.reverseThrusterRequested && fuelScale > 0) {
+      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(-PLACEHOLDER_THRUST_FORCE * fuelScale));
+    }
+    if (this.rotateCWThrusterRequested && fuelScale > 0) {
+      this.accumulatedTorque += PLACEHOLDER_ROTATE_TORQUE * fuelScale;
+    }
+    if (this.rotateCCWThrusterRequested && fuelScale > 0) {
+      this.accumulatedTorque -= PLACEHOLDER_ROTATE_TORQUE * fuelScale;
+    }
+    const fuelConsumed = requestedFuel * fuelScale;
+    this.linearThrustersActive = fuelScale > 0 && activeLinearThrusters > 0;
+    this.rotationThrustersActive = fuelScale > 0 && activeRotationThrusters > 0;
+
     let nextVelocity = clampVelocity(
       applyForce(this.state.velocity as Vector2, this.accumulatedForce, PLACEHOLDER_SHIP_MASS, dt),
       PLACEHOLDER_TOP_SPEED
@@ -99,10 +121,15 @@ export class ShipEntity {
       velocity: nextVelocity,
       angularVelocity: nextAngularVelocity,
       position: integratePosition(this.state.position as Vector2, nextVelocity, dt),
-      angle: integrateAngle(this.state.angle, nextAngularVelocity, dt)
+      angle: integrateAngle(this.state.angle, nextAngularVelocity, dt),
+      fuel: Math.max(0, this.state.fuel - fuelConsumed)
     };
 
     this.accumulatedForce = Vector2.zero();
     this.accumulatedTorque = 0;
+    this.forwardThrusterRequested = false;
+    this.reverseThrusterRequested = false;
+    this.rotateCWThrusterRequested = false;
+    this.rotateCCWThrusterRequested = false;
   }
 }

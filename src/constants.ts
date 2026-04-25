@@ -12,8 +12,10 @@ export const LANDING_SPEED_THRESHOLD = 100;
 export const LANDING_RADIUS_MULTIPLIER = 2.5;
 export const TAKEOFF_VELOCITY = 30;
 export const FUEL_CAPACITY_DEFAULT = 100;
-export const REFUEL_PRICE_PER_UNIT = 2;
+export const REFUEL_PRICE_PER_UNIT = 1;
 export const REFUEL_RATE = 20;
+export const FUEL_USE_LINEAR_THRUSTER_PER_SECOND = 1.0;
+export const FUEL_USE_ROTATION_THRUSTER_PER_SECOND = 0.5;
 
 export const GALAXY_GRID_WIDTH = 30;
 export const GALAXY_GRID_HEIGHT = 30;
