@@ -1,4 +1,5 @@
 import { COLOURS } from '../constants';
+import type { ReputationTier } from '../core/worldState';
 import type { WorldState } from '../core/worldState';
 import type { Landable, WeaponFireKey } from '../types';
 import type { Camera } from './camera';
@@ -144,6 +145,19 @@ export class RenderPipeline {
             return landable ? { name: landable.name } : null;
           })()
         : null,
+      (() => {
+        const factionId = state.worldState.getCurrentSector().factionId;
+        if (!factionId) {
+          return null;
+        }
+        const faction = state.worldState.getFaction(factionId);
+        const shortName = (faction?.name ?? factionId).slice(0, 4).toUpperCase();
+        return {
+          shortName,
+          reputation: state.worldState.getReputationForFaction(factionId),
+          tier: state.worldState.getReputationTier(factionId) as ReputationTier
+        };
+      })(),
       state.playerShip.state.weaponLoadout,
       state.worldState,
       state.heldFireKeys

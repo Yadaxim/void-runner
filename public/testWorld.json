@@ -273,10 +273,11 @@
           "behaviourType": "trade",
           "countRange": [1, 2]
         },
+
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
-          "countRange": [2, 3]
+          "countRange": [1, 1]
         }
       ],
       "inRadiationZone": false,

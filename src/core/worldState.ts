@@ -23,6 +23,17 @@ interface PersistedWorldState {
   visitedSectors: string[];
   playerShipState: ShipState;
   factionReputations: Record<string, number>;
+  repLog: RepEvent[];
+}
+
+export type ReputationTier = 'allied' | 'friendly' | 'neutral' | 'unfriendly' | 'hostile';
+
+export interface RepEvent {
+  factionId: string;
+  factionName: string;
+  delta: number;
+  reason: string;
+  timestamp: number;
 }
 
 function toVector2(value: { x: number; y: number }): Vector2 {
@@ -124,6 +135,7 @@ export class WorldState {
   private visitedSectors: Set<string>;
   private playerShipState: ShipState;
   private factionReputations: Record<string, number>;
+  private repLog: RepEvent[] = [];
   private readonly sectorIndex: Map<string, SectorMetadata>;
 
   constructor(worldFile: WorldFile, startSector: GridCoord, playerShipState: ShipState) {
@@ -190,6 +202,10 @@ export class WorldState {
     return this.worldFile.factions.find((faction) => faction.id === id) ?? null;
   }
 
+  getFactions(): FactionDefinition[] {
+    return this.worldFile.factions;
+  }
+
   getFactionVisual(id: string): FactionVisual {
     const faction = this.getFaction(id);
     if (!faction) {
@@ -217,7 +233,7 @@ export class WorldState {
     return this.factionReputations[factionId] ?? 0;
   }
 
-  setReputation(factionId: string, delta: number): void {
+  changeReputation(factionId: string, delta: number): void {
     const current = this.getReputation(factionId);
     this.factionReputations[factionId] = clamp(current + delta, -100, 100);
   }
@@ -234,6 +250,45 @@ export class WorldState {
     }
     const average = sum / nonPirateFactions.length;
     return -clamp(average, -100, 100);
+  }
+
+  getReputationForFaction(factionId: string): number {
+    const faction = this.getFaction(factionId);
+    if (!faction) {
+      return 0;
+    }
+    if (faction.isPirate) {
+      return this.getPirateReputation();
+    }
+    return this.getReputation(factionId);
+  }
+
+  getReputationTier(factionId: string): ReputationTier {
+    const rep = this.getReputationForFaction(factionId);
+    if (rep >= 80) return 'allied';
+    if (rep >= 40) return 'friendly';
+    if (rep >= -39) return 'neutral';
+    if (rep >= -80) return 'unfriendly';
+    return 'hostile';
+  }
+
+  logRepEvent(factionId: string, delta: number, reason: string): void {
+    const faction = this.getFaction(factionId);
+    const event: RepEvent = {
+      factionId,
+      factionName: faction?.name ?? factionId,
+      delta,
+      reason,
+      timestamp: Date.now()
+    };
+    this.repLog.push(event);
+    if (this.repLog.length > 8) {
+      this.repLog = this.repLog.slice(this.repLog.length - 8);
+    }
+  }
+
+  getRepLog(): RepEvent[] {
+    return [...this.repLog];
   }
 
   getPlayerShipState(): ShipState {
@@ -293,7 +348,8 @@ export class WorldState {
       currentSectorCoord: this.currentSectorCoord,
       visitedSectors: Array.from(this.visitedSectors),
       playerShipState: this.playerShipState,
-      factionReputations: this.factionReputations
+      factionReputations: this.factionReputations,
+      repLog: this.repLog
     };
     localStorage.setItem(`voidrunner_save_${this.worldFile.metadata.seed}`, JSON.stringify(payload));
   }
@@ -310,6 +366,7 @@ export class WorldState {
       state.setCurrentSector(parsed.currentSectorCoord);
       state.visitedSectors = new Set(parsed.visitedSectors);
       state.factionReputations = { ...defaultFactionReputations(worldFile), ...parsed.factionReputations };
+      state.repLog = Array.isArray(parsed.repLog) ? parsed.repLog.slice(-8) : [];
       return state;
     } catch {
       return null;

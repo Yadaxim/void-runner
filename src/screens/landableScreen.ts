@@ -1,13 +1,20 @@
 import { COLOURS, REFUEL_PRICE_PER_UNIT, REFUEL_RATE, REPAIR_PRICE_DEFAULT, REPAIR_RATE } from '../constants';
-import type { WorldState } from '../core/worldState';
+import type { ReputationTier, WorldState } from '../core/worldState';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
 import { drawStation } from '../renderer/landables/stationRenderer';
 import type { Landable } from '../types';
-import type { LandableService } from '../types/landable';
+import type { LandableService, ServiceType } from '../types/landable';
 import type { Screen } from './screenManager';
 
-type TabId = 'overview' | 'refuel' | 'repair';
+type TabId =
+  | 'overview'
+  | 'refuel'
+  | 'repair'
+  | 'missionBoard'
+  | 'shipyard'
+  | 'equipmentStore'
+  | 'trainingSimulator';
 
 interface TabRect {
   id: TabId;
@@ -23,7 +30,7 @@ export class LandableScreen implements Screen {
   private isRefuelHeld = false;
   private isRepairing = false;
   private repairService: LandableService | null = null;
-  private readonly clickableTabs: TabId[] = ['overview', 'refuel', 'repair'];
+  private clickableTabs: TabId[] = ['overview', 'refuel', 'repair'];
   private tabRects: TabRect[] = [];
   private takeOffRect: { x: number; y: number; width: number; height: number } | null = null;
   private refuelRect: { x: number; y: number; width: number; height: number } | null = null;
@@ -35,6 +42,7 @@ export class LandableScreen implements Screen {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Tab') {
       event.preventDefault();
+      this.refreshClickableTabs();
       const nextIndex = (this.clickableTabs.indexOf(this.activeTab) + 1) % this.clickableTabs.length;
       this.activeTab = this.clickableTabs[nextIndex];
       return;
@@ -122,6 +130,7 @@ export class LandableScreen implements Screen {
   }
 
   private updateRefuel(dt: number): void {
+    if (!this.canAccessService('refuel')) return;
     if (this.activeTab !== 'refuel' || !this.isRefuelHeld) return;
     const ship = this.worldState.getPlayerShipState();
     const pricePerUnit = this.getRefuelPricePerUnit();
@@ -140,9 +149,10 @@ export class LandableScreen implements Screen {
   }
 
   private updateRepair(dt: number): void {
+    if (!this.canAccessService('repair')) return;
     if (this.activeTab !== 'repair' || !this.isRepairing) return;
     const ship = this.worldState.getPlayerShipState();
-    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    const pricePerHP = this.getRepairPricePerHP();
     if (pricePerHP <= 0) {
       this.isRepairing = false;
       return;
@@ -161,6 +171,7 @@ export class LandableScreen implements Screen {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
+    this.refreshClickableTabs();
     const panelX = 48;
     const panelY = 44;
     const panelWidth = Math.max(700, ctx.canvas.width - 96);
@@ -191,6 +202,11 @@ export class LandableScreen implements Screen {
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     const factionText = this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'Independent';
     ctx.fillText(factionText, panelX + 20, panelY + 54);
+    if (this.isHostileAtLandable()) {
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillText('⚠ YOU ARE NOT WELCOME HERE — PRICES DOUBLED', panelX + 20, panelY + 72);
+    }
 
     this.takeOffRect = {
       x: panelX + panelWidth - 172,
@@ -205,22 +221,49 @@ export class LandableScreen implements Screen {
     const tabGap = 18;
     this.tabRects = [];
     let x = tabStartX;
-    const allTabs: Array<{ label: string; id?: TabId; enabled: boolean }> = [
-      { label: 'OVERVIEW', id: 'overview', enabled: true },
-      { label: 'REFUEL', id: 'refuel', enabled: true },
-      { label: 'REPAIR', id: 'repair', enabled: true },
-      { label: 'MISSION BOARD', enabled: false },
-      { label: 'SHIPYARD', enabled: false },
-      { label: 'EQUIPMENT', enabled: false },
-      { label: 'MISSIONS', enabled: false }
+    const allTabs: Array<{ label: string; id: TabId; serviceType: ServiceType | null; available: boolean }> = [
+      { label: 'OVERVIEW', id: 'overview', serviceType: null, available: true },
+      { label: 'REFUEL', id: 'refuel', serviceType: 'refuel', available: this.hasService('refuel') },
+      { label: 'REPAIR', id: 'repair', serviceType: 'repair', available: this.hasService('repair') },
+      {
+        label: 'MISSION BOARD',
+        id: 'missionBoard',
+        serviceType: 'missionBoard',
+        available: this.hasService('missionBoard')
+      },
+      { label: 'SHIPYARD', id: 'shipyard', serviceType: 'shipyard', available: this.hasService('shipyard') },
+      {
+        label: 'EQUIPMENT',
+        id: 'equipmentStore',
+        serviceType: 'equipmentStore',
+        available: this.hasService('equipmentStore')
+      },
+      {
+        label: 'TRAINING',
+        id: 'trainingSimulator',
+        serviceType: 'trainingSimulator',
+        available: this.hasService('trainingSimulator')
+      }
     ];
     ctx.font = "16px 'Courier New', monospace";
     ctx.textAlign = 'left';
     for (const tab of allTabs) {
-      const width = ctx.measureText(tab.label).width + 6;
+      const accessible = tab.serviceType ? this.canAccessService(tab.serviceType) : true;
+      const showLock = tab.serviceType !== null && tab.available && !accessible;
+      const renderLabel = showLock ? `${tab.label} ` : tab.label;
+      const width = ctx.measureText(renderLabel).width + (showLock ? 16 : 6);
       const isActive = tab.id === this.activeTab;
-      ctx.fillStyle = tab.enabled ? (isActive ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY) : '#2a2a3a';
-      ctx.fillText(tab.label, x, tabY + 8);
+      if (!tab.available) {
+        ctx.fillStyle = '#2a2a3a';
+      } else if (showLock) {
+        ctx.fillStyle = COLOURS.WARNING;
+      } else {
+        ctx.fillStyle = isActive ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
+      }
+      ctx.fillText(renderLabel, x, tabY + 8);
+      if (showLock) {
+        this.drawLockGlyph(ctx, x + ctx.measureText(renderLabel).width + 2, tabY + 10, 10, COLOURS.WARNING);
+      }
       if (isActive) {
         ctx.strokeStyle = COLOURS.UI_ACCENT;
         ctx.beginPath();
@@ -228,7 +271,7 @@ export class LandableScreen implements Screen {
         ctx.lineTo(x + width, tabY + 30);
         ctx.stroke();
       }
-      if (tab.enabled && tab.id) {
+      if (tab.available) {
         this.tabRects.push({ id: tab.id, x, y: tabY, width, height: 30 });
       }
       x += width + tabGap;
@@ -244,9 +287,30 @@ export class LandableScreen implements Screen {
     if (this.activeTab === 'overview') {
       this.renderOverview(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'refuel') {
-      this.renderRefuel(ctx, contentX, contentY, contentWidth, contentHeight);
+      if (!this.canAccessService('refuel')) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderRefuel(ctx, contentX, contentY, contentWidth, contentHeight);
+      }
+    } else if (this.activeTab === 'repair') {
+      if (!this.canAccessService('repair')) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderRepair(ctx, contentX, contentY, contentWidth, contentHeight);
+      }
+    } else if (
+      this.activeTab === 'missionBoard' ||
+      this.activeTab === 'shipyard' ||
+      this.activeTab === 'equipmentStore' ||
+      this.activeTab === 'trainingSimulator'
+    ) {
+      if (!this.canAccessService(this.activeTab)) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderServicePreview(ctx, contentX, contentY, this.activeTab);
+      }
     } else {
-      this.renderRepair(ctx, contentX, contentY, contentWidth, contentHeight);
+      this.renderRefuel(ctx, contentX, contentY, contentWidth, contentHeight);
     }
 
     ctx.font = "11px 'Courier New', monospace";
@@ -277,7 +341,7 @@ export class LandableScreen implements Screen {
     ctx.font = "12px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.fillText(this.formatType(this.landable.type), x, y + 28);
-    const description = this.landable.description || 'No description available.';
+    const description = this.getOverviewDescription();
     this.drawWrappedText(ctx, description, x, y + 62, width - 210, 20);
 
     ctx.font = "13px 'Courier New', monospace";
@@ -325,6 +389,8 @@ export class LandableScreen implements Screen {
     ctx.fillStyle = statusColour;
     ctx.fillText(statusText, barX + barWidth + 62, hullTextY);
 
+    const standingY = tagY + 78;
+    this.renderStanding(ctx, x, standingY, width - 20, y + _height);
     this.drawLandablePreview(ctx, x + width - 120, y + 104, 80);
   }
 
@@ -430,7 +496,7 @@ export class LandableScreen implements Screen {
     ctx.textBaseline = 'top';
 
     const ship = this.worldState.getPlayerShipState();
-    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    const pricePerHP = this.getRepairPricePerHP();
     const hpNeeded = Math.max(0, ship.maxHP - ship.currentHP);
     const hullRatio = ship.maxHP > 0 ? Math.min(1, Math.max(0, ship.currentHP / ship.maxHP)) : 0;
     const fullRepairCost = hpNeeded * pricePerHP;
@@ -479,10 +545,12 @@ export class LandableScreen implements Screen {
   }
 
   private getRefuelPricePerUnit(): number {
-    return this.landable.services.find((service) => service.type === 'refuel')?.refuelPricePerUnit ?? REFUEL_PRICE_PER_UNIT;
+    const base = this.landable.services.find((service) => service.type === 'refuel')?.refuelPricePerUnit ?? REFUEL_PRICE_PER_UNIT;
+    return this.isHostileAtLandable() ? base * 2 : base;
   }
 
   private applyFullRefuel(): void {
+    if (!this.canAccessService('refuel')) return;
     const ship = this.worldState.getPlayerShipState();
     const pricePerUnit = this.getRefuelPricePerUnit();
     const fuelNeeded = ship.maxFuel - ship.fuel;
@@ -496,8 +564,9 @@ export class LandableScreen implements Screen {
   }
 
   private applyFullRepair(): void {
+    if (!this.canAccessService('repair')) return;
     const ship = this.worldState.getPlayerShipState();
-    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    const pricePerHP = this.getRepairPricePerHP();
     const hpNeeded = ship.maxHP - ship.currentHP;
     const totalCost = hpNeeded * pricePerHP;
     if (ship.credits < totalCost || hpNeeded <= 0) return;
@@ -506,6 +575,235 @@ export class LandableScreen implements Screen {
       credits: ship.credits - totalCost
     });
     this.worldState.saveToLocalStorage();
+  }
+
+  private getRepairPricePerHP(): number {
+    const base = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    return this.isHostileAtLandable() ? base * 2 : base;
+  }
+
+  private refreshClickableTabs(): void {
+    const serviceTabs: ServiceType[] = [
+      'refuel',
+      'repair',
+      'missionBoard',
+      'shipyard',
+      'equipmentStore',
+      'trainingSimulator'
+    ];
+    this.clickableTabs = ['overview', ...serviceTabs.filter((serviceType) => this.hasService(serviceType))];
+    if (!this.clickableTabs.includes(this.activeTab)) {
+      this.activeTab = 'overview';
+    }
+  }
+
+  private hasService(serviceType: ServiceType): boolean {
+    return this.landable.services.some((service) => service.type === serviceType);
+  }
+
+  private canAccessService(serviceType: ServiceType): boolean {
+    const landableFactionId = this.landable.factionId;
+    if (!landableFactionId) return true;
+    const tier = this.worldState.getReputationTier(landableFactionId);
+    switch (serviceType) {
+      case 'refuel':
+      case 'repair':
+        return tier !== 'hostile';
+      case 'missionBoard':
+        if (landableFactionId === 'pirates') {
+          return tier === 'friendly' || tier === 'allied';
+        }
+        return tier !== 'hostile' && tier !== 'unfriendly';
+      case 'equipmentStore':
+      case 'shipyard':
+      case 'trainingSimulator':
+        return tier !== 'hostile' && tier !== 'unfriendly';
+      default:
+        return true;
+    }
+  }
+
+  private renderAccessDenied(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const factionName = this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'this faction';
+    const reputation = this.landable.factionId ? Math.round(this.worldState.getReputationForFaction(this.landable.factionId)) : 0;
+    const tier = this.landable.factionId ? this.worldState.getReputationTier(this.landable.factionId) : 'neutral';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.DANGER;
+    ctx.font = "22px 'Courier New', monospace";
+    ctx.fillText('ACCESS DENIED', x, y + 12);
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText(`Your reputation with ${factionName} is too low.`, x, y + 52);
+    ctx.fillText(`Current standing: ${tier.toUpperCase()}  (${reputation >= 0 ? '+' : ''}${reputation})`, x, y + 76);
+  }
+
+  private renderServicePreview(ctx: CanvasRenderingContext2D, x: number, y: number, tabId: TabId): void {
+    const labels: Record<TabId, string> = {
+      overview: 'Overview',
+      refuel: 'Refuel',
+      repair: 'Repair',
+      missionBoard: 'Mission Board',
+      shipyard: 'Shipyard',
+      equipmentStore: 'Equipment Store',
+      trainingSimulator: 'Training Simulator'
+    };
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText(labels[tabId].toUpperCase(), x, y);
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText('Service terminal linked. Full interaction arrives in a later session.', x, y + 34);
+  }
+
+  private drawLockGlyph(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    colour: string
+  ): void {
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y + 3, size, size - 2);
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y + 3, size / 3, Math.PI, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private isHostileAtLandable(): boolean {
+    if (!this.landable.factionId) return false;
+    return this.worldState.getReputationTier(this.landable.factionId) === 'hostile';
+  }
+
+  private getOverviewDescription(): string {
+    if (this.landable.factionId !== 'pirates') {
+      return this.landable.description || 'No description available.';
+    }
+    const pirateTier = this.worldState.getReputationTier('pirates');
+    if (pirateTier === 'hostile') {
+      return "Strangers aren't welcome here.";
+    }
+    return "The Syndicate does not ask where you've been. Only where you're going.";
+  }
+
+  private renderStanding(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    contentBottomY: number
+  ): void {
+    const factions = this.worldState.getFactions();
+    const pirateFaction = this.worldState.getFaction('pirates');
+    const uniqueFactions = pirateFaction
+      ? [...factions.filter((faction) => faction.id !== 'pirates'), pirateFaction]
+      : factions;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText('FACTION STANDING', x, y);
+
+    const rowHeight = 20;
+    const barWidth = 120;
+    const barHeight = 10;
+    const repLog = this.worldState.getRepLog().slice(-5);
+    const standingHeaderHeight = 24;
+    const repLogHeaderHeight = repLog.length > 0 ? 20 : 0;
+    const repLogRowsHeight = repLog.length * 16;
+    const availableForRows = Math.max(0, contentBottomY - y - standingHeaderHeight - repLogHeaderHeight - repLogRowsHeight - 8);
+    const maxRows = Math.max(1, Math.floor(availableForRows / rowHeight));
+    const pirateIndex = uniqueFactions.findIndex((faction) => faction.id === 'pirates');
+    let visibleFactions = uniqueFactions.slice(0, maxRows);
+    if (pirateIndex >= 0 && !visibleFactions.some((faction) => faction.id === 'pirates')) {
+      visibleFactions = [...visibleFactions.slice(0, Math.max(0, maxRows - 1)), uniqueFactions[pirateIndex]];
+    }
+
+    for (let i = 0; i < visibleFactions.length; i += 1) {
+      const faction = visibleFactions[i];
+      const rep = Math.round(this.worldState.getReputationForFaction(faction.id));
+      const tier = this.worldState.getReputationTier(faction.id);
+      const rowY = y + 24 + i * rowHeight;
+      const isLandableFaction = this.landable.factionId === faction.id;
+      if (isLandableFaction) {
+        ctx.fillStyle = 'rgba(64, 192, 255, 0.08)';
+        ctx.fillRect(x - 2, rowY - 1, width - 40, rowHeight - 2);
+      }
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      const nameText = `${faction.name}${faction.isPirate ? ' (derived)' : ''}`;
+      ctx.fillText(nameText, x, rowY + 2);
+      this.drawReputationBar(ctx, x + 190, rowY + 4, barWidth, barHeight, rep);
+      ctx.fillStyle = this.getTierColour(tier);
+      ctx.fillText(`${rep >= 0 ? '+' : ''}${rep}  ${tier.toUpperCase()}`, x + 320, rowY + 2);
+    }
+
+    this.renderRepLog(ctx, x, y + 24 + visibleFactions.length * rowHeight + 12);
+  }
+
+  private drawReputationBar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    reputation: number
+  ): void {
+    const centre = x + width / 2;
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.strokeRect(x, y, width, height);
+    ctx.beginPath();
+    ctx.moveTo(centre, y);
+    ctx.lineTo(centre, y + height);
+    ctx.strokeStyle = COLOURS.UI_PRIMARY;
+    ctx.stroke();
+    const normalised = Math.min(100, Math.max(-100, reputation)) / 100;
+    const magnitude = Math.abs(normalised) * (width / 2 - 1);
+    if (normalised > 0) {
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillRect(centre + 1, y + 1, magnitude, height - 2);
+    } else if (normalised < 0) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillRect(centre - magnitude, y + 1, magnitude, height - 2);
+    }
+  }
+
+  private renderRepLog(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const entries = this.worldState.getRepLog().slice(-5);
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "13px 'Courier New', monospace";
+    ctx.fillText('RECENT EVENTS', x, y);
+    const oldestFirst = [...entries];
+    oldestFirst.forEach((event, index) => {
+      const rowY = y + 18 + index * 16;
+      ctx.fillStyle = event.delta >= 0 ? COLOURS.SAFE : COLOURS.DANGER;
+      const deltaText = `${event.delta >= 0 ? '+' : ''}${event.delta}`.padStart(4, ' ');
+      ctx.fillText(deltaText, x, rowY);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      const eventText = `${event.factionName.padEnd(18, ' ')} ${event.reason.padEnd(16, ' ')} ${this.formatRelativeTime(event.timestamp)}`;
+      ctx.fillText(eventText, x + 38, rowY);
+    });
+  }
+
+  private formatRelativeTime(timestamp: number): string {
+    const diffMs = Math.max(0, Date.now() - timestamp);
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes <= 0) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hr ago`;
+  }
+
+  private getTierColour(tier: ReputationTier): string {
+    if (tier === 'allied') return COLOURS.SAFE;
+    if (tier === 'friendly') return COLOURS.UI_ACCENT;
+    if (tier === 'neutral') return COLOURS.UI_PRIMARY;
+    if (tier === 'unfriendly') return COLOURS.WARNING;
+    return COLOURS.DANGER;
   }
 
   private getHullColourByRatio(ratio: number): string {

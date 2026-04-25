@@ -1,6 +1,6 @@
 import { COLOURS } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
-import type { WorldState } from '../../core/worldState';
+import type { ReputationTier, WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
 import type { GridCoord, Landable, WeaponFireKey, WeaponSlot } from '../../types';
 import { WeaponStripRenderer } from './weaponStripRenderer';
@@ -20,6 +20,14 @@ function fitTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
     result = result.slice(0, -1);
   }
   return result.length > 0 ? `${result}${ellipsis}` : ellipsis;
+}
+
+function tierColour(tier: ReputationTier): string {
+  if (tier === 'allied') return COLOURS.SAFE;
+  if (tier === 'friendly') return COLOURS.UI_ACCENT;
+  if (tier === 'neutral') return COLOURS.UI_PRIMARY;
+  if (tier === 'unfriendly') return COLOURS.WARNING;
+  return COLOURS.DANGER;
 }
 
 export class HudRenderer {
@@ -43,6 +51,7 @@ export class HudRenderer {
     destructionMessageAlpha: number,
     shipTarget: { name: string; hpRatio: number } | null,
     landableTarget: { name: string } | null,
+    sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null,
     weaponLoadout: WeaponSlot[],
     worldState: WorldState,
     heldFireKeys: Record<WeaponFireKey, boolean>
@@ -71,6 +80,7 @@ export class HudRenderer {
     this.ctx.fillText(linearBrakeText, 12, 76);
     this.ctx.fillText(rotationBrakeText, 12, 92);
     this.renderHpBar(playerShip, radiationIntensity);
+    this.renderSectorReputationIndicator(sectorFaction);
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
     const sectorText = `SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`;
@@ -248,6 +258,35 @@ export class HudRenderer {
       this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
       this.ctx.restore();
     }
+  }
+
+  private renderSectorReputationIndicator(
+    sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null
+  ): void {
+    if (!sectorFaction) {
+      return;
+    }
+    const y = this.ctx.canvas.height - 82;
+    const x = 12;
+    const barWidth = 72;
+    const bars = 6;
+    const value = Math.round(sectorFaction.reputation);
+    const tier = sectorFaction.tier;
+    const colour = tierColour(tier);
+    const fillBars = Math.round((Math.abs(Math.max(-100, Math.min(100, value))) / 100) * bars);
+    const barText = `${'█'.repeat(fillBars)}${'░'.repeat(Math.max(0, bars - fillBars))}`;
+    const warnPrefix = tier === 'unfriendly' || tier === 'hostile' ? '⚠ ' : '';
+    const shouldFlash = tier === 'hostile' && Math.floor(performance.now() / 250) % 2 === 0;
+    this.ctx.save();
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.font = "13px 'Courier New', monospace";
+    this.ctx.fillStyle = shouldFlash ? COLOURS.DANGER : COLOURS.UI_PRIMARY;
+    this.ctx.fillText(`${warnPrefix}${sectorFaction.shortName.toUpperCase().slice(0, 4)}`, x, y);
+    this.ctx.fillStyle = shouldFlash ? COLOURS.DANGER : colour;
+    this.ctx.fillText(barText, x + barWidth, y);
+    this.ctx.fillText(`${value >= 0 ? '+' : ''}${value}`, x + barWidth + 66, y);
+    this.ctx.restore();
   }
 
   private renderRadiationWarning(

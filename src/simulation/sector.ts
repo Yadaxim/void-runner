@@ -111,7 +111,8 @@ export class SectorSimulation {
       const inputs = ship.update(dt, undefined, {
         player: this.playerShip,
         otherNPCs: this.npcShips.filter((candidate) => candidate.state.id !== ship.state.id),
-        landables: this.landables
+        landables: this.landables,
+        worldState: this.worldState
       });
       const fireInputs: Record<WeaponFireKey, boolean> = {
         Z: inputs?.fireZ ?? false,

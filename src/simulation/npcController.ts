@@ -1,4 +1,5 @@
 import { childPRNG, SplitMix64 } from '../core/prng';
+import type { WorldState } from '../core/worldState';
 import { Vector2 } from '../physics/vector2';
 import type { Landable } from '../types';
 import type { ShipEntity } from './shipEntity';
@@ -21,6 +22,7 @@ export interface NPCInputs {
 
 const ROTATION_THRESHOLD_RAD = 0.08;
 const WAYPOINT_REACHED_DISTANCE = 80;
+const TAIL_DISTANCE = 500;
 
 function wrapAngle(angle: number): number {
   let wrapped = angle;
@@ -100,21 +102,25 @@ export class NPCController {
     self: ShipEntity,
     player: ShipEntity,
     _otherNPCs: ShipEntity[],
-    landables: Landable[]
+    landables: Landable[],
+    worldState: WorldState
   ): NPCInputs {
     const selfPos = self.state.position as Vector2;
     const playerPos = player.state.position as Vector2;
     const playerDistance = Vector2.distance(selfPos, playerPos);
 
-    if (this.state === 'patrol' && playerDistance <= this.aggroRange && this.isHostileToPlayer(self)) {
+    if (this.state === 'patrol' && playerDistance <= this.aggroRange && this.shouldBeHostile(worldState, self.state.factionId)) {
       this.state = 'hostile';
     }
     if (this.state === 'hostile' && self.state.maxHP > 0 && self.state.currentHP / self.state.maxHP < this.fleeHPThreshold) {
       this.state = 'flee';
     }
+    if (this.state === 'hostile' && !this.shouldRemainHostile(worldState, self.state.factionId)) {
+      this.state = 'patrol';
+    }
 
     if (this.state === 'patrol') {
-      return this.updatePatrol(self, playerDistance);
+      return this.updatePatrol(self, player, playerDistance, worldState);
     }
     if (this.state === 'trade') {
       return this.updateTrade(self, landables);
@@ -125,13 +131,34 @@ export class NPCController {
     return this.updateFlee(self, player, playerDistance);
   }
 
-  private isHostileToPlayer(self: ShipEntity): boolean {
-    return (self.state.factionId ?? '') === 'pirates';
+  private shouldBeHostile(worldState: WorldState, factionId: string | null): boolean {
+    if (!factionId) {
+      return false;
+    }
+    return worldState.getReputationTier(factionId) === 'hostile';
   }
 
-  private updatePatrol(self: ShipEntity, playerDistance: number): NPCInputs {
+  private shouldRemainHostile(worldState: WorldState, factionId: string | null): boolean {
+    if (!factionId) {
+      return false;
+    }
+    const tier = worldState.getReputationTier(factionId);
+    return tier === 'hostile' || tier === 'unfriendly';
+  }
+
+  private updatePatrol(
+    self: ShipEntity,
+    player: ShipEntity,
+    playerDistance: number,
+    worldState: WorldState
+  ): NPCInputs {
     const inputs = defaultInputs();
-    if (playerDistance > this.aggroRange || !this.isHostileToPlayer(self)) {
+    const factionId = self.state.factionId;
+    const tier = factionId ? worldState.getReputationTier(factionId) : 'neutral';
+    if (tier === 'unfriendly') {
+      return this.updateTailPlayer(self, player, playerDistance);
+    }
+    if (playerDistance > this.aggroRange || !this.shouldBeHostile(worldState, factionId)) {
       const selfPos = self.state.position as Vector2;
       const targetAngle = angleToTarget(selfPos, this.patrolTarget);
       const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
@@ -146,6 +173,28 @@ export class NPCController {
         this.patrolIndex = (this.patrolIndex + 1) % this.patrolPoints.length;
         this.patrolTarget = this.patrolPoints[this.patrolIndex];
       }
+    }
+    return inputs;
+  }
+
+  private updateTailPlayer(self: ShipEntity, player: ShipEntity, playerDistance: number): NPCInputs {
+    const inputs = defaultInputs();
+    const selfPos = self.state.position as Vector2;
+    const playerPos = player.state.position as Vector2;
+    const targetAngle = angleToTarget(selfPos, playerPos);
+    const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
+    inputs.rotateCW = rotation.rotateCW;
+    inputs.rotateCCW = rotation.rotateCCW;
+    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+
+    if (playerDistance > TAIL_DISTANCE + 75 && Math.abs(rotation.angleDiff) < (30 * Math.PI) / 180) {
+      inputs.forward = true;
+      inputs.autoBrakeLinear = false;
+    } else if (playerDistance < TAIL_DISTANCE - 75 && Math.abs(rotation.angleDiff) < (30 * Math.PI) / 180) {
+      inputs.reverse = true;
+      inputs.autoBrakeLinear = false;
+    } else {
+      inputs.autoBrakeLinear = true;
     }
     return inputs;
   }
@@ -177,7 +226,7 @@ export class NPCController {
     const inputs = defaultInputs();
     if (!this.alwaysHostile && playerDistance > this.aggroRange * 1.5) {
       this.state = 'patrol';
-      return this.updatePatrol(self, playerDistance);
+      return defaultInputs();
     }
     const selfPos = self.state.position as Vector2;
     const playerPos = player.state.position as Vector2;
@@ -229,7 +278,7 @@ export class NPCController {
     const inputs = defaultInputs();
     if (playerDistance > this.aggroRange * 2) {
       this.state = 'patrol';
-      return this.updatePatrol(self, playerDistance);
+      return defaultInputs();
     }
     const selfPos = self.state.position as Vector2;
     const awayDirection = selfPos.sub(player.state.position as Vector2);

@@ -1,7 +1,9 @@
 import {
   BULLET_MAX_IMPACT_DELTA_V,
   BULLET_MOMENTUM_TRANSFER_SCALE,
-  HULL_DIMENSIONS
+  HULL_DIMENSIONS,
+  REP_PENALTY_HIT,
+  REP_PENALTY_KILL
 } from '../constants';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
@@ -81,6 +83,11 @@ export class WeaponSystem {
         }
         const hitRadius = this.getShipHitRadius(ship, worldState);
         if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, hitRadius)) {
+          const isPlayerAggressor = bullet.instance.ownerId === 'player' && !ship.state.isPlayerControlled;
+          if (isPlayerAggressor && ship.state.factionId) {
+            worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT);
+            worldState.logRepEvent(ship.state.factionId, REP_PENALTY_HIT, 'Attacked ship');
+          }
           const nextHP = Math.max(0, ship.state.currentHP - this.getBulletDamage(bullet));
           const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
           ship.state = { ...ship.state, currentHP: nextHP };
@@ -91,6 +98,10 @@ export class WeaponSystem {
           this.particles.spawnImpact(bullet.getPosition(), this.getBulletColour(bullet));
           if (nextHP <= 0) {
             ship.markDestroyed();
+            if (isPlayerAggressor && ship.state.factionId) {
+              worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL);
+              worldState.logRepEvent(ship.state.factionId, REP_PENALTY_KILL, 'Destroyed ship');
+            }
             if (ship.state.isPlayerControlled) {
               this.playerDestroyed = true;
             }

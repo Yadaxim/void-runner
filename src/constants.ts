@@ -11,6 +11,8 @@ export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const MAX_DELTA_SECONDS = 0.1;
 export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
 export const BULLET_MAX_IMPACT_DELTA_V = 45;
+export const REP_PENALTY_HIT = -2;
+export const REP_PENALTY_KILL = -15;
 
 // Flight gameplay and interactions
 export const MAX_RADIATION_DAMAGE_PER_SECOND = 15;

@@ -22,6 +22,7 @@ import {
 } from '../physics/newtonian';
 import { Vector2 } from '../physics/vector2';
 import type { Landable } from '../types';
+import type { WorldState } from '../core/worldState';
 import type { NPCController, NPCInputs, NPCState } from './npcController';
 
 export interface ThrusterInputs {
@@ -108,11 +109,18 @@ export class ShipEntity {
   update(
     dt: number,
     externalInputs?: ThrusterInputs,
-    context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[] }
+    context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[]; worldState: WorldState }
   ): NPCInputs | null {
     let npcInputs: NPCInputs | null = null;
     if (this.npcController && !this.state.isPlayerControlled && context) {
-      npcInputs = this.npcController.update(dt, this, context.player, context.otherNPCs, context.landables);
+      npcInputs = this.npcController.update(
+        dt,
+        this,
+        context.player,
+        context.otherNPCs,
+        context.landables,
+        context.worldState
+      );
       this.applyThrusterInputs(npcInputs);
       this.npcLastState = this.npcController.getState();
     } else if (externalInputs) {
