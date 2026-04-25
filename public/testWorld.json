@@ -91,7 +91,26 @@
       "equipmentWhitelist": ["thruster","weapon","armour","fuelTank","autoBrake","sensorArray","neuralBrain","memoryCard"],
       "baseTopSpeed": 250,
       "baseHP": 100,
-      "weaponSlots": 1
+      "weaponSlots": 1,
+      "defaultWeaponLoadout": [
+        { "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }
+      ]
+    },
+    {
+      "id": "fighter_raider_mk1",
+      "name": "Raider Mk I",
+      "description": "A rough fighter variant used by raiders and militia patrols.",
+      "hullClass": "fighter",
+      "hullMass": 85,
+      "cargoCapacity": 16,
+      "equipmentCapacity": 36,
+      "equipmentWhitelist": ["thruster","weapon","armour","fuelTank","autoBrake","sensorArray","neuralBrain","memoryCard"],
+      "baseTopSpeed": 245,
+      "baseHP": 110,
+      "weaponSlots": 1,
+      "defaultWeaponLoadout": [
+        { "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }
+      ]
     },
     {
       "id": "courier_mk1",
@@ -104,7 +123,10 @@
       "equipmentWhitelist": ["thruster","weapon","armour","fuelTank","hyperspaceDrive","autoBrake","sensorArray","neuralBrain","memoryCard"],
       "baseTopSpeed": 200,
       "baseHP": 160,
-      "weaponSlots": 2
+      "weaponSlots": 2,
+      "defaultWeaponLoadout": [
+        { "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }
+      ]
     },
     {
       "id": "freighter_mk1",
@@ -117,7 +139,10 @@
       "equipmentWhitelist": ["thruster","armour","fuelTank","hyperspaceDrive","autoBrake","sensorArray","neuralBrain","memoryCard"],
       "baseTopSpeed": 140,
       "baseHP": 240,
-      "weaponSlots": 1
+      "weaponSlots": 1,
+      "defaultWeaponLoadout": [
+        { "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }
+      ]
     }
   ],
   "bulletSpecs": [
@@ -152,7 +177,7 @@
     {
       "id": "seeker_missile",
       "name": "Seeker Missile",
-      "mass": 2,
+      "mass": 50,
       "speed": 350,
       "inheritShipVelocity": false,
       "damage": 50,
@@ -237,7 +262,23 @@
       "regionType": "core_arm",
       "factionId": "federation",
       "landableDensity": 0.9,
-      "npcSpawnRules": [],
+      "npcSpawnRules": [
+        {
+          "factionId": "federation",
+          "behaviourType": "patrol",
+          "countRange": [2, 3]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "trade",
+          "countRange": [1, 2]
+        },
+        {
+          "factionId": "pirates",
+          "behaviourType": "hostile",
+          "countRange": [2, 3]
+        }
+      ],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
       "ambientVisuals": { "hasNebula": true, "nebulaHue": 210, "nebulaIntensity": 0.08, "starDensityMultiplier": 1.0 },
@@ -250,7 +291,7 @@
           "description": "The administrative capital of the Federation's eastern territories. Its sprawling cities never sleep, and the orbital lanes are thick with traffic.",
           "atmosphere": "tense trade hub",
           "factionId": "federation",
-          "mass": 280000,
+          "mass": 140000,
           "radius": 70,
           "position": { "x": 300, "y": -250 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
@@ -264,7 +305,7 @@
           "description": "A cold, cratered moon used as a fuel depot and waystation for traffic bound for Vethos Prime.",
           "atmosphere": "quiet and functional",
           "factionId": "federation",
-          "mass": 60000,
+          "mass": 30000,
           "radius": 28,
           "position": { "x": 500, "y": -100 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
@@ -293,7 +334,13 @@
       "regionType": "core_arm",
       "factionId": "federation",
       "landableDensity": 0.6,
-      "npcSpawnRules": [],
+      "npcSpawnRules": [
+        {
+          "factionId": "frontier_clans",
+          "behaviourType": "patrol",
+          "countRange": [1, 2]
+        }
+      ],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
       "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.9 },
@@ -403,7 +450,7 @@
           "description": "A temperate Federation colony world, younger and rougher than the core worlds but growing fast.",
           "atmosphere": "optimistic frontier",
           "factionId": "federation",
-          "mass": 220000,
+          "mass": 110000,
           "radius": 58,
           "position": { "x": -150, "y": -300 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
@@ -417,7 +464,7 @@
           "description": "A barren, rust-coloured moon the colonists call Dust. Small mining operations cling to its craters.",
           "atmosphere": "harsh and mineral",
           "factionId": "federation",
-          "mass": 40000,
+          "mass": 20000,
           "radius": 20,
           "position": { "x": 200, "y": -100 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }],
@@ -432,7 +479,18 @@
       "regionType": "midring",
       "factionId": "frontier_clans",
       "landableDensity": 0.6,
-      "npcSpawnRules": [],
+      "npcSpawnRules": [
+        {
+          "factionId": "frontier_clans",
+          "behaviourType": "patrol",
+          "countRange": [2, 4]
+        },
+        {
+          "factionId": "pirates",
+          "behaviourType": "hostile",
+          "countRange": [1, 2]
+        }
+      ],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
       "ambientVisuals": { "hasNebula": true, "nebulaHue": 30, "nebulaIntensity": 0.07, "starDensityMultiplier": 0.8 },
@@ -445,7 +503,7 @@
           "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
           "factionId": "frontier_clans",
-          "mass": 240000,
+          "mass": 120000,
           "radius": 62,
           "position": { "x": -100, "y": 200 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
@@ -515,7 +573,7 @@
           "description": "The Collective's ancient home world. Dense forests cover most of its surface, broken by gleaming trade cities.",
           "atmosphere": "ancient and mercantile",
           "factionId": "veth_collective",
-          "mass": 320000,
+          "mass": 160000,
           "radius": 75,
           "position": { "x": -200, "y": 150 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
@@ -543,7 +601,7 @@
           "description": "A white ice moon orbiting Veth'Ora. Automated drilling rigs extract water ice around the clock.",
           "atmosphere": "cold and mechanical",
           "factionId": "veth_collective",
-          "mass": 70000,
+          "mass": 35000,
           "radius": 30,
           "position": { "x": -400, "y": -200 },
           "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
