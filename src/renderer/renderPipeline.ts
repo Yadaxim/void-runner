@@ -115,7 +115,12 @@ export class RenderPipeline {
       state.dt
     );
     this.bulletLayer.render(state.bullets, state.camera);
-    this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera, state.shipTargetId);
+    this.shipLayer.render(
+      [state.playerShip, ...state.otherShips],
+      state.camera,
+      state.shipTargetId,
+      state.worldState
+    );
     this.effectsLayer.render(state.particles, state.camera);
     this.hudRenderer.render(
       state.playerShip,
@@ -146,7 +151,8 @@ export class RenderPipeline {
     this.minimapRenderer.render(
       state.worldState,
       state.playerShip.state.position,
-      state.landingCandidate
+      state.landingCandidate,
+      state.otherShips
     );
   }
 

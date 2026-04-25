@@ -1,4 +1,8 @@
-import { BULLET_MAX_IMPACT_DELTA_V, BULLET_MOMENTUM_TRANSFER_SCALE } from '../constants';
+import {
+  BULLET_MAX_IMPACT_DELTA_V,
+  BULLET_MOMENTUM_TRANSFER_SCALE,
+  HULL_DIMENSIONS
+} from '../constants';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
@@ -20,6 +24,7 @@ function isWeaponItem(item: unknown): item is WeaponItem {
 
 export class WeaponSystem {
   private activeBullets: BulletEntity[] = [];
+  private playerDestroyed = false;
 
   constructor(private readonly particles: ParticleSystem) {}
 
@@ -64,6 +69,7 @@ export class WeaponSystem {
     ships: ShipEntity[],
     _landables: Landable[]
   ): void {
+    this.playerDestroyed = false;
     for (const bullet of this.activeBullets) {
       const targetId = bullet.instance.targetId ?? null;
       const targetShip = targetId ? ships.find((ship) => ship.state.id === targetId) ?? null : null;
@@ -73,7 +79,8 @@ export class WeaponSystem {
         if (ship.state.id === bullet.instance.ownerId) {
           continue;
         }
-        if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, 16)) {
+        const hitRadius = this.getShipHitRadius(ship, worldState);
+        if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, hitRadius)) {
           const nextHP = Math.max(0, ship.state.currentHP - this.getBulletDamage(bullet));
           const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
           ship.state = { ...ship.state, currentHP: nextHP };
@@ -82,6 +89,12 @@ export class WeaponSystem {
           }
           bullet.markHit();
           this.particles.spawnImpact(bullet.getPosition(), this.getBulletColour(bullet));
+          if (nextHP <= 0) {
+            ship.markDestroyed();
+            if (ship.state.isPlayerControlled) {
+              this.playerDestroyed = true;
+            }
+          }
           break;
         }
       }
@@ -99,12 +112,24 @@ export class WeaponSystem {
     return this.activeBullets;
   }
 
+  wasPlayerDestroyed(): boolean {
+    return this.playerDestroyed;
+  }
+
   private getBulletDamage(bullet: BulletEntity): number {
     return bullet.getSpec().damage;
   }
 
   private getBulletColour(bullet: BulletEntity): string {
     return bullet.getSpec().colour;
+  }
+
+  private getShipHitRadius(ship: ShipEntity, worldState: WorldState): number {
+    const hullSpec = worldState.getHullSpec(ship.state.hullSpecId);
+    if (!hullSpec) {
+      return HULL_DIMENSIONS.fighter.length / 2;
+    }
+    return HULL_DIMENSIONS[hullSpec.hullClass].length / 2;
   }
 
   private applyImpactMomentum(

@@ -15,10 +15,6 @@ interface TargetInputs {
   cycleLandableTarget: boolean;
 }
 
-interface DevInputs {
-  spawnDummyTarget: boolean;
-}
-
 export class PlayerController {
   private readonly pressedKeys = new Set<string>();
   private autoBrakeLinearEnabled = false;
@@ -26,7 +22,6 @@ export class PlayerController {
   private landPressedQueued = false;
   private cycleShipTargetQueued = false;
   private cycleLandableTargetQueued = false;
-  private spawnDummyTargetQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -36,7 +31,6 @@ export class PlayerController {
     'ShiftLeft',
     'ShiftRight',
     'KeyL',
-    'KeyT',
     'Tab',
     'KeyG',
     'KeyZ',
@@ -69,9 +63,6 @@ export class PlayerController {
     }
     if (!event.repeat && event.code === 'KeyG') {
       this.cycleLandableTargetQueued = true;
-    }
-    if (!event.repeat && event.code === 'KeyT') {
-      this.spawnDummyTargetQueued = true;
     }
     this.pressedKeys.add(event.code);
   };
@@ -130,12 +121,6 @@ export class PlayerController {
     };
   }
 
-  getDevInputs(): DevInputs {
-    const spawnDummyTarget = this.spawnDummyTargetQueued;
-    this.spawnDummyTargetQueued = false;
-    return { spawnDummyTarget };
-  }
-
   destroy(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
@@ -145,6 +130,5 @@ export class PlayerController {
     this.landPressedQueued = false;
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
-    this.spawnDummyTargetQueued = false;
   }
 }

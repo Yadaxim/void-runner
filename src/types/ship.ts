@@ -46,6 +46,7 @@ export interface HullSpec {
   baseTopSpeed: number;
   baseHP: number;
   weaponSlots: number;
+  defaultWeaponLoadout?: WeaponSlot[];
 }
 
 export interface ShipState {

@@ -21,9 +21,24 @@ import {
   integratePosition
 } from '../physics/newtonian';
 import { Vector2 } from '../physics/vector2';
+import type { Landable } from '../types';
+import type { NPCController, NPCInputs, NPCState } from './npcController';
+
+export interface ThrusterInputs {
+  forward: boolean;
+  reverse: boolean;
+  rotateCW: boolean;
+  rotateCCW: boolean;
+  autoBrakeLinear: boolean;
+  autoBrakeRotation: boolean;
+}
 
 export class ShipEntity {
   state: ShipState;
+  private destroyed = false;
+  private npcController: NPCController | null = null;
+  private npcBehaviourType: NPCState | null = null;
+  private npcLastState: NPCState | null = null;
 
   private accumulatedForce: Vector2 = Vector2.zero();
 
@@ -51,14 +66,7 @@ export class ShipEntity {
     return this.autoBrakeRotation;
   }
 
-  applyThrusterInputs(inputs: {
-    forward: boolean;
-    reverse: boolean;
-    rotateCW: boolean;
-    rotateCCW: boolean;
-    autoBrakeLinear: boolean;
-    autoBrakeRotation: boolean;
-  }): void {
+  applyThrusterInputs(inputs: ThrusterInputs): void {
     this.autoBrakeLinear = inputs.autoBrakeLinear;
     this.autoBrakeRotation = inputs.autoBrakeRotation;
     this.forwardThrusterRequested = inputs.forward;
@@ -71,7 +79,46 @@ export class ShipEntity {
     this.accumulatedForce = this.accumulatedForce.add(force);
   }
 
-  update(dt: number): void {
+  attachNPCController(controller: NPCController, behaviourType: NPCState): void {
+    this.npcController = controller;
+    this.npcBehaviourType = behaviourType;
+    this.npcLastState = behaviourType;
+  }
+
+  getNPCBehaviourType(): NPCState | null {
+    return this.npcBehaviourType;
+  }
+
+  getNPCState(): NPCState | null {
+    return this.npcLastState;
+  }
+
+  isNPCHostile(): boolean {
+    return this.npcBehaviourType === 'hostile' || this.npcLastState === 'hostile';
+  }
+
+  markDestroyed(): void {
+    this.destroyed = true;
+  }
+
+  isDestroyed(): boolean {
+    return this.destroyed || this.state.currentHP <= 0;
+  }
+
+  update(
+    dt: number,
+    externalInputs?: ThrusterInputs,
+    context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[] }
+  ): NPCInputs | null {
+    let npcInputs: NPCInputs | null = null;
+    if (this.npcController && !this.state.isPlayerControlled && context) {
+      npcInputs = this.npcController.update(dt, this, context.player, context.otherNPCs, context.landables);
+      this.applyThrusterInputs(npcInputs);
+      this.npcLastState = this.npcController.getState();
+    } else if (externalInputs) {
+      this.applyThrusterInputs(externalInputs);
+    }
+
     const activeLinearThrusters =
       (this.forwardThrusterRequested ? 1 : 0) + (this.reverseThrusterRequested ? 1 : 0);
     const activeRotationThrusters =
@@ -135,5 +182,7 @@ export class ShipEntity {
     this.reverseThrusterRequested = false;
     this.rotateCWThrusterRequested = false;
     this.rotateCCWThrusterRequested = false;
+
+    return npcInputs;
   }
 }

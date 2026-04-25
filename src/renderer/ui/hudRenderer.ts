@@ -177,12 +177,13 @@ export class HudRenderer {
     shipTarget: { name: string; hpRatio: number } | null,
     landableTarget: { name: string } | null
   ): void {
-    const centerX = this.ctx.canvas.width / 2;
-    const topY = 18;
+    const leftMargin = 12;
+    const topY = 132;
     const boxWidth = 320;
     const boxHeight = 20;
     const gap = 6;
-    const boxX = centerX - boxWidth / 2;
+    const boxX = leftMargin;
+    const centerX = boxX + boxWidth / 2;
     const shipBoxY = topY;
     const landBoxY = shipBoxY + boxHeight + gap;
     this.ctx.save();

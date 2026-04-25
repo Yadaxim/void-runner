@@ -5,6 +5,7 @@ import {
   SECTOR_WIDTH
 } from '../../constants';
 import type { WorldState } from '../../core/worldState';
+import type { ShipEntity } from '../../simulation/shipEntity';
 import type { Landable, Vector2 } from '../../types';
 
 const MIN_LANDABLE_DOT_SIZE = 3;
@@ -21,7 +22,8 @@ export class MinimapRenderer {
   render(
     worldState: WorldState,
     playerPosition: Vector2,
-    landingCandidate: Landable | null
+    landingCandidate: Landable | null,
+    npcShips: ShipEntity[]
   ): void {
     const mapX = this.ctx.canvas.width - MINIMAP_SIZE - PANEL_MARGIN;
     const mapY = this.ctx.canvas.height - MINIMAP_SIZE - PANEL_MARGIN;
@@ -70,6 +72,25 @@ export class MinimapRenderer {
         this.ctx.stroke();
         this.ctx.restore();
       }
+    }
+
+    for (const npc of npcShips) {
+      const relativeX = (npc.state.position.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH;
+      const relativeY = (npc.state.position.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT;
+      const dotX = mapX + clamp(relativeX, 0, 1) * MINIMAP_SIZE;
+      const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
+      const hostilePulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 600)) + 1) * 0.25;
+      this.ctx.save();
+      if (npc.isNPCHostile()) {
+        this.ctx.globalAlpha = hostilePulse;
+        this.ctx.fillStyle = COLOURS.DANGER;
+      } else {
+        this.ctx.fillStyle = worldState.getFactionVisual(npc.state.factionId ?? '').primaryColour;
+      }
+      this.ctx.beginPath();
+      this.ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
     }
 
     const playerMapX = mapX + ((playerPosition.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH) * MINIMAP_SIZE;
