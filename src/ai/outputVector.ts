@@ -1,0 +1,1 @@
+import type { OutputVector, ShipState } from "../types"; export function thresholdOutputs(_output: OutputVector): OutputVector { throw new Error('not implemented'); } export function applyOutputToShip(_ship: ShipState, _output: OutputVector): void { throw new Error('not implemented'); }

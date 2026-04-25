@@ -1,0 +1,21 @@
+import type { Vector2 } from '../types';
+
+export interface Camera {
+  playerWorldPos: Vector2;
+  canvasWidth: number;
+  canvasHeight: number;
+}
+
+export function worldToScreen(worldPos: Vector2, camera: Camera): Vector2 {
+  return {
+    x: worldPos.x - camera.playerWorldPos.x + camera.canvasWidth / 2,
+    y: worldPos.y - camera.playerWorldPos.y + camera.canvasHeight / 2
+  };
+}
+
+export function screenToWorld(screenPos: Vector2, camera: Camera): Vector2 {
+  return {
+    x: screenPos.x + camera.playerWorldPos.x - camera.canvasWidth / 2,
+    y: screenPos.y + camera.playerWorldPos.y - camera.canvasHeight / 2
+  };
+}

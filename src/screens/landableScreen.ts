@@ -1,0 +1,1 @@
+import type { Screen } from "./screenManager"; export class LandableScreen implements Screen { onEnter(): void {} onExit(): void {} update(_dt: number): void {} render(_ctx: CanvasRenderingContext2D): void {} }
