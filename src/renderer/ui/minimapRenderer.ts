@@ -41,7 +41,7 @@ export class MinimapRenderer {
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
     const sectorCoord = worldState.getCurrentSectorCoord();
-    this.ctx.fillText(`SECTOR ${sectorCoord.x} : ${sectorCoord.y}`, mapX + 6, mapY + 6);
+    this.ctx.fillText(`SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`, mapX + 6, mapY + 6);
 
     const currentSector = worldState.getCurrentSector();
     for (const landable of currentSector.landables) {
@@ -100,7 +100,8 @@ export class MinimapRenderer {
 
     for (let row = -1; row <= 1; row += 1) {
       for (let col = -1; col <= 1; col += 1) {
-        const coord = { x: current.x + col, y: current.y + row };
+        // Screen rows increase downward, but sector Y increases upward.
+        const coord = { x: current.x + col, y: current.y - row };
         const x = originX + (col + 1) * (cellSize + gap);
         const y = originY + (row + 1) * (cellSize + gap);
 

@@ -32,7 +32,9 @@ export class HudRenderer {
       title: string;
       landablesLine: string;
       alpha: number;
-    } | null
+    } | null,
+    radiationIntensity: number,
+    destructionMessageAlpha: number
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
@@ -57,6 +59,7 @@ export class HudRenderer {
     this.ctx.fillText(creditsText, 12, 60);
     this.ctx.fillText(linearBrakeText, 12, 76);
     this.ctx.fillText(rotationBrakeText, 12, 92);
+    this.renderHpBar(playerShip, radiationIntensity);
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
     const sectorText = `SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`;
@@ -105,6 +108,9 @@ export class HudRenderer {
       this.ctx.restore();
     }
 
+    this.renderRadiationWarning(radiationIntensity, showBoundaryWarning, arrivalMessage !== null);
+    this.renderDestructionMessage(destructionMessageAlpha);
+
     const cx = this.ctx.canvas.width / 2;
     const cy = this.ctx.canvas.height / 2;
     this.ctx.strokeStyle = COLOURS.UI_PRIMARY;
@@ -146,5 +152,76 @@ export class HudRenderer {
       this.ctx.fillText(promptText, x + paddingX, y + height / 2);
       this.ctx.restore();
     }
+  }
+
+  private renderHpBar(playerShip: ShipEntity, radiationIntensity: number): void {
+    const barX = 12;
+    const barY = 112;
+    const barWidth = 210;
+    const barHeight = 10;
+    const hpCurrent = Math.max(0, playerShip.state.currentHP);
+    const hpMax = Math.max(1, playerShip.state.maxHP);
+    const hpRatio = Math.max(0, Math.min(1, hpCurrent / hpMax));
+    const fillWidth = Math.max(0, Math.floor((barWidth - 2) * hpRatio));
+
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+    this.ctx.fillStyle = COLOURS.SAFE;
+    this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
+
+    if (radiationIntensity > 0) {
+      const flicker = 0.65 + (Math.sin(performance.now() * 0.02) + 1) * 0.175;
+      this.ctx.save();
+      this.ctx.globalAlpha = radiationIntensity * 0.6 * flicker;
+      this.ctx.fillStyle = COLOURS.DANGER;
+      this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
+      this.ctx.restore();
+    }
+  }
+
+  private renderRadiationWarning(
+    radiationIntensity: number,
+    showBoundaryWarning: boolean,
+    showArrivalMessage: boolean
+  ): void {
+    if (radiationIntensity <= 0) {
+      return;
+    }
+
+    const isCritical = radiationIntensity >= 0.4;
+    const text = isCritical ? '☢  RADIATION CRITICAL  —  LEAVE NOW' : '⚠  RADIATION DETECTED';
+    const pulseFreq = isCritical ? 0.02 : 0.012;
+    const pulse = 0.5 + (Math.sin(performance.now() * pulseFreq) + 1) * 0.25;
+
+    this.ctx.save();
+    this.ctx.globalAlpha = pulse;
+    this.ctx.fillStyle = isCritical ? COLOURS.DANGER : COLOURS.WARNING;
+    this.ctx.font = isCritical ? "16px 'Courier New', monospace" : "13px 'Courier New', monospace";
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'top';
+    const baseY = showBoundaryWarning ? 56 : 34;
+    const messageOffsetY = showArrivalMessage ? 48 : 0;
+    this.ctx.fillText(text, this.ctx.canvas.width / 2, baseY + messageOffsetY);
+    this.ctx.restore();
+  }
+
+  private renderDestructionMessage(alpha: number): void {
+    if (alpha <= 0) {
+      return;
+    }
+
+    this.ctx.save();
+    this.ctx.globalAlpha = alpha;
+    this.ctx.fillStyle = COLOURS.DANGER;
+    this.ctx.font = "24px 'Courier New', monospace";
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(
+      'SHIP DESTROYED — 500 ₢ PENALTY',
+      this.ctx.canvas.width / 2,
+      this.ctx.canvas.height / 2
+    );
+    this.ctx.restore();
   }
 }

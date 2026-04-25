@@ -13,6 +13,7 @@ import {
   AUTOSAVE_INTERVAL_SECONDS,
   LANDING_RADIUS_MULTIPLIER,
   LANDING_SPEED_THRESHOLD,
+  MAX_RADIATION_DAMAGE_PER_SECOND,
   SECTOR_EDGE_THRESHOLD,
   SECTOR_HEIGHT,
   SECTOR_WIDTH,
@@ -46,6 +47,7 @@ export class FlightScreen implements Screen {
   private arrivalMessageUntilMs = 0;
   private arrivalMessageSectorName = '';
   private arrivalMessageLandables = '';
+  private destructionMessageUntilMs = 0;
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
   };
@@ -131,6 +133,7 @@ export class FlightScreen implements Screen {
     );
     this.playerShip.applyExternalForce(gravity);
     this.playerShip.update(dt);
+    this.applyRadiationDamage(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
       velocity: this.playerShip.state.velocity,
@@ -182,9 +185,20 @@ export class FlightScreen implements Screen {
       worldState: this.worldState,
       dt: this.lastDt,
       showBoundaryWarning: performance.now() <= this.boundaryWarningUntilMs,
-      arrivalMessage: this.getArrivalMessage()
+      radiationIntensity: this.worldState.getRadiationIntensity(),
+      arrivalMessage: this.getArrivalMessage(),
+      destructionMessageAlpha: this.getDestructionMessageAlpha()
     });
     this.landableScreen?.render(this.ctx);
+  }
+
+  private getDestructionMessageAlpha(): number {
+    const now = performance.now();
+    if (now > this.destructionMessageUntilMs) {
+      return 0;
+    }
+    const duration = 3000;
+    return (this.destructionMessageUntilMs - now) / duration;
   }
 
   private getArrivalMessage():
@@ -244,10 +258,10 @@ export class FlightScreen implements Screen {
 
   private getAdjacentCoord(coord: { x: number; y: number }, edge: SectorEdge): { x: number; y: number } {
     if (edge === 'north') {
-      return { x: coord.x, y: coord.y - 1 };
+      return { x: coord.x, y: coord.y + 1 };
     }
     if (edge === 'south') {
-      return { x: coord.x, y: coord.y + 1 };
+      return { x: coord.x, y: coord.y - 1 };
     }
     if (edge === 'east') {
       return { x: coord.x + 1, y: coord.y };
@@ -256,12 +270,80 @@ export class FlightScreen implements Screen {
   }
 
   private isWithinGalaxyBounds(coord: { x: number; y: number }): boolean {
+    const gridHalfWidth = this.worldState.getGridWidth() / 2;
+    const gridHalfHeight = this.worldState.getGridHeight() / 2;
     return (
-      coord.x >= 0 &&
-      coord.y >= 0 &&
-      coord.x < this.worldState.getGridWidth() &&
-      coord.y < this.worldState.getGridHeight()
+      coord.x >= -gridHalfWidth &&
+      coord.x < gridHalfWidth &&
+      coord.y >= -gridHalfHeight &&
+      coord.y < gridHalfHeight
     );
+  }
+
+  private applyRadiationDamage(dt: number): void {
+    if (!this.playerShip) {
+      return;
+    }
+
+    const intensity = this.worldState.getRadiationIntensity();
+    if (intensity <= 0) {
+      return;
+    }
+
+    const damage = MAX_RADIATION_DAMAGE_PER_SECOND * intensity * dt;
+    const newHP = Math.max(0, this.playerShip.state.currentHP - damage);
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      currentHP: newHP
+    };
+    this.worldState.updatePlayerShipState({ currentHP: newHP });
+
+    if (newHP <= 0) {
+      this.handleShipDestruction();
+    }
+  }
+
+  private handleShipDestruction(): void {
+    if (!this.playerShip) {
+      return;
+    }
+
+    const penalty = 500;
+    const ship = this.worldState.getPlayerShipState();
+    const resetState = {
+      currentHP: ship.maxHP,
+      fuel: ship.maxFuel,
+      credits: Math.max(0, ship.credits - penalty),
+      position: Vector2.zero(),
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    };
+
+    this.worldState.updatePlayerShipState(resetState);
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      ...resetState
+    };
+
+    this.worldState.setCurrentSector({ x: 5, y: 5 });
+    this.loadCurrentSector();
+    this.worldState.saveToLocalStorage();
+    this.destructionMessageUntilMs = performance.now() + 3000;
+  }
+
+  private loadCurrentSector(): void {
+    const sector = this.worldState.getCurrentSector();
+    this.landables.length = 0;
+    this.landables.push(...sector.landables);
+    this.worldState.markVisited(sector.coord);
+    this.pipeline.setSectorContext(sector.seed, {
+      hasNebula: sector.ambientVisuals.hasNebula,
+      nebulaHue: sector.ambientVisuals.nebulaHue,
+      nebulaIntensity: sector.ambientVisuals.nebulaIntensity,
+      starDensityMultiplier: sector.ambientVisuals.starDensityMultiplier
+    });
+    this.landingCandidate = null;
+    this.arrivalMessageUntilMs = 0;
   }
 
   private applyBoundaryClamp(edge: SectorEdge): void {
