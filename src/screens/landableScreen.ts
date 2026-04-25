@@ -17,6 +17,7 @@ interface TabRect {
 }
 
 export class LandableScreen implements Screen {
+  private static readonly DEV_CREDIT_GRANT = 1000;
   private activeTab: TabId = 'overview';
   private isRefuelHeld = false;
   private readonly clickableTabs: TabId[] = ['overview', 'refuel'];
@@ -34,6 +35,15 @@ export class LandableScreen implements Screen {
     if (event.code === 'KeyT') {
       event.preventDefault();
       this.onTakeOff();
+      return;
+    }
+    if (event.code === 'KeyY') {
+      event.preventDefault();
+      const ship = this.worldState.getPlayerShipState();
+      this.worldState.updatePlayerShipState({
+        credits: ship.credits + LandableScreen.DEV_CREDIT_GRANT
+      });
+      this.worldState.saveToLocalStorage();
     }
   };
 
@@ -183,6 +193,16 @@ export class LandableScreen implements Screen {
     } else {
       this.renderRefuel(ctx, contentX, contentY, contentWidth, contentHeight);
     }
+
+    ctx.font = "11px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(
+      `[ Y ] DEV CREDITS +${LandableScreen.DEV_CREDIT_GRANT}`,
+      panelX + panelWidth - 16,
+      panelY + panelHeight - 10
+    );
     ctx.restore();
   }
 

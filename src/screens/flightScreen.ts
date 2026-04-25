@@ -201,6 +201,7 @@ export class FlightScreen implements Screen {
         position: landable.position as Vector2,
         mass: landable.mass
       })),
+      this.worldState,
       this.otherShips,
       this.landables
     );

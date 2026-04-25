@@ -1,3 +1,4 @@
+import { BULLET_MAX_IMPACT_DELTA_V, BULLET_MOMENTUM_TRANSFER_SCALE } from '../constants';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
@@ -59,8 +60,9 @@ export class WeaponSystem {
   updateBullets(
     dt: number,
     gravitySources: { position: Vector2; mass: number }[],
+    worldState: WorldState,
     ships: ShipEntity[],
-    landables: Landable[]
+    _landables: Landable[]
   ): void {
     for (const bullet of this.activeBullets) {
       const targetId = bullet.instance.targetId ?? null;
@@ -73,7 +75,11 @@ export class WeaponSystem {
         }
         if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, 16)) {
           const nextHP = Math.max(0, ship.state.currentHP - this.getBulletDamage(bullet));
+          const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
           ship.state = { ...ship.state, currentHP: nextHP };
+          if (nextVelocity) {
+            ship.state = { ...ship.state, velocity: nextVelocity };
+          }
           bullet.markHit();
           this.particles.spawnImpact(bullet.getPosition(), this.getBulletColour(bullet));
           break;
@@ -81,13 +87,6 @@ export class WeaponSystem {
       }
       if (bullet.isExpired()) {
         continue;
-      }
-      for (const landable of landables) {
-        if (pointInCircle(bullet.getPosition(), landable.position as Vector2, landable.radius)) {
-          bullet.markHit();
-          this.particles.spawnImpact(bullet.getPosition(), this.getBulletColour(bullet));
-          break;
-        }
       }
     }
   }
@@ -106,5 +105,30 @@ export class WeaponSystem {
 
   private getBulletColour(bullet: BulletEntity): string {
     return bullet.getSpec().colour;
+  }
+
+  private applyImpactMomentum(
+    ship: ShipEntity,
+    bullet: BulletEntity,
+    worldState: WorldState
+  ): Vector2 | null {
+    const hullSpec = worldState.getHullSpec(ship.state.hullSpecId);
+    if (!hullSpec) {
+      return null;
+    }
+    const bulletVelocity = bullet.instance.body.velocity as Vector2;
+    const bulletSpeed = bulletVelocity.magnitude();
+    if (bulletSpeed <= 0) {
+      return null;
+    }
+    const bulletMass = Math.max(0.001, bullet.getSpec().mass);
+    const shipMass = Math.max(1, hullSpec.hullMass);
+    const bulletMomentum = bulletVelocity.scale(bulletMass * BULLET_MOMENTUM_TRANSFER_SCALE);
+    let deltaV = bulletMomentum.scale(1 / shipMass);
+    const deltaVMagnitude = deltaV.magnitude();
+    if (deltaVMagnitude > BULLET_MAX_IMPACT_DELTA_V) {
+      deltaV = deltaV.normalise().scale(BULLET_MAX_IMPACT_DELTA_V);
+    }
+    return (ship.state.velocity as Vector2).add(deltaV);
   }
 }

@@ -51,7 +51,7 @@ export class BulletEntity {
         velocity,
         angle: velocity.magnitude() > 0 ? angleFromDirection(velocity) : muzzleAngle,
         angularVelocity: 0,
-        mass: 1
+        mass: Math.max(0.001, spec.mass)
       }
     };
   }

@@ -1,5 +1,5 @@
 // Physics and simulation
-export const GRAVITY_CONSTANT = 9.81;
+export const GRAVITY_CONSTANT = 10;
 export const MIN_GRAVITY_DISTANCE = 100;
 export const PLACEHOLDER_SHIP_MASS = 100;
 export const PLACEHOLDER_THRUST_FORCE = 12000;
@@ -9,6 +9,8 @@ export const PLACEHOLDER_TOP_ANGULAR_SPEED = 3.0;
 export const PLACEHOLDER_LINEAR_DAMPING = 2.0;
 export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const MAX_DELTA_SECONDS = 0.1;
+export const BULLET_MOMENTUM_TRANSFER_SCALE = 0.08;
+export const BULLET_MAX_IMPACT_DELTA_V = 45;
 
 // Flight gameplay and interactions
 export const MAX_RADIATION_DAMAGE_PER_SECOND = 15;

@@ -5,6 +5,7 @@ export type BulletVisualType = 'bolt' | 'beam_pulse' | 'orb' | 'missile' | 'mine
 export interface BulletSpec {
   id: string;
   name: string;
+  mass: number;
   speed: number;
   inheritShipVelocity: boolean;
   damage: number;

@@ -114,7 +114,7 @@ function createDefaultShipState(): ShipState {
     maxHP: 100,
     fuel: 1000,
     maxFuel: 1000,
-    credits: 1000,
+    credits: 10000,
     cargo: [],
     equipmentSlots: [],
     weaponLoadout: [
