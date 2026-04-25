@@ -1,12 +1,13 @@
-import { COLOURS, REFUEL_RATE } from '../constants';
+import { COLOURS, REFUEL_PRICE_PER_UNIT, REFUEL_RATE, REPAIR_PRICE_DEFAULT, REPAIR_RATE } from '../constants';
 import type { WorldState } from '../core/worldState';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
 import { drawStation } from '../renderer/landables/stationRenderer';
 import type { Landable } from '../types';
+import type { LandableService } from '../types/landable';
 import type { Screen } from './screenManager';
 
-type TabId = 'overview' | 'refuel';
+type TabId = 'overview' | 'refuel' | 'repair';
 
 interface TabRect {
   id: TabId;
@@ -20,10 +21,16 @@ export class LandableScreen implements Screen {
   private static readonly DEV_CREDIT_GRANT = 1000;
   private activeTab: TabId = 'overview';
   private isRefuelHeld = false;
-  private readonly clickableTabs: TabId[] = ['overview', 'refuel'];
+  private isRepairing = false;
+  private repairService: LandableService | null = null;
+  private readonly clickableTabs: TabId[] = ['overview', 'refuel', 'repair'];
   private tabRects: TabRect[] = [];
   private takeOffRect: { x: number; y: number; width: number; height: number } | null = null;
   private refuelRect: { x: number; y: number; width: number; height: number } | null = null;
+  private fillUpRect: { x: number; y: number; width: number; height: number } | null = null;
+  private repairRect: { x: number; y: number; width: number; height: number } | null = null;
+  private fullRepairRect: { x: number; y: number; width: number; height: number } | null = null;
+  private overviewHullRect: { x: number; y: number; width: number; height: number } | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Tab') {
@@ -60,13 +67,30 @@ export class LandableScreen implements Screen {
         return;
       }
     }
+    if (this.activeTab === 'overview' && this.overviewHullRect && this.inRect(hit.x, hit.y, this.overviewHullRect)) {
+      this.activeTab = 'repair';
+      return;
+    }
     if (this.activeTab === 'refuel' && this.refuelRect && this.inRect(hit.x, hit.y, this.refuelRect)) {
       this.isRefuelHeld = true;
+      return;
+    }
+    if (this.activeTab === 'refuel' && this.fillUpRect && this.inRect(hit.x, hit.y, this.fillUpRect)) {
+      this.applyFullRefuel();
+      return;
+    }
+    if (this.activeTab === 'repair' && this.repairRect && this.inRect(hit.x, hit.y, this.repairRect)) {
+      this.isRepairing = true;
+      return;
+    }
+    if (this.activeTab === 'repair' && this.fullRepairRect && this.inRect(hit.x, hit.y, this.fullRepairRect)) {
+      this.applyFullRepair();
     }
   };
 
   private readonly onMouseUp = (): void => {
     this.isRefuelHeld = false;
+    this.isRepairing = false;
   };
 
   constructor(
@@ -74,7 +98,9 @@ export class LandableScreen implements Screen {
     private readonly landable: Landable,
     private readonly worldState: WorldState,
     private readonly onTakeOff: () => void
-  ) {}
+  ) {
+    this.repairService = this.landable.services.find((service) => service.type === 'repair') ?? null;
+  }
 
   onEnter(): void {
     window.addEventListener('keydown', this.onKeyDown);
@@ -87,9 +113,15 @@ export class LandableScreen implements Screen {
     this.canvas.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mouseup', this.onMouseUp);
     this.isRefuelHeld = false;
+    this.isRepairing = false;
   }
 
   update(dt: number): void {
+    this.updateRefuel(dt);
+    this.updateRepair(dt);
+  }
+
+  private updateRefuel(dt: number): void {
     if (this.activeTab !== 'refuel' || !this.isRefuelHeld) return;
     const ship = this.worldState.getPlayerShipState();
     const pricePerUnit = this.getRefuelPricePerUnit();
@@ -103,6 +135,27 @@ export class LandableScreen implements Screen {
     this.worldState.updatePlayerShipState({
       fuel: ship.fuel + refillUnits,
       credits: ship.credits - refillUnits * pricePerUnit
+    });
+    this.worldState.saveToLocalStorage();
+  }
+
+  private updateRepair(dt: number): void {
+    if (this.activeTab !== 'repair' || !this.isRepairing) return;
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    if (pricePerHP <= 0) {
+      this.isRepairing = false;
+      return;
+    }
+    const repairAmount = Math.min(REPAIR_RATE * dt, ship.maxHP - ship.currentHP, ship.credits / pricePerHP);
+    if (repairAmount <= 0) {
+      this.isRepairing = false;
+      return;
+    }
+    const cost = repairAmount * pricePerHP;
+    this.worldState.updatePlayerShipState({
+      currentHP: ship.currentHP + repairAmount,
+      credits: ship.credits - cost
     });
     this.worldState.saveToLocalStorage();
   }
@@ -155,11 +208,11 @@ export class LandableScreen implements Screen {
     const allTabs: Array<{ label: string; id?: TabId; enabled: boolean }> = [
       { label: 'OVERVIEW', id: 'overview', enabled: true },
       { label: 'REFUEL', id: 'refuel', enabled: true },
+      { label: 'REPAIR', id: 'repair', enabled: true },
+      { label: 'MISSION BOARD', enabled: false },
       { label: 'SHIPYARD', enabled: false },
       { label: 'EQUIPMENT', enabled: false },
-      { label: 'MISSIONS', enabled: false },
-      { label: 'TRAINING', enabled: false },
-      { label: 'FLEET', enabled: false }
+      { label: 'MISSIONS', enabled: false }
     ];
     ctx.font = "16px 'Courier New', monospace";
     ctx.textAlign = 'left';
@@ -190,8 +243,10 @@ export class LandableScreen implements Screen {
 
     if (this.activeTab === 'overview') {
       this.renderOverview(ctx, contentX, contentY, contentWidth, contentHeight);
-    } else {
+    } else if (this.activeTab === 'refuel') {
       this.renderRefuel(ctx, contentX, contentY, contentWidth, contentHeight);
+    } else {
+      this.renderRepair(ctx, contentX, contentY, contentWidth, contentHeight);
     }
 
     ctx.font = "11px 'Courier New', monospace";
@@ -234,6 +289,7 @@ export class LandableScreen implements Screen {
 
     let tagX = x;
     const tagY = y + 240;
+    this.overviewHullRect = null;
     ctx.font = "11px 'Courier New', monospace";
     for (const service of this.landable.services) {
       const label = service.type.toUpperCase();
@@ -245,6 +301,29 @@ export class LandableScreen implements Screen {
       ctx.fillText(label, tagX + 7, tagY + 5);
       tagX += tagWidth + 8;
     }
+
+    const ship = this.worldState.getPlayerShipState();
+    const hullRatio = ship.maxHP > 0 ? Math.min(1, Math.max(0, ship.currentHP / ship.maxHP)) : 0;
+    const hullTextY = tagY + 42;
+    const barX = x + 120;
+    const barY = hullTextY + 2;
+    const barWidth = 140;
+    const barHeight = 14;
+    const needsRepair = ship.currentHP < ship.maxHP;
+    const statusColour = needsRepair
+      ? this.getHullColourByRatio(hullRatio)
+      : COLOURS.SAFE;
+    const statusText = needsRepair ? '[ needs repair ]' : '[ hull intact ]';
+    this.overviewHullRect = { x, y: hullTextY - 2, width: 420, height: 22 };
+
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "13px 'Courier New', monospace";
+    ctx.fillText('HULL STATUS', x, hullTextY);
+    this.drawStatusBar(ctx, barX, barY, barWidth, barHeight, hullRatio, this.getHullColourByRatio(hullRatio));
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.fillText(`${Math.round(hullRatio * 100)}%`, barX + barWidth + 10, hullTextY);
+    ctx.fillStyle = statusColour;
+    ctx.fillText(statusText, barX + barWidth + 62, hullTextY);
 
     this.drawLandablePreview(ctx, x + width - 120, y + 104, 80);
   }
@@ -266,6 +345,9 @@ export class LandableScreen implements Screen {
     const credits = ship.credits;
     const affordable = credits >= pricePerUnit;
     const tankFull = fuelCurrent >= fuelMax;
+    const fuelNeeded = Math.max(0, fuelMax - fuelCurrent);
+    const fillUpCost = fuelNeeded * pricePerUnit;
+    const canFillUp = !tankFull && credits >= fillUpCost;
 
     ctx.font = "16px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_PRIMARY;
@@ -284,13 +366,33 @@ export class LandableScreen implements Screen {
     this.refuelRect = { x, y: y + 130, width: 170, height: 36 };
     const canRefuel = !tankFull && affordable;
     this.drawButton(ctx, this.refuelRect, '[ REFUEL ]', canRefuel);
-
     if (tankFull) {
       ctx.fillStyle = COLOURS.UI_SECONDARY;
       ctx.fillText('TANK FULL', x + 192, y + 140);
     } else if (!affordable) {
       ctx.fillStyle = COLOURS.DANGER;
       ctx.fillText('INSUFFICIENT CREDITS', x + 192, y + 140);
+    } else {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(`-> ${(pricePerUnit * REFUEL_RATE).toFixed(1)} ₢/s`, x + 192, y + 140);
+    }
+
+    this.fillUpRect = { x, y: y + 184, width: 170, height: 36 };
+    this.drawButton(ctx, this.fillUpRect, '[ FILL UP TANK ]', canFillUp);
+    if (!tankFull) {
+      ctx.fillStyle = canFillUp ? COLOURS.UI_SECONDARY : COLOURS.DANGER;
+      ctx.fillText(`-> ${fillUpCost.toFixed(1)} ₢ total`, x + 192, y + 194);
+    }
+
+    if (tankFull) {
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillText('TANK FULL', x + 192, y + 140);
+    } else if (!affordable) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillText('INSUFFICIENT CREDITS', x + 192, y + 140);
+    } else if (!canFillUp) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillText('INSUFFICIENT CREDITS', x + 192, y + 218);
     }
   }
 
@@ -317,8 +419,114 @@ export class LandableScreen implements Screen {
     ctx.restore();
   }
 
+  private renderRepair(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    _height: number
+  ): void {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    const hpNeeded = Math.max(0, ship.maxHP - ship.currentHP);
+    const hullRatio = ship.maxHP > 0 ? Math.min(1, Math.max(0, ship.currentHP / ship.maxHP)) : 0;
+    const fullRepairCost = hpNeeded * pricePerHP;
+    const hullIntact = hpNeeded <= 0;
+    const canHoldRepair = !hullIntact && ship.credits >= pricePerHP;
+    const canFullRepair = !hullIntact && ship.credits >= fullRepairCost;
+    const maxRepairHP = pricePerHP > 0 ? Math.min(hpNeeded, Math.floor(ship.credits / pricePerHP)) : 0;
+    const maxRepairCost = maxRepairHP * pricePerHP;
+
+    ctx.font = "16px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.fillText('HULL STATUS', x, y);
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText(`Hull integrity: ${ship.currentHP.toFixed(1)} / ${ship.maxHP.toFixed(1)} (${Math.round(hullRatio * 100)}%)`, x, y + 28);
+    this.drawStatusBar(ctx, x, y + 52, width - 260, 20, hullRatio, this.getHullColourByRatio(hullRatio));
+
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText(`Damage: ${hpNeeded.toFixed(1)} HP`, x, y + 82);
+    ctx.fillText(`Repair cost: ${pricePerHP} ₢ per HP`, x, y + 104);
+    ctx.fillText(`Your credits: ${ship.credits.toFixed(1)} ₢`, x, y + 126);
+
+    this.repairRect = { x, y: y + 164, width: 210, height: 36 };
+    this.drawButton(ctx, this.repairRect, '[ HOLD TO REPAIR ]', canHoldRepair);
+    if (hullIntact) {
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillText('HULL INTACT', x + 228, y + 174);
+    } else if (!canHoldRepair) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillText('INSUFFICIENT CREDITS', x + 228, y + 174);
+    } else {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(`-> ${(pricePerHP * REPAIR_RATE).toFixed(1)} ₢/s`, x + 228, y + 174);
+    }
+
+    this.fullRepairRect = { x, y: y + 218, width: 210, height: 36 };
+    this.drawButton(ctx, this.fullRepairRect, '[ FULL REPAIR ]', canFullRepair);
+    if (!hullIntact) {
+      ctx.fillStyle = canFullRepair ? COLOURS.UI_SECONDARY : COLOURS.DANGER;
+      ctx.fillText(`-> ${fullRepairCost.toFixed(1)} ₢ total`, x + 228, y + 228);
+    }
+
+    if (!canFullRepair && !hullIntact && maxRepairHP > 0) {
+      ctx.fillStyle = COLOURS.WARNING;
+      ctx.fillText(`MAX REPAIR WITH CURRENT CREDITS: ${maxRepairHP} HP - ${maxRepairCost.toFixed(1)} ₢`, x, y + 270);
+    }
+  }
+
   private getRefuelPricePerUnit(): number {
-    return this.landable.services.find((service) => service.type === 'refuel')?.refuelPricePerUnit ?? 1;
+    return this.landable.services.find((service) => service.type === 'refuel')?.refuelPricePerUnit ?? REFUEL_PRICE_PER_UNIT;
+  }
+
+  private applyFullRefuel(): void {
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerUnit = this.getRefuelPricePerUnit();
+    const fuelNeeded = ship.maxFuel - ship.fuel;
+    const totalCost = fuelNeeded * pricePerUnit;
+    if (ship.credits < totalCost || fuelNeeded <= 0) return;
+    this.worldState.updatePlayerShipState({
+      fuel: ship.maxFuel,
+      credits: ship.credits - totalCost
+    });
+    this.worldState.saveToLocalStorage();
+  }
+
+  private applyFullRepair(): void {
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerHP = this.repairService?.repairPricePerHP ?? REPAIR_PRICE_DEFAULT;
+    const hpNeeded = ship.maxHP - ship.currentHP;
+    const totalCost = hpNeeded * pricePerHP;
+    if (ship.credits < totalCost || hpNeeded <= 0) return;
+    this.worldState.updatePlayerShipState({
+      currentHP: ship.maxHP,
+      credits: ship.credits - totalCost
+    });
+    this.worldState.saveToLocalStorage();
+  }
+
+  private getHullColourByRatio(ratio: number): string {
+    if (ratio <= 0.33) return COLOURS.DANGER;
+    if (ratio <= 0.66) return COLOURS.WARNING;
+    return COLOURS.SAFE;
+  }
+
+  private drawStatusBar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    ratio: number,
+    fillColour: string
+  ): void {
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.strokeRect(x, y, width, height);
+    ctx.fillStyle = fillColour;
+    ctx.fillRect(x + 1, y + 1, (width - 2) * ratio, height - 2);
   }
 
   private formatType(rawType: string): string {

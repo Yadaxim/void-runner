@@ -294,7 +294,7 @@
           "mass": 140000,
           "radius": 70,
           "position": { "x": 300, "y": -250 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "repair", "repairPricePerHP": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0,
           "seed": 2001
         },
@@ -308,7 +308,7 @@
           "mass": 30000,
           "radius": 28,
           "position": { "x": 500, "y": -100 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "repair", "repairPricePerHP": 3 }],
           "rotationSpeed": 0,
           "seed": 2002
         },
@@ -322,7 +322,7 @@
           "mass": 0,
           "radius": 40,
           "position": { "x": -400, "y": 200 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "repair", "repairPricePerHP": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0.003,
           "seed": 2003
         }
@@ -356,7 +356,7 @@
           "mass": 0,
           "radius": 30,
           "position": { "x": -200, "y": 300 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }, { "type": "repair", "repairPricePerHP": 4 }],
           "rotationSpeed": 0.005,
           "seed": 3001
         }
@@ -384,7 +384,7 @@
           "mass": 0,
           "radius": 25,
           "position": { "x": 100, "y": 150 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "repair", "repairPricePerHP": 3 }],
           "rotationSpeed": 0.004,
           "seed": 4001
         }
@@ -425,7 +425,7 @@
           "mass": 0,
           "radius": 22,
           "position": { "x": 50, "y": -180 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 6 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 6 }, { "type": "repair", "repairPricePerHP": 6 }],
           "rotationSpeed": 0.001,
           "seed": 5001
         }
@@ -453,7 +453,7 @@
           "mass": 110000,
           "radius": 58,
           "position": { "x": -150, "y": -300 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "repair", "repairPricePerHP": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0,
           "seed": 6001
         },
@@ -467,7 +467,7 @@
           "mass": 20000,
           "radius": 20,
           "position": { "x": 200, "y": -100 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }, { "type": "repair", "repairPricePerHP": 3 }],
           "rotationSpeed": 0,
           "seed": 6002
         }
@@ -506,7 +506,7 @@
           "mass": 120000,
           "radius": 62,
           "position": { "x": -100, "y": 200 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "repair", "repairPricePerHP": 4 }, { "type": "missionBoard" }],
           "rotationSpeed": 0,
           "seed": 7001
         },
@@ -520,7 +520,7 @@
           "mass": 0,
           "radius": 35,
           "position": { "x": 300, "y": -50 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }, { "type": "repair", "repairPricePerHP": 4 }, { "type": "missionBoard" }],
           "rotationSpeed": 0.006,
           "seed": 7002
         }
@@ -548,7 +548,7 @@
           "mass": 0,
           "radius": 20,
           "position": { "x": 0, "y": 100 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }, { "type": "repair", "repairPricePerHP": 4 }],
           "rotationSpeed": 0.003,
           "seed": 8001
         }
@@ -576,7 +576,7 @@
           "mass": 160000,
           "radius": 75,
           "position": { "x": -200, "y": 150 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "repair", "repairPricePerHP": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0,
           "seed": 9001
         },
@@ -590,7 +590,7 @@
           "mass": 0,
           "radius": 45,
           "position": { "x": 300, "y": 200 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "repair", "repairPricePerHP": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0.002,
           "seed": 9002
         },
@@ -604,7 +604,7 @@
           "mass": 35000,
           "radius": 30,
           "position": { "x": -400, "y": -200 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "repair", "repairPricePerHP": 2 }],
           "rotationSpeed": 0,
           "seed": 9003
         }
@@ -632,7 +632,7 @@
           "mass": 0,
           "radius": 28,
           "position": { "x": -100, "y": -200 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 7 }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 7 }, { "type": "repair", "repairPricePerHP": 6 }],
           "rotationSpeed": 0.002,
           "seed": 10001
         }
@@ -660,7 +660,7 @@
           "mass": 0,
           "radius": 38,
           "position": { "x": 100, "y": 50 },
-          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }, { "type": "missionBoard" }],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }, { "type": "repair", "repairPricePerHP": 5 }, { "type": "missionBoard" }],
           "rotationSpeed": 0.007,
           "seed": 11001
         }

@@ -9,7 +9,7 @@ export const PLACEHOLDER_TOP_ANGULAR_SPEED = 3.0;
 export const PLACEHOLDER_LINEAR_DAMPING = 2.0;
 export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const MAX_DELTA_SECONDS = 0.1;
-export const BULLET_MOMENTUM_TRANSFER_SCALE = 0.08;
+export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
 export const BULLET_MAX_IMPACT_DELTA_V = 45;
 
 // Flight gameplay and interactions
@@ -25,6 +25,8 @@ export const FUEL_USE_LINEAR_THRUSTER_PER_SECOND = 1.0;
 export const FUEL_USE_ROTATION_THRUSTER_PER_SECOND = 0.5;
 export const REFUEL_PRICE_PER_UNIT = 1;
 export const REFUEL_RATE = 20;
+export const REPAIR_RATE = 10;
+export const REPAIR_PRICE_DEFAULT = 3;
 export const INSURANCE_REPAIR_COST_FRACTION = 0.1;
 export const INSURANCE_PAYOUT_FRACTION = 0.9;
 
