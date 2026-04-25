@@ -205,6 +205,9 @@ export class FlightScreen implements Screen {
       this.otherShips,
       this.landables
     );
+    for (const ship of this.otherShips) {
+      ship.update(dt);
+    }
     this.weaponSystem.pruneExpired();
     this.particleSystem.update(dt);
     this.otherShips = this.otherShips.filter((ship) => ship.state.currentHP > 0);
