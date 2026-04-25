@@ -150,7 +150,8 @@ async function bootstrap(): Promise<void> {
     const renderPipeline = new RenderPipeline(canvas, currentSector.seed, {
       hasNebula: currentSector.ambientVisuals.hasNebula,
       nebulaHue: currentSector.ambientVisuals.nebulaHue,
-      nebulaIntensity: currentSector.ambientVisuals.nebulaIntensity
+      nebulaIntensity: currentSector.ambientVisuals.nebulaIntensity,
+      starDensityMultiplier: currentSector.ambientVisuals.starDensityMultiplier
     });
     const flightScreen = new FlightScreen(canvas, renderPipeline, ctx, screenManager, worldState);
 

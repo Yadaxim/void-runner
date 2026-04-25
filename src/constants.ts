@@ -29,6 +29,9 @@ export const INSURANCE_PAYOUT_FRACTION = 0.9;
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;
 export const GALAXY_GRID_HEIGHT = 30;
+export const SECTOR_WIDTH = 3200;
+export const SECTOR_HEIGHT = 3200;
+export const SECTOR_EDGE_THRESHOLD = 40;
 export const RADIATION_OUTER_RADIUS_FRACTION = 0.15;
 export const RADIATION_INNER_RADIUS_FRACTION = 0.07;
 export const MAX_LANDABLES_PER_SECTOR = 4;
@@ -39,6 +42,7 @@ export const STAR_LAYER_COUNTS = [7000, 3500, 100, 40] as const;
 export const STAR_SCROLL_FACTORS = [0.02, 0.08, 0.2, 0.5] as const;
 export const MINIMAP_SIZE = 160;
 export const EQUIPMENT_ICON_SIZE = 24;
+export const ARRIVAL_MESSAGE_DURATION_MS = 3000;
 
 export const HULL_DIMENSIONS = {
   fighter: { length: 32, width: 16 },

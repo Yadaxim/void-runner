@@ -6,6 +6,7 @@ import { BackgroundLayer } from './layers/backgroundLayer';
 import { LandableLayer } from './layers/landableLayer';
 import { ShipLayer } from './layers/shipLayer';
 import { HudRenderer } from './ui/hudRenderer';
+import { MinimapRenderer } from './ui/minimapRenderer';
 import type { ShipEntity } from '../simulation/shipEntity';
 
 interface RenderPipelineState {
@@ -16,6 +17,12 @@ interface RenderPipelineState {
   landingCandidate: Landable | null;
   worldState: WorldState;
   dt: number;
+  showBoundaryWarning: boolean;
+  arrivalMessage: {
+    title: string;
+    landablesLine: string;
+    alpha: number;
+  } | null;
 }
 
 export class RenderPipeline {
@@ -26,12 +33,18 @@ export class RenderPipeline {
   private shipLayer: ShipLayer;
 
   private hudRenderer: HudRenderer;
+  private minimapRenderer: MinimapRenderer;
   private readonly ctx: CanvasRenderingContext2D;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     sectorSeed: number,
-    nebulaConfig: { hasNebula: boolean; nebulaHue: number; nebulaIntensity: number }
+    nebulaConfig: {
+      hasNebula: boolean;
+      nebulaHue: number;
+      nebulaIntensity: number;
+      starDensityMultiplier: number;
+    }
   ) {
     const context = canvas.getContext('2d');
     if (!context) {
@@ -43,11 +56,17 @@ export class RenderPipeline {
     this.landableLayer = new LandableLayer(this.ctx);
     this.shipLayer = new ShipLayer(this.ctx);
     this.hudRenderer = new HudRenderer(this.ctx);
+    this.minimapRenderer = new MinimapRenderer(this.ctx);
   }
 
   setSectorContext(
     sectorSeed: number,
-    nebulaConfig: { hasNebula: boolean; nebulaHue: number; nebulaIntensity: number }
+    nebulaConfig: {
+      hasNebula: boolean;
+      nebulaHue: number;
+      nebulaIntensity: number;
+      starDensityMultiplier: number;
+    }
   ): void {
     this.backgroundLayer = new BackgroundLayer(
       this.ctx,
@@ -76,6 +95,82 @@ export class RenderPipeline {
       state.dt
     );
     this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera);
-    this.hudRenderer.render(state.playerShip, state.landingCandidate, state.worldState.getCurrentSectorCoord());
+    this.hudRenderer.render(
+      state.playerShip,
+      state.landingCandidate,
+      state.worldState.getCurrentSectorCoord(),
+      state.showBoundaryWarning,
+      state.arrivalMessage
+    );
+    this.minimapRenderer.render(
+      state.worldState,
+      state.playerShip.state.position,
+      state.landingCandidate
+    );
+  }
+
+  async playTransitionOut(ctx: CanvasRenderingContext2D, durationMs: number): Promise<void> {
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const animate = (now: number): void => {
+        const t = Math.min((now - start) / durationMs, 1);
+        const radius = Math.hypot(ctx.canvas.width, ctx.canvas.height) * t;
+        const gradient = ctx.createRadialGradient(
+          ctx.canvas.width / 2,
+          ctx.canvas.height / 2,
+          0,
+          ctx.canvas.width / 2,
+          ctx.canvas.height / 2,
+          Math.max(1, radius)
+        );
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, t + 0.2)})`);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.save();
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(animate);
+    });
+  }
+
+  async playTransitionIn(ctx: CanvasRenderingContext2D, durationMs: number): Promise<void> {
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const animate = (now: number): void => {
+        const t = Math.min((now - start) / durationMs, 1);
+        const opacity = 1 - t;
+        const radius = Math.hypot(ctx.canvas.width, ctx.canvas.height) * opacity;
+        const gradient = ctx.createRadialGradient(
+          ctx.canvas.width / 2,
+          ctx.canvas.height / 2,
+          0,
+          ctx.canvas.width / 2,
+          ctx.canvas.height / 2,
+          Math.max(1, radius)
+        );
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${Math.max(0, opacity)})`);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, opacity)})`;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(animate);
+    });
   }
 }

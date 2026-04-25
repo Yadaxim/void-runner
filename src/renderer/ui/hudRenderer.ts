@@ -23,7 +23,17 @@ function fitTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
 export class HudRenderer {
   constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-  render(playerShip: ShipEntity, landingCandidate: Landable | null, sectorCoord: GridCoord): void {
+  render(
+    playerShip: ShipEntity,
+    landingCandidate: Landable | null,
+    sectorCoord: GridCoord,
+    showBoundaryWarning: boolean,
+    arrivalMessage: {
+      title: string;
+      landablesLine: string;
+      alpha: number;
+    } | null
+  ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
     const fuelCurrent = Math.max(0, playerShip.state.fuel);
@@ -52,6 +62,48 @@ export class HudRenderer {
     const sectorText = `SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`;
     const sectorWidth = this.ctx.measureText(sectorText).width;
     this.ctx.fillText(sectorText, this.ctx.canvas.width - sectorWidth - 12, 12);
+
+    if (showBoundaryWarning) {
+      const pulse = 0.4 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.3;
+      this.ctx.save();
+      this.ctx.globalAlpha = pulse;
+      this.ctx.fillStyle = COLOURS.WARNING;
+      this.ctx.font = "13px 'Courier New', monospace";
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'top';
+      this.ctx.fillText('⚠  GALAXY BOUNDARY', this.ctx.canvas.width / 2, 12);
+      this.ctx.restore();
+    }
+
+    if (arrivalMessage) {
+      const maxWidth = this.ctx.canvas.width - 48;
+      this.ctx.save();
+      this.ctx.globalAlpha = arrivalMessage.alpha;
+      this.ctx.font = "13px 'Courier New', monospace";
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'top';
+      const title = arrivalMessage.title;
+      const landablesLine = fitTextToWidth(this.ctx, arrivalMessage.landablesLine, maxWidth - 24);
+      const titleWidth = this.ctx.measureText(title).width;
+      const lineWidth = this.ctx.measureText(landablesLine).width;
+      const boxWidth = Math.min(maxWidth, Math.max(titleWidth, lineWidth) + 24);
+      const boxHeight = 42;
+      const boxX = (this.ctx.canvas.width - boxWidth) / 2;
+      const boxY = showBoundaryWarning ? 34 : 18;
+      this.ctx.fillStyle = 'rgba(8, 8, 16, 0.85)';
+      this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+      this.ctx.fillText(title, this.ctx.canvas.width / 2, boxY + 7);
+      this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+      this.ctx.font = "11px 'Courier New', monospace";
+      this.ctx.fillText(landablesLine, this.ctx.canvas.width / 2, boxY + 24);
+      this.ctx.restore();
+    }
 
     const cx = this.ctx.canvas.width / 2;
     const cy = this.ctx.canvas.height / 2;

@@ -9,14 +9,20 @@ import { PlayerController } from '../simulation/playerController';
 import { ShipEntity } from '../simulation/shipEntity';
 import type { Landable } from '../types';
 import {
+  ARRIVAL_MESSAGE_DURATION_MS,
   AUTOSAVE_INTERVAL_SECONDS,
   LANDING_RADIUS_MULTIPLIER,
   LANDING_SPEED_THRESHOLD,
+  SECTOR_EDGE_THRESHOLD,
+  SECTOR_HEIGHT,
+  SECTOR_WIDTH,
   PLACEHOLDER_SHIP_MASS,
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
 import { ScreenManager, type Screen } from './screenManager';
+
+type SectorEdge = 'north' | 'south' | 'east' | 'west';
 
 export class FlightScreen implements Screen {
   private gameLoop: GameLoop | null = null;
@@ -35,6 +41,11 @@ export class FlightScreen implements Screen {
   private lastKnownShipPosition: Vector2 = Vector2.zero();
   private lastDt = 0;
   private autosaveAccumulator = 0;
+  private isTransitioning = false;
+  private boundaryWarningUntilMs = 0;
+  private arrivalMessageUntilMs = 0;
+  private arrivalMessageSectorName = '';
+  private arrivalMessageLandables = '';
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
   };
@@ -52,7 +63,8 @@ export class FlightScreen implements Screen {
     this.pipeline.setSectorContext(currentSector.seed, {
       hasNebula: currentSector.ambientVisuals.hasNebula,
       nebulaHue: currentSector.ambientVisuals.nebulaHue,
-      nebulaIntensity: currentSector.ambientVisuals.nebulaIntensity
+      nebulaIntensity: currentSector.ambientVisuals.nebulaIntensity,
+      starDensityMultiplier: currentSector.ambientVisuals.starDensityMultiplier
     });
     this.landables.length = 0;
     this.landables.push(...this.worldState.getLandablesInCurrentSector());
@@ -95,7 +107,17 @@ export class FlightScreen implements Screen {
     }
 
     this.lastDt = dt;
-    const inputs = this.playerController.update();
+    const inputs = this.isTransitioning
+      ? {
+          forward: false,
+          reverse: false,
+          rotateCW: false,
+          rotateCCW: false,
+          autoBrakeLinear: false,
+          autoBrakeRotation: false,
+          landPressed: false
+        }
+      : this.playerController.update();
     this.lastKnownShipPosition = this.playerShip.state.position as Vector2;
     this.playerShip.applyThrusterInputs(inputs);
     const gravity = computeGravity(
@@ -124,6 +146,20 @@ export class FlightScreen implements Screen {
       this.autosaveAccumulator = 0;
     }
     this.checkLandingConditions(inputs.landPressed);
+    if (this.isTransitioning) {
+      return;
+    }
+    const crossedEdge = this.checkSectorEdge();
+    if (crossedEdge) {
+      const current = this.worldState.getCurrentSectorCoord();
+      const adjacent = this.getAdjacentCoord(current, crossedEdge);
+      if (!this.isWithinGalaxyBounds(adjacent)) {
+        this.applyBoundaryClamp(crossedEdge);
+        this.boundaryWarningUntilMs = performance.now() + 2000;
+      } else {
+        void this.transitionToSector(crossedEdge);
+      }
+    }
   }
 
   render(_ctx: CanvasRenderingContext2D): void {
@@ -144,9 +180,171 @@ export class FlightScreen implements Screen {
       camera,
       landingCandidate: this.landingCandidate,
       worldState: this.worldState,
-      dt: this.lastDt
+      dt: this.lastDt,
+      showBoundaryWarning: performance.now() <= this.boundaryWarningUntilMs,
+      arrivalMessage: this.getArrivalMessage()
     });
     this.landableScreen?.render(this.ctx);
+  }
+
+  private getArrivalMessage():
+    | {
+        title: string;
+        landablesLine: string;
+        alpha: number;
+      }
+    | null {
+    const now = performance.now();
+    if (now > this.arrivalMessageUntilMs) {
+      return null;
+    }
+    const duration = ARRIVAL_MESSAGE_DURATION_MS;
+    const elapsed = duration - (this.arrivalMessageUntilMs - now);
+    const fadeOutStart = duration * 0.6;
+    const fadeOutProgress = elapsed > fadeOutStart ? (elapsed - fadeOutStart) / (duration - fadeOutStart) : 0;
+    const alpha = 1 - Math.max(0, Math.min(1, fadeOutProgress));
+    return {
+      title: this.arrivalMessageSectorName,
+      landablesLine: this.arrivalMessageLandables,
+      alpha
+    };
+  }
+
+  private setArrivalMessageForSector(): void {
+    const sector = this.worldState.getCurrentSector();
+    this.arrivalMessageSectorName = `ARRIVING AT ${sector.coord.x} : ${sector.coord.y}`;
+    if (sector.landables.length === 0) {
+      this.arrivalMessageLandables = 'LANDABLES: NONE';
+    } else {
+      const names = sector.landables.map((landable) => landable.name.toUpperCase()).join(', ');
+      this.arrivalMessageLandables = `LANDABLES: ${names}`;
+    }
+    this.arrivalMessageUntilMs = performance.now() + ARRIVAL_MESSAGE_DURATION_MS;
+  }
+
+  private checkSectorEdge(): SectorEdge | null {
+    if (!this.playerShip) {
+      return null;
+    }
+    const position = this.playerShip.state.position as Vector2;
+    if (position.y < -(SECTOR_HEIGHT / 2) + SECTOR_EDGE_THRESHOLD) {
+      return 'north';
+    }
+    if (position.y > SECTOR_HEIGHT / 2 - SECTOR_EDGE_THRESHOLD) {
+      return 'south';
+    }
+    if (position.x > SECTOR_WIDTH / 2 - SECTOR_EDGE_THRESHOLD) {
+      return 'east';
+    }
+    if (position.x < -(SECTOR_WIDTH / 2) + SECTOR_EDGE_THRESHOLD) {
+      return 'west';
+    }
+    return null;
+  }
+
+  private getAdjacentCoord(coord: { x: number; y: number }, edge: SectorEdge): { x: number; y: number } {
+    if (edge === 'north') {
+      return { x: coord.x, y: coord.y - 1 };
+    }
+    if (edge === 'south') {
+      return { x: coord.x, y: coord.y + 1 };
+    }
+    if (edge === 'east') {
+      return { x: coord.x + 1, y: coord.y };
+    }
+    return { x: coord.x - 1, y: coord.y };
+  }
+
+  private isWithinGalaxyBounds(coord: { x: number; y: number }): boolean {
+    return (
+      coord.x >= 0 &&
+      coord.y >= 0 &&
+      coord.x < this.worldState.getGridWidth() &&
+      coord.y < this.worldState.getGridHeight()
+    );
+  }
+
+  private applyBoundaryClamp(edge: SectorEdge): void {
+    if (!this.playerShip) {
+      return;
+    }
+    const position = this.playerShip.state.position as Vector2;
+    const velocity = this.playerShip.state.velocity as Vector2;
+    let nextPosition = position;
+    let nextVelocity = velocity;
+    if (edge === 'east') {
+      nextPosition = new Vector2(SECTOR_WIDTH / 2 - SECTOR_EDGE_THRESHOLD, position.y);
+      nextVelocity = new Vector2(Math.min(0, velocity.x), velocity.y);
+    } else if (edge === 'west') {
+      nextPosition = new Vector2(-(SECTOR_WIDTH / 2) + SECTOR_EDGE_THRESHOLD, position.y);
+      nextVelocity = new Vector2(Math.max(0, velocity.x), velocity.y);
+    } else if (edge === 'north') {
+      nextPosition = new Vector2(position.x, -(SECTOR_HEIGHT / 2) + SECTOR_EDGE_THRESHOLD);
+      nextVelocity = new Vector2(velocity.x, Math.max(0, velocity.y));
+    } else {
+      nextPosition = new Vector2(position.x, SECTOR_HEIGHT / 2 - SECTOR_EDGE_THRESHOLD);
+      nextVelocity = new Vector2(velocity.x, Math.min(0, velocity.y));
+    }
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      position: nextPosition,
+      velocity: nextVelocity
+    };
+    this.worldState.updatePlayerShipState({
+      position: nextPosition,
+      velocity: nextVelocity
+    });
+  }
+
+  private async transitionToSector(edge: SectorEdge): Promise<void> {
+    if (!this.playerShip || this.isTransitioning) {
+      return;
+    }
+    this.isTransitioning = true;
+    try {
+      await this.pipeline.playTransitionOut(this.ctx, 300);
+      const currentCoord = this.worldState.getCurrentSectorCoord();
+      const nextCoord = this.getAdjacentCoord(currentCoord, edge);
+      this.worldState.setCurrentSector(nextCoord);
+      this.worldState.markVisited(nextCoord);
+
+      const previousPosition = this.playerShip.state.position as Vector2;
+      const spawnInset = SECTOR_EDGE_THRESHOLD * 2;
+      let nextPosition = previousPosition;
+      if (edge === 'east') {
+        nextPosition = new Vector2(-(SECTOR_WIDTH / 2) + spawnInset, previousPosition.y);
+      } else if (edge === 'west') {
+        nextPosition = new Vector2(SECTOR_WIDTH / 2 - spawnInset, previousPosition.y);
+      } else if (edge === 'north') {
+        nextPosition = new Vector2(previousPosition.x, SECTOR_HEIGHT / 2 - spawnInset);
+      } else {
+        nextPosition = new Vector2(previousPosition.x, -(SECTOR_HEIGHT / 2) + spawnInset);
+      }
+      this.playerShip.state = {
+        ...this.playerShip.state,
+        position: nextPosition
+      };
+      this.worldState.updatePlayerShipState({
+        position: nextPosition,
+        velocity: this.playerShip.state.velocity
+      });
+
+      const newSector = this.worldState.getCurrentSector();
+      this.landables.length = 0;
+      this.landables.push(...newSector.landables);
+      this.pipeline.setSectorContext(newSector.seed, {
+        hasNebula: newSector.ambientVisuals.hasNebula,
+        nebulaHue: newSector.ambientVisuals.nebulaHue,
+        nebulaIntensity: newSector.ambientVisuals.nebulaIntensity,
+        starDensityMultiplier: newSector.ambientVisuals.starDensityMultiplier
+      });
+      this.landingCandidate = null;
+      this.setArrivalMessageForSector();
+      await this.pipeline.playTransitionIn(this.ctx, 200);
+      this.worldState.saveToLocalStorage();
+    } finally {
+      this.isTransitioning = false;
+    }
   }
 
   private checkLandingConditions(landPressed: boolean): void {

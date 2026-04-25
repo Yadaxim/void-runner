@@ -1,4 +1,5 @@
 import { DEFAULT_FACTION_VISUAL } from '../constants';
+import { childPRNG } from '../core/prng';
 import { Vector2 } from '../physics/vector2';
 import type {
   BulletSpec,
@@ -86,6 +87,26 @@ function defaultFactionReputations(worldFile: WorldFile): Record<string, number>
   return rep;
 }
 
+function createRuntimeVoidSector(worldFile: WorldFile, coord: GridCoord): SectorMetadata {
+  return {
+    coord: { ...coord },
+    regionType: 'void',
+    factionId: null,
+    landableDensity: 0,
+    npcSpawnRules: [],
+    inRadiationZone: false,
+    radiationFringeIntensity: 0,
+    ambientVisuals: {
+      hasNebula: false,
+      nebulaHue: 0,
+      nebulaIntensity: 0,
+      starDensityMultiplier: 0.5
+    },
+    seed: childPRNG(worldFile.metadata.seed, `sector:${coord.x}:${coord.y}`).nextInt(0, 999999),
+    landables: []
+  };
+}
+
 export class WorldState {
   private readonly worldFile: WorldFile;
   private currentSectorCoord: GridCoord;
@@ -129,8 +150,9 @@ export class WorldState {
   }
 
   setCurrentSector(coord: GridCoord): void {
-    if (!this.getSector(coord)) {
-      throw new Error(`Cannot set unknown sector: ${coordKey(coord)}`);
+    const key = coordKey(coord);
+    if (!this.sectorIndex.has(key)) {
+      this.sectorIndex.set(key, createRuntimeVoidSector(this.worldFile, coord));
     }
     this.currentSectorCoord = { ...coord };
   }
@@ -228,6 +250,14 @@ export class WorldState {
     return { ...this.currentSectorCoord };
   }
 
+  getGridWidth(): number {
+    return this.worldFile.galaxy.gridWidth;
+  }
+
+  getGridHeight(): number {
+    return this.worldFile.galaxy.gridHeight;
+  }
+
   saveToLocalStorage(): void {
     const payload: PersistedWorldState = {
       currentSectorCoord: this.currentSectorCoord,
@@ -247,6 +277,7 @@ export class WorldState {
     try {
       const parsed = JSON.parse(raw) as PersistedWorldState;
       const state = new WorldState(worldFile, parsed.currentSectorCoord, normaliseShipState(parsed.playerShipState));
+      state.setCurrentSector(parsed.currentSectorCoord);
       state.visitedSectors = new Set(parsed.visitedSectors);
       state.factionReputations = { ...defaultFactionReputations(worldFile), ...parsed.factionReputations };
       return state;

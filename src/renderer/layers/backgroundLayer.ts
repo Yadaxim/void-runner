@@ -14,6 +14,13 @@ interface NebulaBlob {
   radius: number;
 }
 
+interface AmbientConfig {
+  hasNebula: boolean;
+  nebulaHue: number;
+  nebulaIntensity: number;
+  starDensityMultiplier: number;
+}
+
 export class BackgroundLayer {
   private readonly starsByLayer: Star[][] = [];
   private readonly layerTileSize: number;
@@ -27,17 +34,19 @@ export class BackgroundLayer {
     private readonly canvasWidth: number,
     private readonly canvasHeight: number,
     sectorSeed: number,
-    nebulaConfig: { hasNebula: boolean; nebulaHue: number; nebulaIntensity: number }
+    nebulaConfig: AmbientConfig
   ) {
     this.layerTileSize = Math.max(canvasWidth, canvasHeight) * 3;
     this.hasNebula = nebulaConfig.hasNebula;
     this.nebulaHue = nebulaConfig.nebulaHue;
     this.nebulaIntensity = nebulaConfig.nebulaIntensity;
+    const starDensityMultiplier = Math.max(0.1, nebulaConfig.starDensityMultiplier);
 
     for (let layerIndex = 0; layerIndex < STAR_LAYER_COUNTS.length; layerIndex += 1) {
       const prng = childPRNG(sectorSeed, `stars_layer_${layerIndex}`);
       const stars: Star[] = [];
-      for (let i = 0; i < STAR_LAYER_COUNTS[layerIndex]; i += 1) {
+      const layerCount = Math.max(1, Math.round(STAR_LAYER_COUNTS[layerIndex] * starDensityMultiplier));
+      for (let i = 0; i < layerCount; i += 1) {
         stars.push({
           x: prng.next() * this.layerTileSize,
           y: prng.next() * this.layerTileSize,

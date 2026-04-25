@@ -281,6 +281,23 @@
           "seed": 5001
         }
       ]
+    },
+    {
+      "coord": { "x": 5, "y": 3 },
+      "regionType": "void",
+      "factionId": null,
+      "landableDensity": 0.0,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": {
+        "hasNebula": false,
+        "nebulaHue": 0,
+        "nebulaIntensity": 0,
+        "starDensityMultiplier": 0.4
+      },
+      "seed": 1006,
+      "landables": []
     }
   ]
 }
