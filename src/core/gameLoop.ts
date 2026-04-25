@@ -1,7 +1,11 @@
+import { MAX_DELTA_SECONDS } from '../constants';
+
 type UpdateCallback = (dt: number) => void;
 type RenderCallback = () => void;
-
-const MAX_DELTA_SECONDS = 0.1;
+export interface GameLoopCallbacks {
+  update: UpdateCallback;
+  render: RenderCallback;
+}
 
 export class GameLoop {
   private rafId: number | null = null;
@@ -9,7 +13,7 @@ export class GameLoop {
   private paused = false;
   private lastFrameMs = 0;
 
-  constructor(private readonly update: UpdateCallback, private readonly render: RenderCallback) {}
+  constructor(private readonly callbacks: GameLoopCallbacks) {}
 
   start(): void {
     if (this.running) return;
@@ -42,8 +46,8 @@ export class GameLoop {
     this.lastFrameMs = timeMs;
 
     if (!this.paused) {
-      this.update(Math.min(rawDelta, MAX_DELTA_SECONDS));
-      this.render();
+      this.callbacks.update(Math.min(rawDelta, MAX_DELTA_SECONDS));
+      this.callbacks.render();
     }
 
     this.rafId = requestAnimationFrame(this.tick);

@@ -1,4 +1,4 @@
-const UINT64_MASK = (1n << 64n) - 1n;
+import { UINT64_MASK } from '../constants';
 
 function fnv1a64(input: string): bigint {
   let hash = 0xcbf29ce484222325n;
@@ -35,9 +35,14 @@ export class SplitMix64 {
     const span = max - min + 1;
     return min + Math.floor(this.next() * span);
   }
+
+  nextBool(): boolean {
+    return this.next() >= 0.5;
+  }
 }
 
 export function childPRNG(rootSeed: number, domain: string): SplitMix64 {
-  const seedHash = fnv1a64(`${domain}:${rootSeed}`);
-  return new SplitMix64(seedHash);
+  const domainHash = fnv1a64(domain);
+  const combinedSeed = (BigInt(rootSeed) & UINT64_MASK) ^ domainHash;
+  return new SplitMix64(combinedSeed);
 }

@@ -1,34 +1,52 @@
-import type { BulletInstance, Landable, ShipState } from '../types';
+import { COLOURS } from '../constants';
+import type { Landable } from '../types';
 import type { Camera } from './camera';
-import { renderNebulae, renderStarLayer } from './layers/backgroundLayer';
-import { renderLandableAtmosphereGlows, renderLandables } from './layers/landableLayer';
-import { renderBulletTrails, renderBullets } from './layers/bulletLayer';
-import { renderShipDamageParticles, renderShipEngineGlows, renderShipHulls } from './layers/shipLayer';
-import { renderExplosionEffects } from './layers/effectsLayer';
-import { renderHUD } from './ui/hudRenderer';
-import { renderMinimap } from './ui/minimapRenderer';
-import { STAR_SCROLL_FACTORS } from '../constants';
+import { BackgroundLayer } from './layers/backgroundLayer';
+import { LandableLayer } from './layers/landableLayer';
+import { ShipLayer } from './layers/shipLayer';
+import { HudRenderer } from './ui/hudRenderer';
+import type { ShipEntity } from '../simulation/shipEntity';
 
-export interface RenderState {
+interface RenderPipelineState {
+  playerShip: ShipEntity;
+  otherShips: ShipEntity[];
   landables: Landable[];
-  bullets: BulletInstance[];
-  ships: ShipState[];
+  camera: Camera;
 }
 
-export function renderPipeline(ctx: CanvasRenderingContext2D, state: RenderState, camera: Camera): void {
-  renderNebulae(ctx, camera);
-  renderStarLayer(ctx, camera, { count: 300, scrollFactor: STAR_SCROLL_FACTORS[0] });
-  renderStarLayer(ctx, camera, { count: 150, scrollFactor: STAR_SCROLL_FACTORS[1] });
-  renderStarLayer(ctx, camera, { count: 60, scrollFactor: STAR_SCROLL_FACTORS[2] });
-  renderStarLayer(ctx, camera, { count: 20, scrollFactor: STAR_SCROLL_FACTORS[3] });
-  renderLandableAtmosphereGlows(ctx, state.landables, camera);
-  renderLandables(ctx, state.landables, camera);
-  renderBulletTrails(ctx, state.bullets, camera);
-  renderBullets(ctx, state.bullets, camera);
-  renderShipEngineGlows(ctx, state.ships, camera);
-  renderShipHulls(ctx, state.ships, camera);
-  renderShipDamageParticles(ctx, state.ships, camera);
-  renderExplosionEffects(ctx, camera);
-  renderHUD(ctx);
-  renderMinimap(ctx);
+export class RenderPipeline {
+  private backgroundLayer: BackgroundLayer;
+
+  private landableLayer: LandableLayer;
+
+  private shipLayer: ShipLayer;
+
+  private hudRenderer: HudRenderer;
+
+  constructor(private readonly canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Unable to create 2D context');
+    }
+
+    this.backgroundLayer = new BackgroundLayer(ctx, canvas.width, canvas.height, 12345);
+    this.landableLayer = new LandableLayer(ctx);
+    this.shipLayer = new ShipLayer(ctx);
+    this.hudRenderer = new HudRenderer(ctx);
+  }
+
+  render(state: RenderPipelineState): void {
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+
+    ctx.fillStyle = COLOURS.SPACE_BLACK;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.backgroundLayer.render(state.playerShip.state.position);
+    this.landableLayer.render(state.landables, state.camera);
+    this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera);
+    this.hudRenderer.render(state.playerShip);
+  }
 }

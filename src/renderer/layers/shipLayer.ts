@@ -1,14 +1,20 @@
-import type { ShipState } from '../../types';
+import { DEFAULT_FACTION_VISUAL, HULL_DIMENSIONS } from '../../constants';
 import type { Camera } from '../camera';
+import { worldToScreen } from '../camera';
+import { drawHull } from '../ships/hullBuilder';
+import type { ShipEntity } from '../../simulation/shipEntity';
 
-export function renderShipEngineGlows(_ctx: CanvasRenderingContext2D, _ships: ShipState[], _camera: Camera): void {
-  throw new Error('not implemented');
-}
+export class ShipLayer {
+  constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-export function renderShipHulls(_ctx: CanvasRenderingContext2D, _ships: ShipState[], _camera: Camera): void {
-  throw new Error('not implemented');
-}
-
-export function renderShipDamageParticles(_ctx: CanvasRenderingContext2D, _ships: ShipState[], _camera: Camera): void {
-  throw new Error('not implemented');
+  render(ships: ShipEntity[], camera: Camera): void {
+    for (const ship of ships) {
+      const screenPos = worldToScreen(ship.state.position, camera);
+      this.ctx.save();
+      this.ctx.translate(screenPos.x, screenPos.y);
+      this.ctx.rotate(ship.state.angle);
+      drawHull(this.ctx, 'fighter', HULL_DIMENSIONS.fighter, DEFAULT_FACTION_VISUAL);
+      this.ctx.restore();
+    }
+  }
 }

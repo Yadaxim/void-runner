@@ -1,1 +1,70 @@
-export function buildHullPath(): Path2D { throw new Error('not implemented'); }
+import type { FactionVisual, HullSpec } from '../../types';
+
+type HullClass = HullSpec['hullClass'];
+
+function brightenHex(hex: string, amount: number): string {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) {
+    return hex;
+  }
+  const r = Math.min(255, Math.round(parseInt(value.slice(0, 2), 16) * (1 + amount)));
+  const g = Math.min(255, Math.round(parseInt(value.slice(2, 4), 16) * (1 + amount)));
+  const b = Math.min(255, Math.round(parseInt(value.slice(4, 6), 16) * (1 + amount)));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function drawFighter(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  dimensions: { length: number; width: number },
+  factionVisual: FactionVisual
+): void {
+  const halfLength = dimensions.length / 2;
+  const halfWidth = dimensions.width / 2;
+  const wingY = halfLength * 0.15;
+
+  ctx.fillStyle = factionVisual.primaryColour;
+  ctx.strokeStyle = brightenHex(factionVisual.primaryColour, 0.25);
+  ctx.lineWidth = 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(0, -halfLength);
+  ctx.lineTo(halfWidth * 0.75, halfLength * 0.55);
+  ctx.lineTo(0, halfLength * 0.35);
+  ctx.lineTo(-halfWidth * 0.75, halfLength * 0.55);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-halfWidth * 0.2, wingY);
+  ctx.lineTo(-halfWidth * 1.05, halfLength * 0.55);
+  ctx.lineTo(-halfWidth * 0.35, halfLength * 0.45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(halfWidth * 0.2, wingY);
+  ctx.lineTo(halfWidth * 1.05, halfLength * 0.55);
+  ctx.lineTo(halfWidth * 0.35, halfLength * 0.45);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+export function drawHull(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  hullClass: HullClass,
+  dimensions: { length: number; width: number },
+  factionVisual: FactionVisual
+): void {
+  if (hullClass === 'fighter') {
+    drawFighter(ctx, dimensions, factionVisual);
+    return;
+  }
+
+  ctx.fillStyle = factionVisual.primaryColour;
+  ctx.beginPath();
+  ctx.rect(-dimensions.width / 2, -dimensions.length / 2, dimensions.width, dimensions.length);
+  ctx.fill();
+}

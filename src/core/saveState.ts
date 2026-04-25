@@ -1,4 +1,4 @@
-const SAVE_KEY = 'void_runner_save';
+import { SAVE_KEY } from '../constants';
 
 export interface SaveStateData {
   playerId: string;
