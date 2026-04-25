@@ -81,6 +81,8 @@ function normaliseWorldFile(worldFile: WorldFile): WorldFile {
 function normaliseShipState(shipState: ShipState): ShipState {
   return {
     ...shipState,
+    autoBrakeLinearEnabled: shipState.autoBrakeLinearEnabled ?? false,
+    autoBrakeRotationEnabled: shipState.autoBrakeRotationEnabled ?? false,
     position: toVector2(shipState.position),
     velocity: toVector2(shipState.velocity)
   };

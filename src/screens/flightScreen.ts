@@ -78,8 +78,11 @@ export class FlightScreen implements Screen {
     this.landables.length = 0;
     this.landables.push(...this.worldState.getLandablesInCurrentSector());
     this.worldState.markVisited(currentSector.coord);
-    this.playerController = new PlayerController();
     this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
+    this.playerController = new PlayerController({
+      autoBrakeLinearEnabled: this.playerShip.state.autoBrakeLinearEnabled,
+      autoBrakeRotationEnabled: this.playerShip.state.autoBrakeRotationEnabled
+    });
     this.ensureDefaultWeaponLoadout();
     this.otherShips.length = 0;
     this.spawnDummyTargetAhead();
@@ -212,6 +215,8 @@ export class FlightScreen implements Screen {
       angularVelocity: this.playerShip.state.angularVelocity,
       fuel: this.playerShip.state.fuel,
       credits: this.playerShip.state.credits,
+      autoBrakeLinearEnabled: this.playerShip.isLinearAutoBrakeEnabled(),
+      autoBrakeRotationEnabled: this.playerShip.isRotationAutoBrakeEnabled(),
       weaponLoadout: this.playerShip.state.weaponLoadout,
       targets: this.targeting.getTargetState(),
       lastLandedLandableId: this.playerShip.state.lastLandedLandableId

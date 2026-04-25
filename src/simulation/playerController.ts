@@ -83,7 +83,9 @@ export class PlayerController {
     this.pressedKeys.delete(event.code);
   };
 
-  constructor() {
+  constructor(initialState?: { autoBrakeLinearEnabled: boolean; autoBrakeRotationEnabled: boolean }) {
+    this.autoBrakeLinearEnabled = initialState?.autoBrakeLinearEnabled ?? false;
+    this.autoBrakeRotationEnabled = initialState?.autoBrakeRotationEnabled ?? false;
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
   }

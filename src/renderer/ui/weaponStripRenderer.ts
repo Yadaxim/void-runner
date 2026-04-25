@@ -31,7 +31,21 @@ function fitLabel(text: string, maxChars: number): string {
 }
 
 export class WeaponStripRenderer {
-  constructor(private readonly ctx: CanvasRenderingContext2D) {}
+  private mouseX: number | null = null;
+  private mouseY: number | null = null;
+
+  constructor(private readonly ctx: CanvasRenderingContext2D) {
+    const canvas = this.ctx.canvas;
+    canvas.addEventListener('mousemove', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      this.mouseX = event.clientX - rect.left;
+      this.mouseY = event.clientY - rect.top;
+    });
+    canvas.addEventListener('mouseleave', () => {
+      this.mouseX = null;
+      this.mouseY = null;
+    });
+  }
 
   render(
     weaponLoadout: WeaponSlot[],
@@ -48,11 +62,18 @@ export class WeaponStripRenderer {
     const startX = Math.max(12, minimapX - totalWidth - STRIP_TO_MINIMAP_GAP);
     const y = minimapY + MINIMAP_SIZE - cellSize;
 
+    let hoveredWeaponName: string | null = null;
     for (let i = 0; i < FIRE_KEYS.length; i += 1) {
       const fireKey = FIRE_KEYS[i];
       const slot = weaponLoadout.find((entry) => entry.fireKey === fireKey) ?? null;
       const x = startX + i * (cellSize + gap);
-      this.drawCell(x, y, cellSize, fireKey, slot, heldFireKeys[fireKey], worldState);
+      const hoveredName = this.drawCell(x, y, cellSize, fireKey, slot, heldFireKeys[fireKey], worldState);
+      if (hoveredName) {
+        hoveredWeaponName = hoveredName;
+      }
+    }
+    if (hoveredWeaponName && this.mouseX !== null && this.mouseY !== null) {
+      this.drawHoverTooltip(hoveredWeaponName, this.mouseX, this.mouseY, canvasWidth, canvasHeight);
     }
   }
 
@@ -64,7 +85,7 @@ export class WeaponStripRenderer {
     slot: WeaponSlot | null,
     isHeld: boolean,
     worldState: WorldState
-  ): void {
+  ): string | null {
     const hasSlot = slot !== null;
     this.ctx.save();
     this.ctx.fillStyle = 'rgba(8, 8, 16, 0.8)';
@@ -83,22 +104,15 @@ export class WeaponStripRenderer {
       this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
       this.ctx.strokeRect(x + 8, y + 10, cellSize - 16, cellSize - 22);
       this.ctx.restore();
-      return;
+      return null;
     }
 
     const item = worldState.getEquipmentItem(slot.itemId);
     if (!isWeaponItem(item)) {
       this.ctx.restore();
-      return;
+      return null;
     }
-    this.drawBulletPreview(x + cellSize / 2, y + 17, worldState, item);
-
-    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
-    this.ctx.font = "8px 'Courier New', monospace";
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    const weaponName = fitLabel(toDisplayName(item), 11);
-    this.ctx.fillText(weaponName, x + cellSize / 2, y + 30);
+    this.drawBulletPreview(x + cellSize / 2, y + cellSize / 2 - 2, worldState, item);
 
     if (slot.stackCount > 1) {
       this.ctx.font = "9px 'Courier New', monospace";
@@ -111,6 +125,44 @@ export class WeaponStripRenderer {
         : Math.max(0, Math.min(1, 1 - slot.cooldownRemaining * item.fireRate));
     this.ctx.fillStyle = readyRatio >= 1 ? COLOURS.UI_ACCENT : COLOURS.WARNING;
     this.ctx.fillRect(x + 2, y + cellSize - 6, (cellSize - 4) * readyRatio, 4);
+    this.ctx.restore();
+    const isHovered =
+      this.mouseX !== null &&
+      this.mouseY !== null &&
+      this.mouseX >= x &&
+      this.mouseX <= x + cellSize &&
+      this.mouseY >= y &&
+      this.mouseY <= y + cellSize;
+    return isHovered ? toDisplayName(item) : null;
+  }
+
+  private drawHoverTooltip(
+    text: string,
+    mouseX: number,
+    mouseY: number,
+    canvasWidth: number,
+    canvasHeight: number
+  ): void {
+    this.ctx.save();
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    const paddingX = 8;
+    const paddingY = 5;
+    const textWidth = this.ctx.measureText(text).width;
+    const boxWidth = textWidth + paddingX * 2;
+    const boxHeight = 20;
+    const x = Math.max(6, Math.min(canvasWidth - boxWidth - 6, mouseX + 12));
+    const y = Math.max(6, Math.min(canvasHeight - boxHeight - 6, mouseY - boxHeight - 8));
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.95)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.roundRect(x, y, boxWidth, boxHeight, 5);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.fillText(text, x + paddingX, y + paddingY);
     this.ctx.restore();
   }
 

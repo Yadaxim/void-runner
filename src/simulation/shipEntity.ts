@@ -39,6 +39,8 @@ export class ShipEntity {
 
   constructor(initialState: ShipState) {
     this.state = initialState;
+    this.autoBrakeLinear = initialState.autoBrakeLinearEnabled;
+    this.autoBrakeRotation = initialState.autoBrakeRotationEnabled;
   }
 
   isLinearAutoBrakeEnabled(): boolean {
@@ -122,7 +124,9 @@ export class ShipEntity {
       angularVelocity: nextAngularVelocity,
       position: integratePosition(this.state.position as Vector2, nextVelocity, dt),
       angle: integrateAngle(this.state.angle, nextAngularVelocity, dt),
-      fuel: Math.max(0, this.state.fuel - fuelConsumed)
+      fuel: Math.max(0, this.state.fuel - fuelConsumed),
+      autoBrakeLinearEnabled: this.autoBrakeLinear,
+      autoBrakeRotationEnabled: this.autoBrakeRotation
     };
 
     this.accumulatedForce = Vector2.zero();

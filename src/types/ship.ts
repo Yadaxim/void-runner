@@ -70,6 +70,8 @@ export interface ShipState {
   activeCardId: string | null;
   activeMode: BrainMode | null;
   guardMode: boolean;
+  autoBrakeLinearEnabled: boolean;
+  autoBrakeRotationEnabled: boolean;
   fleetRole: FleetRole;
   targets: TargetState;
   isPlayerControlled: boolean;

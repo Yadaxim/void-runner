@@ -178,22 +178,33 @@ export class HudRenderer {
     landableTarget: { name: string } | null
   ): void {
     const centerX = this.ctx.canvas.width / 2;
-    const topY = 20;
+    const topY = 18;
+    const boxWidth = 320;
+    const boxHeight = 20;
+    const gap = 6;
+    const boxX = centerX - boxWidth / 2;
+    const shipBoxY = topY;
+    const landBoxY = shipBoxY + boxHeight + gap;
     this.ctx.save();
     this.ctx.font = "11px 'Courier New', monospace";
     this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'top';
-    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.textBaseline = 'middle';
 
-    if (!shipTarget && !landableTarget) {
-      this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-      this.ctx.fillText('[ NO TARGET ]', centerX, topY - 12);
-    }
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.82)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.roundRect(boxX, shipBoxY, boxWidth, boxHeight, 6);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.beginPath();
+    this.ctx.roundRect(boxX, landBoxY, boxWidth, boxHeight, 6);
+    this.ctx.fill();
+    this.ctx.stroke();
 
-    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
-    const shipName = shipTarget ? shipTarget.name : '';
-    const shipLine = `[SHIP]  ${shipName}`;
-    this.ctx.fillText(shipLine, centerX, topY);
+    const shipLine = shipTarget ? shipTarget.name : 'NO SHIP TARGET';
+    this.ctx.fillStyle = shipTarget ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
+    this.ctx.fillText(shipLine, centerX, shipBoxY + boxHeight / 2);
     if (shipTarget) {
       const ratio = Math.max(0, Math.min(1, shipTarget.hpRatio));
       const percent = Math.round(ratio * 100);
@@ -201,12 +212,14 @@ export class HudRenderer {
       const filled = Math.round(ratio * bars);
       const barText = `${'█'.repeat(filled)}${'░'.repeat(Math.max(0, bars - filled))}  ${percent}%`;
       this.ctx.fillStyle = ratio > 0.6 ? COLOURS.SAFE : ratio > 0.3 ? COLOURS.WARNING : COLOURS.DANGER;
-      this.ctx.fillText(barText, centerX, topY + 12);
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(barText, boxX + boxWidth - 8, shipBoxY + boxHeight / 2);
     }
 
-    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
-    const landLine = `[LAND]  ${landableTarget ? landableTarget.name : ''}`;
-    this.ctx.fillText(landLine, centerX, topY + 24);
+    this.ctx.textAlign = 'center';
+    const landLine = landableTarget ? landableTarget.name : 'NO LAND TARGET';
+    this.ctx.fillStyle = landableTarget ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
+    this.ctx.fillText(landLine, centerX, landBoxY + boxHeight / 2);
     this.ctx.restore();
   }
 

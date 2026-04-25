@@ -129,6 +129,8 @@ function createDefaultShipState(): ShipState {
     activeCardId: null,
     activeMode: null,
     guardMode: false,
+    autoBrakeLinearEnabled: false,
+    autoBrakeRotationEnabled: false,
     fleetRole: 'lead',
     targets: {},
     isPlayerControlled: true,
