@@ -6,8 +6,11 @@ import { Vector2 } from '../physics/vector2';
 import type { RenderPipeline } from '../renderer/renderPipeline';
 import type { Camera } from '../renderer/camera';
 import { PlayerController } from '../simulation/playerController';
+import { ParticleSystem } from '../simulation/particleSystem';
 import { ShipEntity } from '../simulation/shipEntity';
-import type { Landable } from '../types';
+import { TargetingSystem } from '../simulation/targetingSystem';
+import { WeaponSystem } from '../simulation/weaponSystem';
+import type { Landable, WeaponSlot } from '../types';
 import {
   ARRIVAL_MESSAGE_DURATION_MS,
   AUTOSAVE_INTERVAL_SECONDS,
@@ -32,7 +35,11 @@ export class FlightScreen implements Screen {
 
   private playerShip: ShipEntity | null = null;
 
-  private readonly otherShips: ShipEntity[] = [];
+  private otherShips: ShipEntity[] = [];
+  private targeting = new TargetingSystem();
+  private particleSystem = new ParticleSystem();
+  private weaponSystem = new WeaponSystem(this.particleSystem);
+  private heldFireKeys = { Z: false, X: false, C: false, V: false, B: false };
 
   private readonly landables: Landable[] = [];
   private landingCandidate: Landable | null = null;
@@ -73,7 +80,12 @@ export class FlightScreen implements Screen {
     this.worldState.markVisited(currentSector.coord);
     this.playerController = new PlayerController();
     this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
+    this.ensureDefaultWeaponLoadout();
     this.otherShips.length = 0;
+    this.spawnDummyTargetAhead();
+    this.targeting = new TargetingSystem();
+    this.particleSystem = new ParticleSystem();
+    this.weaponSystem = new WeaponSystem(this.particleSystem);
     this.autosaveAccumulator = 0;
     window.addEventListener('beforeunload', this.onBeforeUnload);
 
@@ -82,6 +94,27 @@ export class FlightScreen implements Screen {
       render: () => this.render(this.ctx)
     });
     this.gameLoop.start();
+  }
+
+  private ensureDefaultWeaponLoadout(): void {
+    if (!this.playerShip) {
+      return;
+    }
+    if (this.playerShip.state.weaponLoadout.length > 0) {
+      return;
+    }
+    const defaultLoadout: WeaponSlot[] = [
+      { fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'X', itemId: 'slug_thrower_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'C', itemId: 'seeker_launcher_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'V', itemId: 'plasma_launcher_t1', stackCount: 1, cooldownRemaining: 0 }
+    ];
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      weaponLoadout: defaultLoadout
+    };
+    this.worldState.updatePlayerShipState({ weaponLoadout: defaultLoadout });
+    this.worldState.saveToLocalStorage();
   }
 
   onExit(): void {
@@ -120,6 +153,10 @@ export class FlightScreen implements Screen {
           landPressed: false
         }
       : this.playerController.update();
+    const targetInputs = this.playerController.getTargetInputs();
+    const fireInputs = this.playerController.getFireInputs();
+    this.heldFireKeys = { ...fireInputs };
+    const devInputs = this.playerController.getDevInputs();
     this.lastKnownShipPosition = this.playerShip.state.position as Vector2;
     this.playerShip.applyThrusterInputs(inputs);
     const gravity = computeGravity(
@@ -133,6 +170,40 @@ export class FlightScreen implements Screen {
     );
     this.playerShip.applyExternalForce(gravity);
     this.playerShip.update(dt);
+    this.handleDevDummySpawn(devInputs.spawnDummyTarget);
+    if (targetInputs.cycleShipTarget) {
+      this.targeting.cycleShipTarget(
+        this.playerShip.state.position as Vector2,
+        this.otherShips,
+        this.targeting.getShipTargetId()
+      );
+    }
+    if (targetInputs.cycleLandableTarget) {
+      this.targeting.cycleLandableTarget(
+        this.playerShip.state.position as Vector2,
+        this.landables,
+        this.targeting.getLandableTargetId()
+      );
+    }
+    this.weaponSystem.update(
+      dt,
+      this.playerShip.state,
+      fireInputs,
+      this.worldState,
+      this.targeting.getShipTargetId()
+    );
+    this.weaponSystem.updateBullets(
+      dt,
+      this.landables.filter((landable) => landable.mass > 0).map((landable) => ({
+        position: landable.position as Vector2,
+        mass: landable.mass
+      })),
+      this.otherShips,
+      this.landables
+    );
+    this.weaponSystem.pruneExpired();
+    this.particleSystem.update(dt);
+    this.otherShips = this.otherShips.filter((ship) => ship.state.currentHP > 0);
     this.applyRadiationDamage(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
@@ -141,6 +212,8 @@ export class FlightScreen implements Screen {
       angularVelocity: this.playerShip.state.angularVelocity,
       fuel: this.playerShip.state.fuel,
       credits: this.playerShip.state.credits,
+      weaponLoadout: this.playerShip.state.weaponLoadout,
+      targets: this.targeting.getTargetState(),
       lastLandedLandableId: this.playerShip.state.lastLandedLandableId
     });
     this.autosaveAccumulator += dt;
@@ -180,8 +253,13 @@ export class FlightScreen implements Screen {
       playerShip: this.playerShip,
       otherShips: this.otherShips,
       landables: this.landables,
+      bullets: this.weaponSystem.getActiveBullets(),
+      particles: this.particleSystem.getParticles(),
       camera,
       landingCandidate: this.landingCandidate,
+      shipTargetId: this.targeting.getShipTargetId(),
+      landableTargetId: this.targeting.getLandableTargetId(),
+      heldFireKeys: this.heldFireKeys,
       worldState: this.worldState,
       dt: this.lastDt,
       showBoundaryWarning: performance.now() <= this.boundaryWarningUntilMs,
@@ -190,6 +268,44 @@ export class FlightScreen implements Screen {
       destructionMessageAlpha: this.getDestructionMessageAlpha()
     });
     this.landableScreen?.render(this.ctx);
+  }
+
+  private handleDevDummySpawn(shouldSpawn: boolean): void {
+    if (!shouldSpawn || !this.playerShip) {
+      return;
+    }
+    const existingIndex = this.otherShips.findIndex((ship) => ship.state.id === 'dummy_target');
+    if (existingIndex >= 0) {
+      this.otherShips.splice(existingIndex, 1);
+      this.targeting.setShipTarget(null);
+      return;
+    }
+
+    this.spawnDummyTargetAhead();
+  }
+
+  private spawnDummyTargetAhead(): void {
+    if (!this.playerShip) {
+      return;
+    }
+    if (this.otherShips.some((ship) => ship.state.id === 'dummy_target')) {
+      return;
+    }
+    const forward = Vector2.fromAngle(this.playerShip.state.angle);
+    const spawnPos = (this.playerShip.state.position as Vector2).add(forward.scale(400));
+    this.otherShips.push(
+      new ShipEntity({
+        ...this.playerShip.state,
+        id: 'dummy_target',
+        position: spawnPos,
+        velocity: Vector2.zero(),
+        angle: this.playerShip.state.angle,
+        angularVelocity: 0,
+        currentHP: 200,
+        maxHP: 200,
+        isPlayerControlled: false
+      })
+    );
   }
 
   private getDestructionMessageAlpha(): number {

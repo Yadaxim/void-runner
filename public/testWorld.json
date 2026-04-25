@@ -120,8 +120,111 @@
       "weaponSlots": 1
     }
   ],
-  "equipmentCatalog": [],
-  "bulletSpecs": [],
+  "bulletSpecs": [
+    {
+      "id": "pulse_bolt",
+      "name": "Pulse Bolt",
+      "speed": 600,
+      "inheritShipVelocity": true,
+      "damage": 12,
+      "attractedByGravity": false,
+      "seeking": false,
+      "infinite": false,
+      "lifespan": 2.0,
+      "visualType": "bolt",
+      "colour": "#40c0ff"
+    },
+    {
+      "id": "heavy_slug",
+      "name": "Heavy Slug",
+      "speed": 400,
+      "inheritShipVelocity": true,
+      "damage": 30,
+      "attractedByGravity": true,
+      "seeking": false,
+      "infinite": false,
+      "lifespan": 3.0,
+      "visualType": "bolt",
+      "colour": "#ffaa00"
+    },
+    {
+      "id": "seeker_missile",
+      "name": "Seeker Missile",
+      "speed": 350,
+      "inheritShipVelocity": false,
+      "damage": 50,
+      "attractedByGravity": false,
+      "seeking": true,
+      "turnRatio": 2.5,
+      "infinite": false,
+      "lifespan": 5.0,
+      "visualType": "missile",
+      "colour": "#ff4040"
+    },
+    {
+      "id": "plasma_orb",
+      "name": "Plasma Orb",
+      "speed": 0,
+      "inheritShipVelocity": false,
+      "damage": 8,
+      "attractedByGravity": false,
+      "seeking": false,
+      "infinite": false,
+      "lifespan": 4.0,
+      "visualType": "orb",
+      "colour": "#80ff40"
+    }
+  ],
+  "equipmentCatalog": [
+    {
+      "id": "pulse_cannon_t1",
+      "type": "weapon",
+      "name": "Pulse Cannon Mk I",
+      "description": "A standard energy weapon. Fast fire rate, moderate damage. Found on most fighter-class ships.",
+      "mass": 8,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "bulletSpecId": "pulse_bolt",
+      "fireRate": 3.0,
+      "energyCost": 5
+    },
+    {
+      "id": "slug_thrower_t1",
+      "type": "weapon",
+      "name": "Slug Thrower Mk I",
+      "description": "A kinetic mass driver. Slow fire rate but heavy hitting. Slugs are affected by gravity.",
+      "mass": 14,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "bulletSpecId": "heavy_slug",
+      "fireRate": 1.0,
+      "energyCost": 8
+    },
+    {
+      "id": "seeker_launcher_t1",
+      "type": "weapon",
+      "name": "Seeker Launcher Mk I",
+      "description": "Fires guided missiles that track the ship target. Requires a lock. Slow to reload.",
+      "mass": 18,
+      "tier": 1,
+      "factionAffinity": "pirates",
+      "bulletSpecId": "seeker_missile",
+      "fireRate": 0.4,
+      "energyCost": 15
+    },
+    {
+      "id": "plasma_launcher_t1",
+      "type": "weapon",
+      "name": "Plasma Launcher Mk I",
+      "description": "Launches slow plasma orbs that detach from the ship at zero velocity. Useful as area denial.",
+      "mass": 10,
+      "tier": 1,
+      "factionAffinity": "veth_collective",
+      "bulletSpecId": "plasma_orb",
+      "fireRate": 1.5,
+      "energyCost": 10
+    }
+  ],
   "missionTemplates": [],
   "sectors": [
 

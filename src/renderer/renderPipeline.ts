@@ -1,21 +1,30 @@
 import { COLOURS } from '../constants';
 import type { WorldState } from '../core/worldState';
-import type { Landable } from '../types';
+import type { Landable, WeaponFireKey } from '../types';
 import type { Camera } from './camera';
 import { BackgroundLayer } from './layers/backgroundLayer';
+import { BulletLayer } from './layers/bulletLayer';
+import { EffectsLayer } from './layers/effectsLayer';
 import { LandableLayer } from './layers/landableLayer';
 import { RadiationLayer } from './layers/radiationLayer';
 import { ShipLayer } from './layers/shipLayer';
 import { HudRenderer } from './ui/hudRenderer';
 import { MinimapRenderer } from './ui/minimapRenderer';
+import type { BulletEntity } from '../simulation/bulletEntity';
+import type { Particle } from '../simulation/particleSystem';
 import type { ShipEntity } from '../simulation/shipEntity';
 
 interface RenderPipelineState {
   playerShip: ShipEntity;
   otherShips: ShipEntity[];
   landables: Landable[];
+  bullets: BulletEntity[];
+  particles: Particle[];
   camera: Camera;
   landingCandidate: Landable | null;
+  shipTargetId: string | null;
+  landableTargetId: string | null;
+  heldFireKeys: Record<WeaponFireKey, boolean>;
   worldState: WorldState;
   dt: number;
   showBoundaryWarning: boolean;
@@ -32,8 +41,10 @@ export class RenderPipeline {
   private backgroundLayer: BackgroundLayer;
 
   private landableLayer: LandableLayer;
+  private bulletLayer: BulletLayer;
 
   private shipLayer: ShipLayer;
+  private effectsLayer: EffectsLayer;
   private radiationLayer: RadiationLayer;
 
   private hudRenderer: HudRenderer;
@@ -58,6 +69,8 @@ export class RenderPipeline {
 
     this.backgroundLayer = new BackgroundLayer(this.ctx, canvas.width, canvas.height, sectorSeed, nebulaConfig);
     this.landableLayer = new LandableLayer(this.ctx);
+    this.bulletLayer = new BulletLayer(this.ctx);
+    this.effectsLayer = new EffectsLayer(this.ctx);
     this.radiationLayer = new RadiationLayer(this.ctx, this.canvas);
     this.shipLayer = new ShipLayer(this.ctx);
     this.hudRenderer = new HudRenderer(this.ctx);
@@ -97,10 +110,13 @@ export class RenderPipeline {
       state.landables,
       state.camera,
       state.landingCandidate,
+      state.landableTargetId,
       state.worldState,
       state.dt
     );
-    this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera);
+    this.bulletLayer.render(state.bullets, state.camera);
+    this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera, state.shipTargetId);
+    this.effectsLayer.render(state.particles, state.camera);
     this.hudRenderer.render(
       state.playerShip,
       state.landingCandidate,
@@ -108,7 +124,24 @@ export class RenderPipeline {
       state.showBoundaryWarning,
       state.arrivalMessage,
       state.radiationIntensity,
-      state.destructionMessageAlpha
+      state.destructionMessageAlpha,
+      state.shipTargetId
+        ? (() => {
+            const ship = state.otherShips.find((candidate) => candidate.state.id === state.shipTargetId) ?? null;
+            if (!ship) return null;
+            const hpRatio = ship.state.maxHP > 0 ? ship.state.currentHP / ship.state.maxHP : 0;
+            return { name: ship.state.id.split('_').join(' ').toUpperCase(), hpRatio };
+          })()
+        : null,
+      state.landableTargetId
+        ? (() => {
+            const landable = state.landables.find((candidate) => candidate.id === state.landableTargetId) ?? null;
+            return landable ? { name: landable.name } : null;
+          })()
+        : null,
+      state.playerShip.state.weaponLoadout,
+      state.worldState,
+      state.heldFireKeys
     );
     this.minimapRenderer.render(
       state.worldState,

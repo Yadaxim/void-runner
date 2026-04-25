@@ -117,7 +117,12 @@ function createDefaultShipState(): ShipState {
     credits: 1000,
     cargo: [],
     equipmentSlots: [],
-    weaponLoadout: [],
+    weaponLoadout: [
+      { fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'X', itemId: 'slug_thrower_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'C', itemId: 'seeker_launcher_t1', stackCount: 1, cooldownRemaining: 0 },
+      { fireKey: 'V', itemId: 'plasma_launcher_t1', stackCount: 1, cooldownRemaining: 0 }
+    ],
     activeMissions: [],
     brain: null,
     memoryCards: [],

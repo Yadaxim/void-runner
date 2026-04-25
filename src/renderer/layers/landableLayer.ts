@@ -16,6 +16,7 @@ export class LandableLayer {
     landables: Landable[],
     camera: Camera,
     landingCandidate: Landable | null,
+    landableTargetId: string | null,
     worldState: WorldState,
     dt: number
   ): void {
@@ -53,6 +54,18 @@ export class LandableLayer {
         this.ctx.arc(pos.x, pos.y, landable.radius * LANDING_RADIUS_MULTIPLIER, 0, Math.PI * 2);
         this.ctx.stroke();
         this.ctx.setLineDash([]);
+        this.ctx.restore();
+      }
+
+      if (landableTargetId === landable.id) {
+        const pulse = 0.6 + (Math.sin(performance.now() * 0.006) + 1) * 0.2;
+        this.ctx.save();
+        this.ctx.globalAlpha = pulse;
+        this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(pos.x, pos.y, landable.radius * 1.15, 0, Math.PI * 2);
+        this.ctx.stroke();
         this.ctx.restore();
       }
     }

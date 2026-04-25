@@ -1,7 +1,9 @@
 import { COLOURS } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
+import type { WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
-import type { GridCoord, Landable } from '../../types';
+import type { GridCoord, Landable, WeaponFireKey, WeaponSlot } from '../../types';
+import { WeaponStripRenderer } from './weaponStripRenderer';
 
 function normaliseDegrees(angleRad: number): number {
   const deg = (angleRad * 180) / Math.PI;
@@ -21,7 +23,11 @@ function fitTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
 }
 
 export class HudRenderer {
-  constructor(private readonly ctx: CanvasRenderingContext2D) {}
+  private readonly weaponStripRenderer: WeaponStripRenderer;
+
+  constructor(private readonly ctx: CanvasRenderingContext2D) {
+    this.weaponStripRenderer = new WeaponStripRenderer(ctx);
+  }
 
   render(
     playerShip: ShipEntity,
@@ -34,7 +40,12 @@ export class HudRenderer {
       alpha: number;
     } | null,
     radiationIntensity: number,
-    destructionMessageAlpha: number
+    destructionMessageAlpha: number,
+    shipTarget: { name: string; hpRatio: number } | null,
+    landableTarget: { name: string } | null,
+    weaponLoadout: WeaponSlot[],
+    worldState: WorldState,
+    heldFireKeys: Record<WeaponFireKey, boolean>
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
@@ -110,6 +121,14 @@ export class HudRenderer {
 
     this.renderRadiationWarning(radiationIntensity, showBoundaryWarning, arrivalMessage !== null);
     this.renderDestructionMessage(destructionMessageAlpha);
+    this.renderTargets(shipTarget, landableTarget);
+    this.weaponStripRenderer.render(
+      weaponLoadout,
+      heldFireKeys,
+      worldState,
+      this.ctx.canvas.width,
+      this.ctx.canvas.height
+    );
 
     const cx = this.ctx.canvas.width / 2;
     const cy = this.ctx.canvas.height / 2;
@@ -152,6 +171,43 @@ export class HudRenderer {
       this.ctx.fillText(promptText, x + paddingX, y + height / 2);
       this.ctx.restore();
     }
+  }
+
+  private renderTargets(
+    shipTarget: { name: string; hpRatio: number } | null,
+    landableTarget: { name: string } | null
+  ): void {
+    const centerX = this.ctx.canvas.width / 2;
+    const topY = 20;
+    this.ctx.save();
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+
+    if (!shipTarget && !landableTarget) {
+      this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+      this.ctx.fillText('[ NO TARGET ]', centerX, topY - 12);
+    }
+
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    const shipName = shipTarget ? shipTarget.name : '';
+    const shipLine = `[SHIP]  ${shipName}`;
+    this.ctx.fillText(shipLine, centerX, topY);
+    if (shipTarget) {
+      const ratio = Math.max(0, Math.min(1, shipTarget.hpRatio));
+      const percent = Math.round(ratio * 100);
+      const bars = 6;
+      const filled = Math.round(ratio * bars);
+      const barText = `${'█'.repeat(filled)}${'░'.repeat(Math.max(0, bars - filled))}  ${percent}%`;
+      this.ctx.fillStyle = ratio > 0.6 ? COLOURS.SAFE : ratio > 0.3 ? COLOURS.WARNING : COLOURS.DANGER;
+      this.ctx.fillText(barText, centerX, topY + 12);
+    }
+
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    const landLine = `[LAND]  ${landableTarget ? landableTarget.name : ''}`;
+    this.ctx.fillText(landLine, centerX, topY + 24);
+    this.ctx.restore();
   }
 
   private renderHpBar(playerShip: ShipEntity, radiationIntensity: number): void {

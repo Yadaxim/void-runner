@@ -1,3 +1,5 @@
+import type { WeaponFireKey } from '../types';
+
 interface ThrusterInputs {
   forward: boolean;
   reverse: boolean;
@@ -8,11 +10,23 @@ interface ThrusterInputs {
   landPressed: boolean;
 }
 
+interface TargetInputs {
+  cycleShipTarget: boolean;
+  cycleLandableTarget: boolean;
+}
+
+interface DevInputs {
+  spawnDummyTarget: boolean;
+}
+
 export class PlayerController {
   private readonly pressedKeys = new Set<string>();
   private autoBrakeLinearEnabled = false;
   private autoBrakeRotationEnabled = false;
   private landPressedQueued = false;
+  private cycleShipTargetQueued = false;
+  private cycleLandableTargetQueued = false;
+  private spawnDummyTargetQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -23,7 +37,13 @@ export class PlayerController {
     'ShiftRight',
     'KeyL',
     'KeyT',
-    'Tab'
+    'Tab',
+    'KeyG',
+    'KeyZ',
+    'KeyX',
+    'KeyC',
+    'KeyV',
+    'KeyB'
   ]);
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -43,6 +63,15 @@ export class PlayerController {
     }
     if (!event.repeat && event.code === 'KeyL') {
       this.landPressedQueued = true;
+    }
+    if (!event.repeat && event.code === 'Tab') {
+      this.cycleShipTargetQueued = true;
+    }
+    if (!event.repeat && event.code === 'KeyG') {
+      this.cycleLandableTargetQueued = true;
+    }
+    if (!event.repeat && event.code === 'KeyT') {
+      this.spawnDummyTargetQueued = true;
     }
     this.pressedKeys.add(event.code);
   };
@@ -79,6 +108,32 @@ export class PlayerController {
     return landPressed;
   }
 
+  getTargetInputs(): TargetInputs {
+    const inputs = {
+      cycleShipTarget: this.cycleShipTargetQueued,
+      cycleLandableTarget: this.cycleLandableTargetQueued
+    };
+    this.cycleShipTargetQueued = false;
+    this.cycleLandableTargetQueued = false;
+    return inputs;
+  }
+
+  getFireInputs(): Record<WeaponFireKey, boolean> {
+    return {
+      Z: this.pressedKeys.has('KeyZ'),
+      X: this.pressedKeys.has('KeyX'),
+      C: this.pressedKeys.has('KeyC'),
+      V: this.pressedKeys.has('KeyV'),
+      B: this.pressedKeys.has('KeyB')
+    };
+  }
+
+  getDevInputs(): DevInputs {
+    const spawnDummyTarget = this.spawnDummyTargetQueued;
+    this.spawnDummyTargetQueued = false;
+    return { spawnDummyTarget };
+  }
+
   destroy(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
@@ -86,5 +141,8 @@ export class PlayerController {
     this.autoBrakeLinearEnabled = false;
     this.autoBrakeRotationEnabled = false;
     this.landPressedQueued = false;
+    this.cycleShipTargetQueued = false;
+    this.cycleLandableTargetQueued = false;
+    this.spawnDummyTargetQueued = false;
   }
 }
