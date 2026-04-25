@@ -6,9 +6,8 @@
     "generatedAt": "2024-01-01T00:00:00Z"
   },
   "galaxy": {
-    "gridWidth": 10,
-    "gridHeight": 10,
-    "sectors": []
+    "gridWidth": 60,
+    "gridHeight": 60
   },
   "factions": [
     {
@@ -19,7 +18,7 @@
       "shipStyle": "Clean angular hulls in blue-white, built for endurance over speed.",
       "missionFlavour": "Reliable cargo contracts with fair pay and occasional escort work.",
       "homeSector": { "x": 5, "y": 5 },
-      "territoryRadius": 3,
+      "territoryRadius": 6,
       "primaryColour": { "h": 210, "s": 70, "l": 60 },
       "secondaryColour": { "h": 190, "s": 60, "l": 70 },
       "geometryBias": "angular",
@@ -35,8 +34,8 @@
       "description": "Loose confederacy of independent mining and salvage operations on the outer rim. Distrustful of authority.",
       "shipStyle": "Heavy salvaged hulls in rust-orange, patched and overloaded.",
       "missionFlavour": "High-risk cargo runs with generous payouts, no questions asked.",
-      "homeSector": { "x": 2, "y": 2 },
-      "territoryRadius": 2,
+      "homeSector": { "x": -10, "y": -8 },
+      "territoryRadius": 5,
       "primaryColour": { "h": 25, "s": 65, "l": 55 },
       "secondaryColour": { "h": 40, "s": 70, "l": 60 },
       "geometryBias": "rounded",
@@ -46,19 +45,36 @@
       "isPirate": false
     },
     {
+      "id": "veth_collective",
+      "name": "Veth Collective",
+      "demonym": "a Veth",
+      "description": "An ancient mercantile collective operating from the southern arm. Neutral to most, loyal to profit.",
+      "shipStyle": "Sleek rounded hulls in deep green, designed for cargo capacity above all.",
+      "missionFlavour": "Long-haul cargo runs between distant systems, high value and high distance.",
+      "homeSector": { "x": 3, "y": -12 },
+      "territoryRadius": 5,
+      "primaryColour": { "h": 150, "s": 55, "l": 40 },
+      "secondaryColour": { "h": 130, "s": 50, "l": 55 },
+      "geometryBias": "rounded",
+      "densityBias": "dense",
+      "disposition": { "federation": 0.2, "frontier_clans": 0.1, "pirates": -0.5 },
+      "missionTiers": [15, 45, 75],
+      "isPirate": false
+    },
+    {
       "id": "pirates",
       "name": "The Syndicate",
       "demonym": "a Syndicate raider",
       "description": "Organised piracy network operating from hidden stations in void sectors.",
       "shipStyle": "Mismatched salvaged hulls from every faction, bristling with weapons.",
       "missionFlavour": "Raids, smuggling, and black market deliveries.",
-      "homeSector": { "x": 1, "y": 8 },
-      "territoryRadius": 1,
+      "homeSector": { "x": -20, "y": 15 },
+      "territoryRadius": 3,
       "primaryColour": { "h": 0, "s": 30, "l": 40 },
       "secondaryColour": { "h": 20, "s": 25, "l": 45 },
       "geometryBias": "angular",
       "densityBias": "sparse",
-      "disposition": { "federation": -0.8, "frontier_clans": 0.2 },
+      "disposition": { "federation": -0.8, "frontier_clans": 0.2, "veth_collective": -0.5 },
       "missionTiers": [0, 30, 60],
       "isPirate": true
     }
@@ -72,7 +88,7 @@
       "hullMass": 80,
       "cargoCapacity": 20,
       "equipmentCapacity": 40,
-      "equipmentWhitelist": ["thruster", "weapon", "armour", "fuelTank", "autoBrake", "sensorArray", "neuralBrain", "memoryCard"],
+      "equipmentWhitelist": ["thruster","weapon","armour","fuelTank","autoBrake","sensorArray","neuralBrain","memoryCard"],
       "baseTopSpeed": 250,
       "baseHP": 100,
       "weaponSlots": 1
@@ -85,16 +101,30 @@
       "hullMass": 140,
       "cargoCapacity": 80,
       "equipmentCapacity": 60,
-      "equipmentWhitelist": ["thruster", "weapon", "armour", "fuelTank", "hyperspaceDrive", "autoBrake", "sensorArray", "neuralBrain", "memoryCard"],
+      "equipmentWhitelist": ["thruster","weapon","armour","fuelTank","hyperspaceDrive","autoBrake","sensorArray","neuralBrain","memoryCard"],
       "baseTopSpeed": 200,
       "baseHP": 160,
       "weaponSlots": 2
+    },
+    {
+      "id": "freighter_mk1",
+      "name": "Freighter Mk I",
+      "description": "A slow but capacious bulk freighter. Poor in a fight, excellent for trade.",
+      "hullClass": "freighter",
+      "hullMass": 300,
+      "cargoCapacity": 300,
+      "equipmentCapacity": 80,
+      "equipmentWhitelist": ["thruster","armour","fuelTank","hyperspaceDrive","autoBrake","sensorArray","neuralBrain","memoryCard"],
+      "baseTopSpeed": 140,
+      "baseHP": 240,
+      "weaponSlots": 1
     }
   ],
   "equipmentCatalog": [],
   "bulletSpecs": [],
   "missionTemplates": [],
   "sectors": [
+
     {
       "coord": { "x": 5, "y": 5 },
       "regionType": "core_arm",
@@ -103,12 +133,7 @@
       "npcSpawnRules": [],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": true,
-        "nebulaHue": 210,
-        "nebulaIntensity": 0.5,
-        "starDensityMultiplier": 1.0
-      },
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 210, "nebulaIntensity": 0.08, "starDensityMultiplier": 1.0 },
       "seed": 1001,
       "landables": [
         {
@@ -121,10 +146,7 @@
           "mass": 1400,
           "radius": 70,
           "position": { "x": 300, "y": -250 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 2 },
-            { "type": "missionBoard" }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0,
           "seed": 2001
         },
@@ -138,9 +160,7 @@
           "mass": 300,
           "radius": 28,
           "position": { "x": 500, "y": -100 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 3 }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
           "rotationSpeed": 0,
           "seed": 2002
         },
@@ -148,73 +168,60 @@
           "id": "port_kaelen",
           "name": "Port Kaelen",
           "type": "station",
-          "description": "A Federation trading post and equipment hub. The docking bays are always busy and the prices are fair, if unspectacular.",
+          "description": "A Federation trading post and equipment hub. The docking bays are always busy and the prices are fair.",
           "atmosphere": "busy and commercial",
           "factionId": "federation",
           "mass": 0,
           "radius": 40,
           "position": { "x": -400, "y": 200 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 2 },
-            { "type": "missionBoard" }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
           "rotationSpeed": 0.003,
           "seed": 2003
         }
       ]
     },
+
     {
       "coord": { "x": 4, "y": 5 },
-      "regionType": "midring",
-      "factionId": "frontier_clans",
-      "landableDensity": 0.4,
+      "regionType": "core_arm",
+      "factionId": "federation",
+      "landableDensity": 0.6,
       "npcSpawnRules": [],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": false,
-        "nebulaHue": 0,
-        "nebulaIntensity": 0,
-        "starDensityMultiplier": 0.8
-      },
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.9 },
       "seed": 1002,
       "landables": [
         {
           "id": "salvage_post_7",
           "name": "Salvage Post 7",
           "type": "station",
-          "description": "A cramped Frontier Clans outpost bolted together from decommissioned freighter hulls. Smells of welding smoke and recycled air.",
-          "atmosphere": "rough and unwelcoming",
+          "description": "A cramped outpost bolted together from decommissioned freighter hulls. Smells of welding smoke and recycled air.",
+          "atmosphere": "rough and functional",
           "factionId": "frontier_clans",
           "mass": 0,
           "radius": 30,
           "position": { "x": -200, "y": 300 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 4 }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }],
           "rotationSpeed": 0.005,
           "seed": 3001
         }
       ]
     },
+
     {
       "coord": { "x": 5, "y": 4 },
-      "regionType": "midring",
+      "regionType": "core_arm",
       "factionId": "federation",
-      "landableDensity": 0.3,
+      "landableDensity": 0.5,
       "npcSpawnRules": [],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": true,
-        "nebulaHue": 270,
-        "nebulaIntensity": 0.06,
-        "starDensityMultiplier": 1.2
-      },
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 270, "nebulaIntensity": 0.06, "starDensityMultiplier": 1.1 },
       "seed": 1003,
       "landables": [
         {
-          "id": "relay_station_epsilon",
+          "id": "relay_epsilon",
           "name": "Relay Station Epsilon",
           "type": "station",
           "description": "A Federation communications relay and refuelling stop. Minimal staff, maximum automation.",
@@ -223,45 +230,35 @@
           "mass": 0,
           "radius": 25,
           "position": { "x": 100, "y": 150 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 2 }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }],
           "rotationSpeed": 0.004,
           "seed": 4001
         }
       ]
     },
+
     {
       "coord": { "x": 6, "y": 5 },
-      "regionType": "frontier",
-      "factionId": null,
-      "landableDensity": 0.1,
-      "npcSpawnRules": [],
-      "inRadiationZone": false,
-      "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": false,
-        "nebulaHue": 0,
-        "nebulaIntensity": 0,
-        "starDensityMultiplier": 0.6
-      },
-      "seed": 1004,
-      "landables": []
-    },
-    {
-      "coord": { "x": 5, "y": 6 },
-      "regionType": "frontier",
+      "regionType": "midring",
       "factionId": null,
       "landableDensity": 0.2,
       "npcSpawnRules": [],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": false,
-        "nebulaHue": 0,
-        "nebulaIntensity": 0,
-        "starDensityMultiplier": 0.7
-      },
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.7 },
+      "seed": 1004,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 5, "y": 6 },
+      "regionType": "midring",
+      "factionId": null,
+      "landableDensity": 0.3,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.8 },
       "seed": 1005,
       "landables": [
         {
@@ -274,30 +271,314 @@
           "mass": 0,
           "radius": 22,
           "position": { "x": 50, "y": -180 },
-          "services": [
-            { "type": "refuel", "refuelPricePerUnit": 6 }
-          ],
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 6 }],
           "rotationSpeed": 0.001,
           "seed": 5001
         }
       ]
     },
+
     {
-      "coord": { "x": 5, "y": 3 },
-      "regionType": "void",
-      "factionId": null,
-      "landableDensity": 0.0,
+      "coord": { "x": 7, "y": 7 },
+      "regionType": "midring",
+      "factionId": "federation",
+      "landableDensity": 0.5,
       "npcSpawnRules": [],
       "inRadiationZone": false,
       "radiationFringeIntensity": 0,
-      "ambientVisuals": {
-        "hasNebula": false,
-        "nebulaHue": 0,
-        "nebulaIntensity": 0,
-        "starDensityMultiplier": 0.4
-      },
-      "seed": 1006,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 180, "nebulaIntensity": 0.05, "starDensityMultiplier": 0.9 },
+      "seed": 1007,
+      "landables": [
+        {
+          "id": "new_carthage",
+          "name": "New Carthage",
+          "type": "planet",
+          "description": "A temperate Federation colony world, younger and rougher than the core worlds but growing fast.",
+          "atmosphere": "optimistic frontier",
+          "factionId": "federation",
+          "mass": 1100,
+          "radius": 58,
+          "position": { "x": -150, "y": -300 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0,
+          "seed": 6001
+        },
+        {
+          "id": "new_carthage_moon",
+          "name": "Dust",
+          "type": "moon",
+          "description": "A barren, rust-coloured moon the colonists call Dust. Small mining operations cling to its craters.",
+          "atmosphere": "harsh and mineral",
+          "factionId": "federation",
+          "mass": 200,
+          "radius": 20,
+          "position": { "x": 200, "y": -100 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }],
+          "rotationSpeed": 0,
+          "seed": 6002
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": -10, "y": -8 },
+      "regionType": "midring",
+      "factionId": "frontier_clans",
+      "landableDensity": 0.6,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 30, "nebulaIntensity": 0.07, "starDensityMultiplier": 0.8 },
+      "seed": 1010,
+      "landables": [
+        {
+          "id": "clan_home",
+          "name": "Rig Tharkan",
+          "type": "planet",
+          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
+          "atmosphere": "fierce and independent",
+          "factionId": "frontier_clans",
+          "mass": 1200,
+          "radius": 62,
+          "position": { "x": -100, "y": 200 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0,
+          "seed": 7001
+        },
+        {
+          "id": "clan_station",
+          "name": "The Heap",
+          "type": "station",
+          "description": "An orbital collection of welded-together hulks that somehow holds pressure. The Clans' main trading post.",
+          "atmosphere": "chaotic and loud",
+          "factionId": "frontier_clans",
+          "mass": 0,
+          "radius": 35,
+          "position": { "x": 300, "y": -50 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 4 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0.006,
+          "seed": 7002
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": -9, "y": -8 },
+      "regionType": "midring",
+      "factionId": "frontier_clans",
+      "landableDensity": 0.3,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.7 },
+      "seed": 1011,
+      "landables": [
+        {
+          "id": "waypost_3",
+          "name": "Waypost 3",
+          "type": "station",
+          "description": "A Frontier Clans fuel stop on the route between Rig Tharkan and the outer rim. Nothing more, nothing less.",
+          "atmosphere": "transient and sparse",
+          "factionId": "frontier_clans",
+          "mass": 0,
+          "radius": 20,
+          "position": { "x": 0, "y": 100 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }],
+          "rotationSpeed": 0.003,
+          "seed": 8001
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": 3, "y": -12 },
+      "regionType": "core_arm",
+      "factionId": "veth_collective",
+      "landableDensity": 0.8,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 140, "nebulaIntensity": 0.09, "starDensityMultiplier": 1.1 },
+      "seed": 1012,
+      "landables": [
+        {
+          "id": "veth_prime",
+          "name": "Veth'Ora",
+          "type": "planet",
+          "description": "The Collective's ancient home world. Dense forests cover most of its surface, broken by gleaming trade cities.",
+          "atmosphere": "ancient and mercantile",
+          "factionId": "veth_collective",
+          "mass": 1600,
+          "radius": 75,
+          "position": { "x": -200, "y": 150 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0,
+          "seed": 9001
+        },
+        {
+          "id": "veth_station",
+          "name": "Exchange Point Kael",
+          "type": "station",
+          "description": "The Collective's primary trading exchange. Goods from across the galaxy change hands here.",
+          "atmosphere": "wealthy and precise",
+          "factionId": "veth_collective",
+          "mass": 0,
+          "radius": 45,
+          "position": { "x": 300, "y": 200 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 2 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0.002,
+          "seed": 9002
+        },
+        {
+          "id": "veth_moon",
+          "name": "Pale Kael",
+          "type": "moon",
+          "description": "A white ice moon orbiting Veth'Ora. Automated drilling rigs extract water ice around the clock.",
+          "atmosphere": "cold and mechanical",
+          "factionId": "veth_collective",
+          "mass": 350,
+          "radius": 30,
+          "position": { "x": -400, "y": -200 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 3 }],
+          "rotationSpeed": 0,
+          "seed": 9003
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": 15, "y": -5 },
+      "regionType": "frontier",
+      "factionId": null,
+      "landableDensity": 0.2,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.5 },
+      "seed": 1015,
+      "landables": [
+        {
+          "id": "outpost_sigma",
+          "name": "Outpost Sigma",
+          "type": "station",
+          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
+          "atmosphere": "improvised and weathered",
+          "factionId": null,
+          "mass": 0,
+          "radius": 28,
+          "position": { "x": -100, "y": -200 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 7 }],
+          "rotationSpeed": 0.002,
+          "seed": 10001
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": -20, "y": 15 },
+      "regionType": "frontier",
+      "factionId": "pirates",
+      "landableDensity": 0.4,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 350, "nebulaIntensity": 0.06, "starDensityMultiplier": 0.6 },
+      "seed": 1016,
+      "landables": [
+        {
+          "id": "syndicate_base",
+          "name": "The Maw",
+          "type": "station",
+          "description": "The Syndicate's primary base of operations, hidden in a debris field. Dark, cold, and unwelcoming to outsiders.",
+          "atmosphere": "predatory and secretive",
+          "factionId": "pirates",
+          "mass": 0,
+          "radius": 38,
+          "position": { "x": 100, "y": 50 },
+          "services": [{ "type": "refuel", "refuelPricePerUnit": 5 }, { "type": "missionBoard" }],
+          "rotationSpeed": 0.007,
+          "seed": 11001
+        }
+      ]
+    },
+
+    {
+      "coord": { "x": -25, "y": 20 },
+      "regionType": "frontier",
+      "factionId": null,
+      "landableDensity": 0.1,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.3 },
+      "seed": 1017,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 25, "y": 25 },
+      "regionType": "frontier",
+      "factionId": null,
+      "landableDensity": 0.1,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": { "hasNebula": false, "nebulaHue": 0, "nebulaIntensity": 0, "starDensityMultiplier": 0.25 },
+      "seed": 1018,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 1, "y": 0 },
+      "regionType": "radiation_fringe",
+      "factionId": null,
+      "landableDensity": 0,
+      "npcSpawnRules": [],
+      "inRadiationZone": true,
+      "radiationFringeIntensity": 0.6,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 0, "nebulaIntensity": 0.15, "starDensityMultiplier": 1.5 },
+      "seed": 1019,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 0, "y": 1 },
+      "regionType": "radiation_fringe",
+      "factionId": null,
+      "landableDensity": 0,
+      "npcSpawnRules": [],
+      "inRadiationZone": true,
+      "radiationFringeIntensity": 0.7,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 5, "nebulaIntensity": 0.18, "starDensityMultiplier": 1.6 },
+      "seed": 1020,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 2, "y": 2 },
+      "regionType": "radiation_fringe",
+      "factionId": null,
+      "landableDensity": 0,
+      "npcSpawnRules": [],
+      "inRadiationZone": true,
+      "radiationFringeIntensity": 0.4,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 358, "nebulaIntensity": 0.12, "starDensityMultiplier": 1.3 },
+      "seed": 1021,
+      "landables": []
+    },
+
+    {
+      "coord": { "x": 0, "y": 0 },
+      "regionType": "radiation_fringe",
+      "factionId": null,
+      "landableDensity": 0,
+      "npcSpawnRules": [],
+      "inRadiationZone": true,
+      "radiationFringeIntensity": 1.0,
+      "ambientVisuals": { "hasNebula": true, "nebulaHue": 0, "nebulaIntensity": 0.25, "starDensityMultiplier": 2.0 },
+      "seed": 1022,
       "landables": []
     }
+
   ]
 }

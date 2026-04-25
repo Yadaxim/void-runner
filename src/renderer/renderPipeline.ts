@@ -4,6 +4,7 @@ import type { Landable } from '../types';
 import type { Camera } from './camera';
 import { BackgroundLayer } from './layers/backgroundLayer';
 import { LandableLayer } from './layers/landableLayer';
+import { RadiationLayer } from './layers/radiationLayer';
 import { ShipLayer } from './layers/shipLayer';
 import { HudRenderer } from './ui/hudRenderer';
 import { MinimapRenderer } from './ui/minimapRenderer';
@@ -18,11 +19,13 @@ interface RenderPipelineState {
   worldState: WorldState;
   dt: number;
   showBoundaryWarning: boolean;
+  radiationIntensity: number;
   arrivalMessage: {
     title: string;
     landablesLine: string;
     alpha: number;
   } | null;
+  destructionMessageAlpha: number;
 }
 
 export class RenderPipeline {
@@ -31,6 +34,7 @@ export class RenderPipeline {
   private landableLayer: LandableLayer;
 
   private shipLayer: ShipLayer;
+  private radiationLayer: RadiationLayer;
 
   private hudRenderer: HudRenderer;
   private minimapRenderer: MinimapRenderer;
@@ -54,6 +58,7 @@ export class RenderPipeline {
 
     this.backgroundLayer = new BackgroundLayer(this.ctx, canvas.width, canvas.height, sectorSeed, nebulaConfig);
     this.landableLayer = new LandableLayer(this.ctx);
+    this.radiationLayer = new RadiationLayer(this.ctx, this.canvas);
     this.shipLayer = new ShipLayer(this.ctx);
     this.hudRenderer = new HudRenderer(this.ctx);
     this.minimapRenderer = new MinimapRenderer(this.ctx);
@@ -87,6 +92,7 @@ export class RenderPipeline {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.backgroundLayer.render(state.playerShip.state.position);
+    this.radiationLayer.render(state.radiationIntensity);
     this.landableLayer.render(
       state.landables,
       state.camera,
@@ -100,7 +106,9 @@ export class RenderPipeline {
       state.landingCandidate,
       state.worldState.getCurrentSectorCoord(),
       state.showBoundaryWarning,
-      state.arrivalMessage
+      state.arrivalMessage,
+      state.radiationIntensity,
+      state.destructionMessageAlpha
     );
     this.minimapRenderer.render(
       state.worldState,

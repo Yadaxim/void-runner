@@ -11,7 +11,7 @@ export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const MAX_DELTA_SECONDS = 0.1;
 
 // Flight gameplay and interactions
-export const MAX_RADIATION_DAMAGE_PER_SECOND = 10;
+export const MAX_RADIATION_DAMAGE_PER_SECOND = 15;
 export const LANDING_SPEED_THRESHOLD = 100;
 export const LANDING_RADIUS_MULTIPLIER = 2.5;
 export const TAKEOFF_VELOCITY = 30;
@@ -32,8 +32,10 @@ export const GALAXY_GRID_HEIGHT = 30;
 export const SECTOR_WIDTH = 3200;
 export const SECTOR_HEIGHT = 3200;
 export const SECTOR_EDGE_THRESHOLD = 40;
-export const RADIATION_OUTER_RADIUS_FRACTION = 0.15;
-export const RADIATION_INNER_RADIUS_FRACTION = 0.07;
+export const RADIATION_OUTER_RADIUS = 3.0;
+export const RADIATION_INNER_RADIUS = 1.0;
+export const RADIATION_VIGNETTE_MAX_OPACITY = 0.55;
+export const RADIATION_PARTICLE_COUNT = 60;
 export const MAX_LANDABLES_PER_SECTOR = 4;
 export const MAX_FLEET_SIZE = 5;
 

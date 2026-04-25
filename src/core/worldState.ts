@@ -1,4 +1,8 @@
-import { DEFAULT_FACTION_VISUAL } from '../constants';
+import {
+  DEFAULT_FACTION_VISUAL,
+  RADIATION_INNER_RADIUS,
+  RADIATION_OUTER_RADIUS
+} from '../constants';
 import { childPRNG } from '../core/prng';
 import { Vector2 } from '../physics/vector2';
 import type {
@@ -34,22 +38,27 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function toSectorGrid(worldFile: WorldFile): SectorMetadata[][] {
-  if (worldFile.galaxy.sectors.length > 0) {
+  const predefinedGrid = worldFile.galaxy.sectors;
+  if (Array.isArray(predefinedGrid) && predefinedGrid.length > 0) {
     return worldFile.galaxy.sectors;
   }
 
+  const halfWidth = Math.floor(worldFile.galaxy.gridWidth / 2);
+  const halfHeight = Math.floor(worldFile.galaxy.gridHeight / 2);
   const grid: SectorMetadata[][] = Array.from({ length: worldFile.galaxy.gridHeight }, () =>
     Array.from({ length: worldFile.galaxy.gridWidth }, () => null)
   ) as unknown as SectorMetadata[][];
 
   for (const sector of worldFile.sectors) {
+    const gridX = sector.coord.x + halfWidth;
+    const gridY = sector.coord.y + halfHeight;
     if (
-      sector.coord.y >= 0 &&
-      sector.coord.y < worldFile.galaxy.gridHeight &&
-      sector.coord.x >= 0 &&
-      sector.coord.x < worldFile.galaxy.gridWidth
+      gridY >= 0 &&
+      gridY < worldFile.galaxy.gridHeight &&
+      gridX >= 0 &&
+      gridX < worldFile.galaxy.gridWidth
     ) {
-      grid[sector.coord.y][sector.coord.x] = sector;
+      grid[gridY][gridX] = sector;
     }
   }
 
@@ -256,6 +265,25 @@ export class WorldState {
 
   getGridHeight(): number {
     return this.worldFile.galaxy.gridHeight;
+  }
+
+  getGalaxyCentre(): GridCoord {
+    return { x: 0, y: 0 };
+  }
+
+  getDistanceFromCentre(coord: GridCoord): number {
+    return Math.sqrt(coord.x ** 2 + coord.y ** 2);
+  }
+
+  getRadiationIntensity(): number {
+    const coord = this.currentSectorCoord;
+    const dist = Math.sqrt(coord.x ** 2 + coord.y ** 2);
+    const t = (RADIATION_OUTER_RADIUS - dist) / (RADIATION_OUTER_RADIUS - RADIATION_INNER_RADIUS);
+    return Math.pow(Math.max(0, Math.min(1, t)), 2);
+  }
+
+  isInRadiationZone(): boolean {
+    return this.getRadiationIntensity() > 0;
   }
 
   saveToLocalStorage(): void {
