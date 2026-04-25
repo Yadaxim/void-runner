@@ -50,6 +50,7 @@ export interface WorldFile {
     gridHeight: number;
     sectors: SectorMetadata[][];
   };
+  sectors: SectorMetadata[];
   factions: FactionDefinition[];
   hullSpecs: HullSpec[];
   equipmentCatalog: EquipmentItem[];

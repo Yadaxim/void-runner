@@ -47,8 +47,10 @@ export function drawPlanet(
   centreY: number,
   radius: number,
   seed: number,
-  colourHint = '#3a6ea8'
+  colourHint?: string
 ): void {
+  const palettes = ['#3a6ea8', '#8a5a3a', '#4a8a4a', '#7a4a8a', '#8a7a3a'];
+  colourHint = colourHint ?? palettes[Math.abs(seed) % palettes.length];
   const prng = new SplitMix64(seed >>> 0);
   const rand = (): number => prng.next();
   const base = hexToRgb(colourHint);

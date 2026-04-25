@@ -8,18 +8,31 @@ interface Star {
   radius: number;
 }
 
+interface NebulaBlob {
+  x: number;
+  y: number;
+  radius: number;
+}
+
 export class BackgroundLayer {
   private readonly starsByLayer: Star[][] = [];
-
   private readonly layerTileSize: number;
+  private readonly nebulaBlobs: NebulaBlob[] = [];
+  private readonly hasNebula: boolean;
+  private readonly nebulaHue: number;
+  private readonly nebulaIntensity: number;
 
   constructor(
     private readonly ctx: CanvasRenderingContext2D,
     private readonly canvasWidth: number,
     private readonly canvasHeight: number,
-    sectorSeed: number
+    sectorSeed: number,
+    nebulaConfig: { hasNebula: boolean; nebulaHue: number; nebulaIntensity: number }
   ) {
     this.layerTileSize = Math.max(canvasWidth, canvasHeight) * 3;
+    this.hasNebula = nebulaConfig.hasNebula;
+    this.nebulaHue = nebulaConfig.nebulaHue;
+    this.nebulaIntensity = nebulaConfig.nebulaIntensity;
 
     for (let layerIndex = 0; layerIndex < STAR_LAYER_COUNTS.length; layerIndex += 1) {
       const prng = childPRNG(sectorSeed, `stars_layer_${layerIndex}`);
@@ -33,9 +46,38 @@ export class BackgroundLayer {
       }
       this.starsByLayer.push(stars);
     }
+
+    if (this.hasNebula) {
+      const prng = childPRNG(sectorSeed, 'nebula_layer');
+      const blobCount = 3 + Math.floor(prng.next() * 2);
+      const maxRadius = Math.max(this.canvasWidth, this.canvasHeight) * 0.5;
+      for (let i = 0; i < blobCount; i += 1) {
+        this.nebulaBlobs.push({
+          x: prng.next() * this.canvasWidth,
+          y: prng.next() * this.canvasHeight,
+          radius: maxRadius * (0.55 + prng.next() * 0.45)
+        });
+      }
+    }
   }
 
   render(playerWorldPos: Vector2): void {
+    if (this.hasNebula) {
+      const nebulaOffsetX = playerWorldPos.x * 0.01;
+      const nebulaOffsetY = playerWorldPos.y * 0.01;
+      for (const blob of this.nebulaBlobs) {
+        const x = blob.x - nebulaOffsetX;
+        const y = blob.y - nebulaOffsetY;
+        const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, blob.radius);
+        gradient.addColorStop(0, `hsla(${this.nebulaHue}, 60%, 30%, ${this.nebulaIntensity})`);
+        gradient.addColorStop(1, `hsla(${this.nebulaHue}, 60%, 30%, 0)`);
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, blob.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
+
     for (let layerIndex = 0; layerIndex < this.starsByLayer.length; layerIndex += 1) {
       const stars = this.starsByLayer[layerIndex];
       const scrollFactor = STAR_SCROLL_FACTORS[layerIndex];

@@ -1,4 +1,5 @@
 import { GameLoop } from '../core/gameLoop';
+import { WorldState } from '../core/worldState';
 import { computeGravity } from '../physics/gravity';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
@@ -6,8 +7,9 @@ import type { RenderPipeline } from '../renderer/renderPipeline';
 import type { Camera } from '../renderer/camera';
 import { PlayerController } from '../simulation/playerController';
 import { ShipEntity } from '../simulation/shipEntity';
-import type { Landable, ShipState } from '../types';
+import type { Landable } from '../types';
 import {
+  AUTOSAVE_INTERVAL_SECONDS,
   LANDING_RADIUS_MULTIPLIER,
   LANDING_SPEED_THRESHOLD,
   PLACEHOLDER_SHIP_MASS,
@@ -31,63 +33,35 @@ export class FlightScreen implements Screen {
   private landedAt: Landable | null = null;
   private landableScreen: LandableScreen | null = null;
   private lastKnownShipPosition: Vector2 = Vector2.zero();
+  private lastDt = 0;
+  private autosaveAccumulator = 0;
+  private readonly onBeforeUnload = (): void => {
+    this.worldState.saveToLocalStorage();
+  };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly pipeline: RenderPipeline,
     private readonly ctx: CanvasRenderingContext2D,
-    private readonly screenManager: ScreenManager
+    private readonly screenManager: ScreenManager,
+    private readonly worldState: WorldState
   ) {}
 
   onEnter(): void {
-    const testPlanet: Landable = {
-      id: 'test_planet',
-      name: 'Test Prime',
-      type: 'planet',
-      description: '',
-      atmosphere: '',
-      factionId: null,
-      mass: 100000,
-      radius: 60,
-      position: new Vector2(400, -200),
-      services: [],
-      rotationSpeed: 0,
-      seed: 12345
-    };
-
-    const playerShipState: ShipState = {
-      id: 'player',
-      hullSpecId: 'fighter_mk1',
-      factionId: null,
-      position: Vector2.zero(),
-      velocity: Vector2.zero(),
-      angle: 0,
-      angularVelocity: 0,
-      currentHP: 100,
-      maxHP: 100,
-      fuel: 1000,
-      maxFuel: 1000,
-      credits: 1000,
-      cargo: [],
-      equipmentSlots: [],
-      weaponLoadout: [],
-      activeMissions: [],
-      brain: null,
-      memoryCards: [],
-      activeCardId: null,
-      activeMode: null,
-      guardMode: false,
-      fleetRole: 'lead',
-      targets: {},
-      isPlayerControlled: true,
-      insuranceActive: true,
-      lastLandedLandableId: null
-    };
-
+    const currentSector = this.worldState.getCurrentSector();
+    this.pipeline.setSectorContext(currentSector.seed, {
+      hasNebula: currentSector.ambientVisuals.hasNebula,
+      nebulaHue: currentSector.ambientVisuals.nebulaHue,
+      nebulaIntensity: currentSector.ambientVisuals.nebulaIntensity
+    });
     this.landables.length = 0;
-    this.landables.push(testPlanet);
+    this.landables.push(...this.worldState.getLandablesInCurrentSector());
+    this.worldState.markVisited(currentSector.coord);
     this.playerController = new PlayerController();
-    this.playerShip = new ShipEntity(playerShipState);
+    this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
+    this.otherShips.length = 0;
+    this.autosaveAccumulator = 0;
+    window.addEventListener('beforeunload', this.onBeforeUnload);
 
     this.gameLoop = new GameLoop({
       update: (dt: number) => this.update(dt),
@@ -103,6 +77,8 @@ export class FlightScreen implements Screen {
     }
     this.gameLoop?.stop();
     this.gameLoop = null;
+    window.removeEventListener('beforeunload', this.onBeforeUnload);
+    this.worldState.saveToLocalStorage();
     this.playerController?.destroy();
     this.playerController = null;
     this.playerShip = null;
@@ -118,6 +94,7 @@ export class FlightScreen implements Screen {
       return;
     }
 
+    this.lastDt = dt;
     const inputs = this.playerController.update();
     this.lastKnownShipPosition = this.playerShip.state.position as Vector2;
     this.playerShip.applyThrusterInputs(inputs);
@@ -132,6 +109,20 @@ export class FlightScreen implements Screen {
     );
     this.playerShip.applyExternalForce(gravity);
     this.playerShip.update(dt);
+    this.worldState.updatePlayerShipState({
+      position: this.playerShip.state.position,
+      velocity: this.playerShip.state.velocity,
+      angle: this.playerShip.state.angle,
+      angularVelocity: this.playerShip.state.angularVelocity,
+      fuel: this.playerShip.state.fuel,
+      credits: this.playerShip.state.credits,
+      lastLandedLandableId: this.playerShip.state.lastLandedLandableId
+    });
+    this.autosaveAccumulator += dt;
+    if (this.autosaveAccumulator >= AUTOSAVE_INTERVAL_SECONDS) {
+      this.worldState.saveToLocalStorage();
+      this.autosaveAccumulator = 0;
+    }
     this.checkLandingConditions(inputs.landPressed);
   }
 
@@ -151,7 +142,9 @@ export class FlightScreen implements Screen {
       otherShips: this.otherShips,
       landables: this.landables,
       camera,
-      landingCandidate: this.landingCandidate
+      landingCandidate: this.landingCandidate,
+      worldState: this.worldState,
+      dt: this.lastDt
     });
     this.landableScreen?.render(this.ctx);
   }
@@ -191,7 +184,9 @@ export class FlightScreen implements Screen {
       angularVelocity: 0,
       lastLandedLandableId: landable.id
     };
-    this.landableScreen = new LandableScreen(this.canvas, landable, this.playerShip, () => this.takeOff());
+    this.worldState.updatePlayerShipState(this.playerShip.state);
+    this.worldState.saveToLocalStorage();
+    this.landableScreen = new LandableScreen(this.canvas, landable, this.worldState, () => this.takeOff());
     this.screenManager.push(this.landableScreen);
   }
 
@@ -207,6 +202,7 @@ export class FlightScreen implements Screen {
       position: new Vector2(landable.position.x + takeoffDirection.x * (landable.radius + 14), landable.position.y + takeoffDirection.y * (landable.radius + 14)),
       velocity: takeoffDirection.scale(TAKEOFF_VELOCITY)
     };
+    this.worldState.updatePlayerShipState(this.playerShip.state);
     this.isLanded = false;
     this.landedAt = null;
     this.landingCandidate = null;

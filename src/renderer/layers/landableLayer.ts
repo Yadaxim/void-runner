@@ -1,16 +1,47 @@
+import type { WorldState } from '../../core/worldState';
 import type { Landable } from '../../types';
 import { LANDING_RADIUS_MULTIPLIER, COLOURS } from '../../constants';
 import type { Camera } from '../camera';
 import { worldToScreen } from '../camera';
 import { drawPlanet } from '../landables/planetRenderer';
+import { drawMoon } from '../landables/moonRenderer';
+import { drawStation } from '../landables/stationRenderer';
 
 export class LandableLayer {
+  private readonly stationAngles = new Map<string, number>();
+
   constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-  render(landables: Landable[], camera: Camera, landingCandidate: Landable | null): void {
+  render(
+    landables: Landable[],
+    camera: Camera,
+    landingCandidate: Landable | null,
+    worldState: WorldState,
+    dt: number
+  ): void {
     for (const landable of landables) {
       const pos = worldToScreen(landable.position, camera);
-      drawPlanet(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
+      if (landable.type === 'planet') {
+        drawPlanet(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
+      } else if (landable.type === 'moon') {
+        drawMoon(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
+      } else if (
+        landable.type === 'station' ||
+        landable.type === 'military_outpost' ||
+        landable.type === 'shipyard_station'
+      ) {
+        const currentAngle = (this.stationAngles.get(landable.id) ?? 0) + landable.rotationSpeed * dt;
+        this.stationAngles.set(landable.id, currentAngle);
+        drawStation(
+          this.ctx,
+          pos.x,
+          pos.y,
+          landable.radius,
+          landable.seed,
+          worldState.getFactionVisual(landable.factionId ?? ''),
+          currentAngle
+        );
+      }
 
       if (landingCandidate?.id === landable.id) {
         this.ctx.save();

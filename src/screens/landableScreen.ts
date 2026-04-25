@@ -1,6 +1,8 @@
-import { COLOURS, REFUEL_PRICE_PER_UNIT, REFUEL_RATE } from '../constants';
+import { COLOURS, REFUEL_RATE } from '../constants';
+import type { WorldState } from '../core/worldState';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
-import type { ShipEntity } from '../simulation/shipEntity';
+import { drawMoon } from '../renderer/landables/moonRenderer';
+import { drawStation } from '../renderer/landables/stationRenderer';
 import type { Landable } from '../types';
 import type { Screen } from './screenManager';
 
@@ -60,7 +62,7 @@ export class LandableScreen implements Screen {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly landable: Landable,
-    private readonly playerShip: ShipEntity,
+    private readonly worldState: WorldState,
     private readonly onTakeOff: () => void
   ) {}
 
@@ -79,17 +81,20 @@ export class LandableScreen implements Screen {
 
   update(dt: number): void {
     if (this.activeTab !== 'refuel' || !this.isRefuelHeld) return;
-    const missingFuel = this.playerShip.state.maxFuel - this.playerShip.state.fuel;
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerUnit = this.getRefuelPricePerUnit();
+    const missingFuel = ship.maxFuel - ship.fuel;
     if (missingFuel <= 0) return;
-    const affordableUnits = Math.floor(this.playerShip.state.credits / REFUEL_PRICE_PER_UNIT);
+    if (pricePerUnit <= 0) return;
+    const affordableUnits = Math.floor(ship.credits / pricePerUnit);
     if (affordableUnits <= 0) return;
     const refillUnits = Math.min(missingFuel, REFUEL_RATE * dt, affordableUnits);
     if (refillUnits <= 0) return;
-    this.playerShip.state = {
-      ...this.playerShip.state,
-      fuel: this.playerShip.state.fuel + refillUnits,
-      credits: this.playerShip.state.credits - refillUnits * REFUEL_PRICE_PER_UNIT
-    };
+    this.worldState.updatePlayerShipState({
+      fuel: ship.fuel + refillUnits,
+      credits: ship.credits - refillUnits * pricePerUnit
+    });
+    this.worldState.saveToLocalStorage();
   }
 
   render(ctx: CanvasRenderingContext2D): void {
@@ -116,11 +121,12 @@ export class LandableScreen implements Screen {
 
     ctx.font = "24px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(this.landable.name.toUpperCase(), panelX + 20, panelY + 16);
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    const factionText = this.landable.factionId ? this.landable.factionId : 'Independent';
+    const factionText = this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'Independent';
     ctx.fillText(factionText, panelX + 20, panelY + 54);
 
     this.takeOffRect = {
@@ -146,6 +152,7 @@ export class LandableScreen implements Screen {
       { label: 'FLEET', enabled: false }
     ];
     ctx.font = "16px 'Courier New', monospace";
+    ctx.textAlign = 'left';
     for (const tab of allTabs) {
       const width = ctx.measureText(tab.label).width + 6;
       const isActive = tab.id === this.activeTab;
@@ -186,24 +193,40 @@ export class LandableScreen implements Screen {
     width: number,
     _height: number
   ): void {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = COLOURS.UI_PRIMARY;
     ctx.font = "18px 'Courier New', monospace";
     ctx.fillText(this.landable.name, x, y);
 
     ctx.font = "12px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    ctx.fillText(this.landable.type.toUpperCase(), x, y + 28);
+    ctx.fillText(this.formatType(this.landable.type), x, y + 28);
     const description = this.landable.description || 'No description available.';
     this.drawWrappedText(ctx, description, x, y + 62, width - 210, 20);
 
     ctx.font = "13px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_PRIMARY;
-    ctx.fillText(`Atmosphere: ${this.landable.atmosphere || 'Unknown'}`, x, y + 190);
-    if (this.landable.factionId) {
-      ctx.fillText(`Faction: ${this.landable.factionId}`, x, y + 214);
+    ctx.fillText(`Faction: ${this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'Independent'}`, x, y + 190);
+    ctx.font = "italic 13px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText(this.landable.atmosphere || 'Unknown atmosphere', x, y + 214);
+
+    let tagX = x;
+    const tagY = y + 240;
+    ctx.font = "11px 'Courier New', monospace";
+    for (const service of this.landable.services) {
+      const label = service.type.toUpperCase();
+      const labelWidth = ctx.measureText(label).width;
+      const tagWidth = labelWidth + 14;
+      ctx.strokeStyle = COLOURS.UI_ACCENT;
+      ctx.strokeRect(tagX, tagY, tagWidth, 20);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(label, tagX + 7, tagY + 5);
+      tagX += tagWidth + 8;
     }
 
-    drawPlanet(ctx, x + width - 120, y + 104, 80, this.landable.seed);
+    this.drawLandablePreview(ctx, x + width - 120, y + 104, 80);
   }
 
   private renderRefuel(
@@ -213,11 +236,15 @@ export class LandableScreen implements Screen {
     width: number,
     _height: number
   ): void {
-    const fuelCurrent = this.playerShip.state.fuel;
-    const fuelMax = this.playerShip.state.maxFuel;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const ship = this.worldState.getPlayerShipState();
+    const pricePerUnit = this.getRefuelPricePerUnit();
+    const fuelCurrent = ship.fuel;
+    const fuelMax = ship.maxFuel;
     const fuelRatio = fuelMax > 0 ? Math.min(1, fuelCurrent / fuelMax) : 0;
-    const credits = this.playerShip.state.credits;
-    const affordable = credits >= REFUEL_PRICE_PER_UNIT;
+    const credits = ship.credits;
+    const affordable = credits >= pricePerUnit;
     const tankFull = fuelCurrent >= fuelMax;
 
     ctx.font = "16px 'Courier New', monospace";
@@ -231,7 +258,7 @@ export class LandableScreen implements Screen {
 
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    ctx.fillText(`Price per unit: ${REFUEL_PRICE_PER_UNIT} ₢ per unit`, x, y + 70);
+    ctx.fillText(`Price per unit: ${pricePerUnit} ₢ per unit`, x, y + 70);
     ctx.fillText(`Player credits: ${credits.toFixed(1)} ₢`, x, y + 92);
 
     this.refuelRect = { x, y: y + 130, width: 170, height: 36 };
@@ -253,6 +280,7 @@ export class LandableScreen implements Screen {
     text: string,
     enabled: boolean
   ): void {
+    ctx.save();
     ctx.fillStyle = enabled ? 'rgba(8, 8, 16, 0.85)' : 'rgba(30, 30, 44, 0.8)';
     ctx.strokeStyle = enabled ? COLOURS.UI_ACCENT : '#2a2a3a';
     ctx.lineWidth = 1;
@@ -261,9 +289,57 @@ export class LandableScreen implements Screen {
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = enabled ? COLOURS.UI_ACCENT : '#3a3a4a';
-    ctx.font = "14px 'Courier New', monospace";
+    ctx.font = "13px 'Courier New', monospace";
+    const fittedText = this.fitTextToWidth(ctx, text, rect.width - 20);
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, rect.x + 12, rect.y + rect.height / 2);
+    ctx.fillText(fittedText, rect.x + rect.width / 2, rect.y + rect.height / 2);
+    ctx.restore();
+  }
+
+  private getRefuelPricePerUnit(): number {
+    return this.landable.services.find((service) => service.type === 'refuel')?.refuelPricePerUnit ?? 1;
+  }
+
+  private formatType(rawType: string): string {
+    return rawType.replace(/_/g, ' ').toUpperCase();
+  }
+
+  private fitTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+    if (ctx.measureText(text).width <= maxWidth) {
+      return text;
+    }
+    const ellipsis = '...';
+    let result = text;
+    while (result.length > 0 && ctx.measureText(`${result}${ellipsis}`).width > maxWidth) {
+      result = result.slice(0, -1);
+    }
+    return result.length > 0 ? `${result}${ellipsis}` : ellipsis;
+  }
+
+  private drawLandablePreview(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number
+  ): void {
+    if (this.landable.type === 'planet') {
+      drawPlanet(ctx, x, y, radius, this.landable.seed);
+      return;
+    }
+    if (this.landable.type === 'moon') {
+      drawMoon(ctx, x, y, radius, this.landable.seed);
+      return;
+    }
+    drawStation(
+      ctx,
+      x,
+      y,
+      radius,
+      this.landable.seed,
+      this.worldState.getFactionVisual(this.landable.factionId ?? ''),
+      performance.now() * this.landable.rotationSpeed * 0.001
+    );
   }
 
   private drawWrappedText(
@@ -274,6 +350,8 @@ export class LandableScreen implements Screen {
     maxWidth: number,
     lineHeight: number
   ): void {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_PRIMARY;
     const words = text.split(/\s+/);
