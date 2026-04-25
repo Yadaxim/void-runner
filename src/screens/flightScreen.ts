@@ -65,8 +65,8 @@ export class FlightScreen implements Screen {
       angularVelocity: 0,
       currentHP: 100,
       maxHP: 100,
-      fuel: 100,
-      maxFuel: 100,
+      fuel: 1000,
+      maxFuel: 1000,
       credits: 1000,
       cargo: [],
       equipmentSlots: [],
@@ -124,7 +124,11 @@ export class FlightScreen implements Screen {
     const gravity = computeGravity(
       this.playerShip.state.position as Vector2,
       PLACEHOLDER_SHIP_MASS,
-      this.landables.map((landable) => ({ position: landable.position as Vector2, mass: landable.mass }))
+      this.landables.map((landable) => ({
+        position: landable.position as Vector2,
+        mass: landable.mass,
+        radius: landable.radius
+      }))
     );
     this.playerShip.applyExternalForce(gravity);
     this.playerShip.update(dt);

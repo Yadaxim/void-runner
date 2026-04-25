@@ -14,8 +14,14 @@ export class HudRenderer {
   render(playerShip: ShipEntity, landingCandidate: Landable | null): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
+    const fuelCurrent = Math.max(0, playerShip.state.fuel);
+    const fuelMax = Math.max(0, playerShip.state.maxFuel);
+    const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
+    const credits = Math.floor(Math.max(0, playerShip.state.credits));
     const speedText = `SPD: ${speed.toString().padStart(3, '0')}`;
     const headingText = `HDG: ${heading.toString().padStart(3, '0')}°`;
+    const fuelText = `FUEL: ${Math.floor(fuelCurrent).toString().padStart(3, '0')} / ${Math.floor(fuelMax).toString().padStart(3, '0')} (${fuelPercent.toString().padStart(3, '0')}%)`;
+    const creditsText = `CR: ${credits.toString()}`;
     const linearBrakeText = `L-BRK: ${playerShip.isLinearAutoBrakeEnabled() ? 'ON' : 'OFF'}`;
     const rotationBrakeText = `R-BRK: ${playerShip.isRotationAutoBrakeEnabled() ? 'ON' : 'OFF'}`;
 
@@ -24,8 +30,10 @@ export class HudRenderer {
     this.ctx.textBaseline = 'top';
     this.ctx.fillText(speedText, 12, 12);
     this.ctx.fillText(headingText, 12, 28);
-    this.ctx.fillText(linearBrakeText, 12, 44);
-    this.ctx.fillText(rotationBrakeText, 12, 60);
+    this.ctx.fillText(fuelText, 12, 44);
+    this.ctx.fillText(creditsText, 12, 60);
+    this.ctx.fillText(linearBrakeText, 12, 76);
+    this.ctx.fillText(rotationBrakeText, 12, 92);
 
     const cx = this.ctx.canvas.width / 2;
     const cy = this.ctx.canvas.height / 2;
