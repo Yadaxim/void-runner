@@ -1,36 +1,29 @@
 import type { Landable } from '../../types';
+import { LANDING_RADIUS_MULTIPLIER, COLOURS } from '../../constants';
 import type { Camera } from '../camera';
 import { worldToScreen } from '../camera';
+import { drawPlanet } from '../landables/planetRenderer';
 
 export class LandableLayer {
   constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-  render(landables: Landable[], camera: Camera): void {
+  render(landables: Landable[], camera: Camera, landingCandidate: Landable | null): void {
     for (const landable of landables) {
       const pos = worldToScreen(landable.position, camera);
-      const glow = this.ctx.createRadialGradient(pos.x, pos.y, landable.radius * 0.75, pos.x, pos.y, landable.radius * 1.6);
-      glow.addColorStop(0, 'rgba(120, 180, 255, 0.25)');
-      glow.addColorStop(1, 'rgba(120, 180, 255, 0)');
-      this.ctx.fillStyle = glow;
-      this.ctx.beginPath();
-      this.ctx.arc(pos.x, pos.y, landable.radius * 1.6, 0, Math.PI * 2);
-      this.ctx.fill();
+      drawPlanet(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
 
-      const fill = this.ctx.createRadialGradient(
-        pos.x - landable.radius * 0.25,
-        pos.y - landable.radius * 0.25,
-        landable.radius * 0.2,
-        pos.x,
-        pos.y,
-        landable.radius
-      );
-      fill.addColorStop(0, '#6fa2d8');
-      fill.addColorStop(1, '#2d5a8a');
-
-      this.ctx.fillStyle = fill;
-      this.ctx.beginPath();
-      this.ctx.arc(pos.x, pos.y, landable.radius, 0, Math.PI * 2);
-      this.ctx.fill();
+      if (landingCandidate?.id === landable.id) {
+        this.ctx.save();
+        this.ctx.setLineDash([6, 4]);
+        this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+        this.ctx.globalAlpha = 0.7;
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(pos.x, pos.y, landable.radius * LANDING_RADIUS_MULTIPLIER, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        this.ctx.restore();
+      }
     }
   }
 }

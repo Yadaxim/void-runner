@@ -5,12 +5,14 @@ interface ThrusterInputs {
   rotateCCW: boolean;
   autoBrakeLinear: boolean;
   autoBrakeRotation: boolean;
+  landPressed: boolean;
 }
 
 export class PlayerController {
   private readonly pressedKeys = new Set<string>();
   private autoBrakeLinearEnabled = false;
   private autoBrakeRotationEnabled = false;
+  private landPressedQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -18,7 +20,10 @@ export class PlayerController {
     'ArrowRight',
     'Space',
     'ShiftLeft',
-    'ShiftRight'
+    'ShiftRight',
+    'KeyL',
+    'KeyT',
+    'Tab'
   ]);
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -36,6 +41,9 @@ export class PlayerController {
     ) {
       this.autoBrakeRotationEnabled = !this.autoBrakeRotationEnabled;
     }
+    if (!event.repeat && event.code === 'KeyL') {
+      this.landPressedQueued = true;
+    }
     this.pressedKeys.add(event.code);
   };
 
@@ -52,14 +60,23 @@ export class PlayerController {
   }
 
   update(): ThrusterInputs {
+    const landPressed = this.landPressedQueued;
+    this.landPressedQueued = false;
     return {
       forward: this.pressedKeys.has('ArrowUp'),
       reverse: this.pressedKeys.has('ArrowDown'),
       rotateCW: this.pressedKeys.has('ArrowRight'),
       rotateCCW: this.pressedKeys.has('ArrowLeft'),
       autoBrakeLinear: this.autoBrakeLinearEnabled,
-      autoBrakeRotation: this.autoBrakeRotationEnabled
+      autoBrakeRotation: this.autoBrakeRotationEnabled,
+      landPressed
     };
+  }
+
+  getLandPressed(): boolean {
+    const landPressed = this.landPressedQueued;
+    this.landPressedQueued = false;
+    return landPressed;
   }
 
   destroy(): void {
@@ -68,5 +85,6 @@ export class PlayerController {
     this.pressedKeys.clear();
     this.autoBrakeLinearEnabled = false;
     this.autoBrakeRotationEnabled = false;
+    this.landPressedQueued = false;
   }
 }

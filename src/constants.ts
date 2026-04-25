@@ -8,8 +8,12 @@ export const PLACEHOLDER_TOP_ANGULAR_SPEED = 3.0;
 export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const PLACEHOLDER_LINEAR_DAMPING = 2.0;
 export const MAX_RADIATION_DAMAGE_PER_SECOND = 10;
-export const LANDING_SPEED_THRESHOLD = 20;
+export const LANDING_SPEED_THRESHOLD = 100;
 export const LANDING_RADIUS_MULTIPLIER = 2.5;
+export const TAKEOFF_VELOCITY = 30;
+export const FUEL_CAPACITY_DEFAULT = 100;
+export const REFUEL_PRICE_PER_UNIT = 2;
+export const REFUEL_RATE = 20;
 
 export const GALAXY_GRID_WIDTH = 30;
 export const GALAXY_GRID_HEIGHT = 30;

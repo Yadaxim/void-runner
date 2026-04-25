@@ -24,5 +24,5 @@ window.addEventListener('resize', () => {
 
 const screenManager = new ScreenManager();
 const renderPipeline = new RenderPipeline(canvas);
-const flightScreen = new FlightScreen(canvas, renderPipeline, ctx);
+const flightScreen = new FlightScreen(canvas, renderPipeline, ctx, screenManager);
 screenManager.push(flightScreen);

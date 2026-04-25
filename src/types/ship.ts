@@ -74,4 +74,5 @@ export interface ShipState {
   targets: TargetState;
   isPlayerControlled: boolean;
   insuranceActive: boolean;
+  lastLandedLandableId?: string | null;
 }

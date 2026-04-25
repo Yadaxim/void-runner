@@ -1,5 +1,7 @@
 import { COLOURS } from '../../constants';
+import { LANDING_SPEED_THRESHOLD } from '../../constants';
 import type { ShipEntity } from '../../simulation/shipEntity';
+import type { Landable } from '../../types';
 
 function normaliseDegrees(angleRad: number): number {
   const deg = (angleRad * 180) / Math.PI;
@@ -9,7 +11,7 @@ function normaliseDegrees(angleRad: number): number {
 export class HudRenderer {
   constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-  render(playerShip: ShipEntity): void {
+  render(playerShip: ShipEntity, landingCandidate: Landable | null): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
     const speedText = `SPD: ${speed.toString().padStart(3, '0')}`;
@@ -35,5 +37,32 @@ export class HudRenderer {
     this.ctx.moveTo(cx, cy - 6);
     this.ctx.lineTo(cx, cy + 6);
     this.ctx.stroke();
+
+    if (landingCandidate && speed < LANDING_SPEED_THRESHOLD) {
+      const pulse = 0.65 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.125;
+      const promptText = `[ L ]  LAND AT  ${landingCandidate.name.toUpperCase()}`;
+      this.ctx.font = "14px 'Courier New', monospace";
+      const paddingX = 14;
+      const paddingY = 8;
+      const textWidth = this.ctx.measureText(promptText).width;
+      const width = textWidth + paddingX * 2;
+      const height = 30;
+      const x = (this.ctx.canvas.width - width) / 2;
+      const y = this.ctx.canvas.height - 62;
+
+      this.ctx.save();
+      this.ctx.globalAlpha = pulse;
+      this.ctx.fillStyle = COLOURS.SPACE_BLACK;
+      this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.roundRect(x, y, width, height, 14);
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.fillStyle = COLOURS.UI_ACCENT;
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText(promptText, x + paddingX, y + height / 2);
+      this.ctx.restore();
+    }
   }
 }

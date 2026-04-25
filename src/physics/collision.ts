@@ -5,5 +5,9 @@ export function circleCircle(_aPos: Vector2, _aRadius: number, _bPos: Vector2, _
 }
 
 export function pointInCircle(_point: Vector2, _center: Vector2, _radius: number): boolean {
-  throw new Error('not implemented');
+  return distance(_point, _center) <= _radius;
+}
+
+export function distance(a: Vector2, b: Vector2): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }

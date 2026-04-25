@@ -12,6 +12,7 @@ interface RenderPipelineState {
   otherShips: ShipEntity[];
   landables: Landable[];
   camera: Camera;
+  landingCandidate: Landable | null;
 }
 
 export class RenderPipeline {
@@ -45,8 +46,8 @@ export class RenderPipeline {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.backgroundLayer.render(state.playerShip.state.position);
-    this.landableLayer.render(state.landables, state.camera);
+    this.landableLayer.render(state.landables, state.camera, state.landingCandidate);
     this.shipLayer.render([state.playerShip, ...state.otherShips], state.camera);
-    this.hudRenderer.render(state.playerShip);
+    this.hudRenderer.render(state.playerShip, state.landingCandidate);
   }
 }
