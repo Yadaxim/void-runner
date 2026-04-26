@@ -290,6 +290,8 @@
       "speed": 600,
       "inheritShipVelocity": true,
       "damage": 12,
+      "damageCategory": "laser",
+      "matterType": "normal",
       "attractedByGravity": false,
       "seeking": false,
       "infinite": false,
@@ -304,6 +306,8 @@
       "speed": 400,
       "inheritShipVelocity": true,
       "damage": 30,
+      "damageCategory": "kinetic",
+      "matterType": "normal",
       "attractedByGravity": true,
       "seeking": false,
       "infinite": false,
@@ -318,6 +322,8 @@
       "speed": 350,
       "inheritShipVelocity": false,
       "damage": 50,
+      "damageCategory": "explosive",
+      "matterType": "normal",
       "attractedByGravity": false,
       "seeking": true,
       "turnRatio": 2.5,
@@ -333,10 +339,14 @@
       "speed": 0,
       "inheritShipVelocity": false,
       "damage": 8,
-      "attractedByGravity": true,
+      "damageCategory": "plasma",
+      "matterType": "normal",
+      "dotDuration": 3.0,
+      "dotDamagePerSecond": 4,
+      "attractedByGravity": false,
       "seeking": false,
       "infinite": false,
-      "lifespan": 400,
+      "lifespan": 4.0,
       "visualType": "orb",
       "colour": "#80ff40"
     }
@@ -493,7 +503,22 @@
       "mass": 15,
       "tier": 1,
       "factionAffinity": "federation",
-      "hpBonus": 40
+      "hpBonus": 40,
+      "reductions": {
+        "kinetic": 4,
+        "antimatter_kinetic": 2,
+        "darkmatter_kinetic": 1,
+        "explosive": 3,
+        "antimatter_explosive": 1,
+        "darkmatter_explosive": 1,
+        "laser": 6,
+        "anti_photon_laser": 2,
+        "dark_energy_laser": -2,
+        "plasma": 3,
+        "antimatter_plasma": 1,
+        "darkmatter_plasma": -1,
+        "void": 0
+      }
     },
     {
       "id": "heavy_plating_t1",
@@ -503,7 +528,22 @@
       "mass": 35,
       "tier": 1,
       "factionAffinity": "frontier_clans",
-      "hpBonus": 100
+      "hpBonus": 100,
+      "reductions": {
+        "kinetic": 14,
+        "antimatter_kinetic": 6,
+        "darkmatter_kinetic": -3,
+        "explosive": 10,
+        "antimatter_explosive": 4,
+        "darkmatter_explosive": -2,
+        "laser": -4,
+        "anti_photon_laser": -2,
+        "dark_energy_laser": -6,
+        "plasma": 2,
+        "antimatter_plasma": 0,
+        "darkmatter_plasma": -4,
+        "void": 0
+      }
     },
     {
       "id": "ablative_shield_t1",
@@ -513,7 +553,22 @@
       "mass": 20,
       "tier": 1,
       "factionAffinity": "veth_collective",
-      "hpBonus": 60
+      "hpBonus": 60,
+      "reductions": {
+        "kinetic": -2,
+        "antimatter_kinetic": -4,
+        "darkmatter_kinetic": -6,
+        "explosive": -5,
+        "antimatter_explosive": -8,
+        "darkmatter_explosive": -10,
+        "laser": 10,
+        "anti_photon_laser": 6,
+        "dark_energy_laser": 4,
+        "plasma": 8,
+        "antimatter_plasma": 4,
+        "darkmatter_plasma": 3,
+        "void": 0
+      }
     }
   ],
   "defaultLoadouts": {

@@ -56,7 +56,8 @@ export class HudRenderer {
     spawnRuleDebugLines: string[],
     weaponLoadout: WeaponSlot[],
     worldState: WorldState,
-    heldFireKeys: Record<WeaponFireKey, boolean>
+    heldFireKeys: Record<WeaponFireKey, boolean>,
+    playerBurnRemainingSeconds: number | null
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
@@ -84,7 +85,7 @@ export class HudRenderer {
     this.ctx.fillText(rotationBrakeText, 12, 92);
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
     this.ctx.fillText('[R] DEV REFUEL', 12, 108);
-    this.renderHpBar(playerShip, radiationIntensity, worldState);
+    this.renderHpBar(playerShip, radiationIntensity, worldState, playerBurnRemainingSeconds);
     this.renderSectorReputationIndicator(sectorFaction);
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
@@ -254,7 +255,12 @@ export class HudRenderer {
     this.ctx.restore();
   }
 
-  private renderHpBar(playerShip: ShipEntity, radiationIntensity: number, worldState: WorldState): void {
+  private renderHpBar(
+    playerShip: ShipEntity,
+    radiationIntensity: number,
+    worldState: WorldState,
+    playerBurnRemainingSeconds: number | null
+  ): void {
     const barX = 12;
     const barY = 112;
     const barWidth = 210;
@@ -301,6 +307,15 @@ export class HudRenderer {
       barX + barWidth + 10,
       barY - 1
     );
+    if (playerBurnRemainingSeconds !== null && playerBurnRemainingSeconds > 0) {
+      const hpTextWidth = this.ctx.measureText(`${Math.round(hpCurrent).toString()} / ${Math.round(hpMax).toString()}`).width;
+      this.ctx.fillStyle = '#80ff40';
+      this.ctx.fillText(
+        `⬡ ${playerBurnRemainingSeconds.toFixed(1)}s`,
+        barX + barWidth + 22 + hpTextWidth,
+        barY - 1
+      );
+    }
   }
 
   private renderSectorReputationIndicator(

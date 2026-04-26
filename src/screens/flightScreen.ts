@@ -364,6 +364,7 @@ export class FlightScreen implements Screen {
       radiationIntensity: this.worldState.getRadiationIntensity(),
       arrivalMessage: this.getArrivalMessage(),
       destructionMessageAlpha: this.getDestructionMessageAlpha(),
+      activeBurns: this.sectorSimulation?.getWeaponSystem().getActiveBurns() ?? [],
       spawnRuleDebugLines: (this.sectorSimulation?.getSpawnRuleDebugRows() ?? []).map((row) => {
         const next = row.nextArrivalIn.toFixed(1).padStart(5, ' ');
         return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;

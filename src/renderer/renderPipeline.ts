@@ -14,6 +14,7 @@ import { MinimapRenderer } from './ui/minimapRenderer';
 import type { BulletEntity } from '../simulation/bulletEntity';
 import type { Particle } from '../simulation/particleSystem';
 import type { ShipEntity } from '../simulation/shipEntity';
+import type { BurnEffect } from '../simulation/weaponSystem';
 
 interface RenderPipelineState {
   playerShip: ShipEntity;
@@ -37,6 +38,7 @@ interface RenderPipelineState {
   } | null;
   destructionMessageAlpha: number;
   spawnRuleDebugLines: string[];
+  activeBurns: BurnEffect[];
 }
 
 export class RenderPipeline {
@@ -121,7 +123,8 @@ export class RenderPipeline {
       [state.playerShip, ...state.otherShips],
       state.camera,
       state.shipTargetId,
-      state.worldState
+      state.worldState,
+      state.activeBurns
     );
     this.effectsLayer.render(state.particles, state.camera);
     this.hudRenderer.render(
@@ -174,7 +177,8 @@ export class RenderPipeline {
       state.spawnRuleDebugLines,
       state.playerShip.state.weaponLoadout,
       state.worldState,
-      state.heldFireKeys
+      state.heldFireKeys,
+      state.activeBurns.find((burn) => burn.targetId === state.playerShip.state.id)?.remainingDuration ?? null
     );
     this.minimapRenderer.render(
       state.worldState,

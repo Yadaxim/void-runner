@@ -4,6 +4,7 @@ import type { Camera } from '../camera';
 import { worldToScreen } from '../camera';
 import { drawShip } from '../ships/shipRenderer';
 import type { ShipEntity } from '../../simulation/shipEntity';
+import type { BurnEffect } from '../../simulation/weaponSystem';
 
 function hpBarColour(ratio: number): string {
   if (ratio > 0.6) return COLOURS.SAFE;
@@ -18,7 +19,8 @@ export class ShipLayer {
     ships: ShipEntity[],
     camera: Camera,
     shipTargetId: string | null,
-    worldState: WorldState
+    worldState: WorldState,
+    activeBurns: BurnEffect[]
   ): void {
     for (const ship of ships) {
       const screenPos = worldToScreen(ship.state.position, camera);
@@ -34,6 +36,15 @@ export class ShipLayer {
       this.ctx.rotate(ship.state.angle);
       const armourMass = ship.getTotalArmourMass(worldState);
       drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass);
+      const burn = activeBurns.find((effect) => effect.targetId === ship.state.id);
+      if (burn) {
+        const opacity = Math.min(0.35, Math.max(0, (burn.remainingDuration / burn.totalDuration) * 0.35));
+        if (opacity > 0) {
+          this.ctx.globalAlpha = opacity;
+          this.ctx.fillStyle = '#80ff40';
+          drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass);
+        }
+      }
       this.ctx.restore();
       this.drawWorldHpBar(ship, screenPos);
       if (ship.state.id === shipTargetId) {

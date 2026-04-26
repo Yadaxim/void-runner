@@ -1,4 +1,5 @@
 import type { BrainMode } from './ai';
+import type { DamageTypeKey } from './bullet';
 
 export type EquipType =
   | 'thruster'
@@ -41,6 +42,27 @@ export interface WeaponItem extends BaseEquipment {
 export interface ArmourItem extends BaseEquipment {
   type: 'armour';
   hpBonus: number;
+  reductions: ArmourReductionProfile;
+}
+
+export type ArmourReductionProfile = Record<DamageTypeKey, number>;
+
+export function emptyReductionProfile(): ArmourReductionProfile {
+  return {
+    kinetic: 0,
+    antimatter_kinetic: 0,
+    darkmatter_kinetic: 0,
+    explosive: 0,
+    antimatter_explosive: 0,
+    darkmatter_explosive: 0,
+    laser: 0,
+    anti_photon_laser: 0,
+    dark_energy_laser: 0,
+    plasma: 0,
+    antimatter_plasma: 0,
+    darkmatter_plasma: 0,
+    void: 0
+  };
 }
 
 export interface FuelTankItem extends BaseEquipment {

@@ -152,18 +152,6 @@ export class ShipEntity {
       }, 0);
   }
 
-  getDamageReduction(worldState: WorldState): number {
-    return Math.min(0.5, this.getTotalArmourMass(worldState) * 0.005);
-  }
-
-  applyDamage(rawDamage: number, worldState: WorldState): number {
-    const reduction = this.getDamageReduction(worldState);
-    const actualDamage = rawDamage * (1 - reduction);
-    const nextHP = Math.max(0, this.state.currentHP - actualDamage);
-    this.state.currentHP = nextHP;
-    return actualDamage;
-  }
-
   getThrusterForce(
     slotType: 'thruster_forward' | 'thruster_reverse' | 'thruster_rotateCW' | 'thruster_rotateCCW',
     worldState: WorldState

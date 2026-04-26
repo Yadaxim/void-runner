@@ -11,6 +11,7 @@ import type { Landable, Vector2 } from '../../types';
 const MIN_LANDABLE_DOT_SIZE = 3;
 const MAX_LANDABLE_DOT_SIZE = 8;
 const PANEL_MARGIN = 16;
+const NPC_DOT_RADIUS = 2.5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -79,19 +80,26 @@ export class MinimapRenderer {
       const relativeY = (npc.state.position.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT;
       const dotX = mapX + clamp(relativeX, 0, 1) * MINIMAP_SIZE;
       const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
-      const hostilePulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 600)) + 1) * 0.25;
       const hostility = npc.getNPCHostilityState();
       this.ctx.save();
       this.ctx.globalAlpha = npc.getOpacity();
-      if (hostility !== 'none') {
-        this.ctx.globalAlpha *= hostilePulse;
-        this.ctx.fillStyle = hostility === 'toPlayer' ? COLOURS.DANGER : COLOURS.NPC_HOSTILE_OTHER;
-      } else {
-        this.ctx.fillStyle = worldState.getFactionVisual(npc.state.factionId ?? '').primaryColour;
-      }
+
+      // Inner dot keeps faction identity; disposition is encoded by the outer ring.
+      this.ctx.fillStyle = worldState.getFactionVisual(npc.state.factionId ?? '').primaryColour;
       this.ctx.beginPath();
-      this.ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+      this.ctx.arc(dotX, dotY, NPC_DOT_RADIUS, 0, Math.PI * 2);
       this.ctx.fill();
+
+      if (hostility !== 'none') {
+        const ringPulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 600)) + 1) * 0.25;
+        const ringColour = hostility === 'toPlayer' ? COLOURS.DANGER : COLOURS.NPC_HOSTILE_OTHER;
+        this.ctx.globalAlpha *= ringPulse;
+        this.ctx.strokeStyle = ringColour;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, NPC_DOT_RADIUS + 2, 0, Math.PI * 2);
+        this.ctx.stroke();
+      }
       this.ctx.restore();
     }
 

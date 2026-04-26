@@ -1,6 +1,7 @@
 import {
   BULLET_MAX_IMPACT_DELTA_V,
   BULLET_MOMENTUM_TRANSFER_SCALE,
+  COLOURS,
   HULL_DIMENSIONS,
   NPC_ALLY_ALERT_RANGE,
   REP_PENALTY_HIT,
@@ -9,7 +10,15 @@ import {
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
-import type { Landable, ShipState, WeaponFireKey, WeaponItem } from '../types';
+import type {
+  ArmourItem,
+  BulletSpec,
+  Landable,
+  ShipState,
+  WeaponFireKey,
+  WeaponItem
+} from '../types';
+import { getDamageTypeKey } from '../types';
 import { BulletEntity } from './bulletEntity';
 import { ParticleSystem } from './particleSystem';
 import type { ShipEntity } from './shipEntity';
@@ -25,8 +34,21 @@ function isWeaponItem(item: unknown): item is WeaponItem {
   );
 }
 
+export interface BurnEffect {
+  targetId: string;
+  damagePerSecond: number;
+  remainingDuration: number;
+  totalDuration: number;
+}
+
+interface BulletDamageResult {
+  effectiveDamage: number;
+  totalReduction: number;
+}
+
 export class WeaponSystem {
   private activeBullets: BulletEntity[] = [];
+  private activeBurns: BurnEffect[] = [];
   private playerDestroyed = false;
 
   constructor(private readonly particles: ParticleSystem) {}
@@ -101,14 +123,18 @@ export class WeaponSystem {
           if (isPlayerAggressor && ship.state.factionId) {
             worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT, 'combat_hit');
           }
-          ship.applyDamage(this.getBulletDamage(bullet), worldState);
+          const damageResult = this.applyBulletDamage(bullet.getSpec(), ship, worldState);
+          this.tryApplyPlasmaBurn(bullet.getSpec(), ship);
           const nextHP = ship.state.currentHP;
           const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
           if (nextVelocity) {
             ship.state = { ...ship.state, velocity: nextVelocity };
           }
           bullet.markHit();
-          this.particles.spawnImpact(bullet.getPosition(), this.getBulletColour(bullet));
+          this.particles.spawnImpact(
+            bullet.getPosition(),
+            this.getImpactColour(this.getBulletColour(bullet), damageResult)
+          );
           if (nextHP <= 0) {
             ship.markDestroyed();
             if (isPlayerAggressor && ship.state.factionId) {
@@ -125,6 +151,22 @@ export class WeaponSystem {
         continue;
       }
     }
+
+    this.activeBurns = this.activeBurns.filter((burn) => {
+      const target = ships.find((ship) => ship.state.id === burn.targetId);
+      if (!target || target.isDestroyed()) {
+        return false;
+      }
+      burn.remainingDuration -= dt;
+      target.state.currentHP = Math.max(0, target.state.currentHP - burn.damagePerSecond * dt);
+      if (target.state.currentHP <= 0) {
+        target.markDestroyed();
+        if (target.state.isPlayerControlled) {
+          this.playerDestroyed = true;
+        }
+      }
+      return burn.remainingDuration > 0;
+    });
   }
 
   pruneExpired(): void {
@@ -135,6 +177,10 @@ export class WeaponSystem {
     return this.activeBullets;
   }
 
+  getActiveBurns(): BurnEffect[] {
+    return this.activeBurns;
+  }
+
   wasPlayerDestroyed(): boolean {
     return this.playerDestroyed;
   }
@@ -143,8 +189,69 @@ export class WeaponSystem {
     return bullet.getSpec().damage;
   }
 
+  private applyBulletDamage(
+    bulletSpec: BulletSpec,
+    target: ShipEntity,
+    worldState: WorldState
+  ): BulletDamageResult {
+    if (bulletSpec.damageCategory === 'void') {
+      const damage = bulletSpec.damage;
+      target.state.currentHP = Math.max(0, target.state.currentHP - damage);
+      return { effectiveDamage: damage, totalReduction: 0 };
+    }
+
+    const typeKey = getDamageTypeKey(bulletSpec.damageCategory, bulletSpec.matterType);
+    const totalReduction = target.state.equipmentSlots.reduce((total, slot) => {
+      if (!slot.itemId) return total;
+      const item = worldState.getEquipmentItem(slot.itemId);
+      if (!item || item.type !== 'armour') return total;
+      return total + ((item as ArmourItem).reductions[typeKey] ?? 0);
+    }, 0);
+
+    const effectiveDamage = Math.max(0, bulletSpec.damage - totalReduction);
+    target.state.currentHP = Math.max(0, target.state.currentHP - effectiveDamage);
+    return { effectiveDamage, totalReduction };
+  }
+
+  private tryApplyPlasmaBurn(bulletSpec: BulletSpec, target: ShipEntity): void {
+    if (
+      bulletSpec.damageCategory !== 'plasma' ||
+      !bulletSpec.dotDuration ||
+      !bulletSpec.dotDamagePerSecond ||
+      target.state.currentHP <= 0
+    ) {
+      return;
+    }
+    const existing = this.activeBurns.find((burn) => burn.targetId === target.state.id);
+    if (existing) {
+      existing.remainingDuration = Math.max(existing.remainingDuration, bulletSpec.dotDuration);
+      existing.damagePerSecond = Math.max(existing.damagePerSecond, bulletSpec.dotDamagePerSecond);
+      existing.totalDuration = Math.max(existing.totalDuration, bulletSpec.dotDuration);
+      return;
+    }
+    this.activeBurns.push({
+      targetId: target.state.id,
+      damagePerSecond: bulletSpec.dotDamagePerSecond,
+      remainingDuration: bulletSpec.dotDuration,
+      totalDuration: bulletSpec.dotDuration
+    });
+  }
+
   private getBulletColour(bullet: BulletEntity): string {
     return bullet.getSpec().colour;
+  }
+
+  private getImpactColour(baseColour: string, damageResult: BulletDamageResult): string {
+    if (damageResult.totalReduction < 0) {
+      return COLOURS.DANGER;
+    }
+    if (damageResult.totalReduction > 0) {
+      if (damageResult.effectiveDamage <= 0) {
+        return COLOURS.UI_ACCENT;
+      }
+      return COLOURS.SAFE;
+    }
+    return baseColour;
   }
 
   private getShipHitRadius(ship: ShipEntity, worldState: WorldState): number {

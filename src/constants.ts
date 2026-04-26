@@ -1,3 +1,5 @@
+import type { DamageTypeKey } from './types';
+
 // Physics and simulation
 export const GRAVITY_CONSTANT = 10;
 export const MIN_GRAVITY_DISTANCE = 100;
@@ -106,6 +108,22 @@ export const COLOURS = {
 } as const;
 
 export const STAR_COLOURS = [COLOURS.STAR_DIM, COLOURS.STAR_MID, COLOURS.STAR_BRIGHT, COLOURS.UI_PRIMARY] as const;
+
+export const DAMAGE_TYPE_LABELS: Record<DamageTypeKey, string> = {
+  kinetic: 'KIN',
+  antimatter_kinetic: 'A-KIN',
+  darkmatter_kinetic: 'DM-KIN',
+  explosive: 'EXP',
+  antimatter_explosive: 'A-EXP',
+  darkmatter_explosive: 'DM-EXP',
+  laser: 'LSR',
+  anti_photon_laser: 'A-LSR',
+  dark_energy_laser: 'DE-LSR',
+  plasma: 'PLA',
+  antimatter_plasma: 'A-PLA',
+  darkmatter_plasma: 'DM-PLA',
+  void: 'VOID'
+};
 
 export const DEFAULT_FACTION_VISUAL = {
   factionId: 'player',

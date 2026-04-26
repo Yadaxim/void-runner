@@ -1,5 +1,6 @@
 import {
   COLOURS,
+  DAMAGE_TYPE_LABELS,
   REFUEL_PRICE_PER_UNIT,
   REFUEL_RATE,
   REP_CEILING_MISSION_COMPLETE,
@@ -14,6 +15,8 @@ import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
 import { drawStation } from '../renderer/landables/stationRenderer';
 import type { Landable } from '../types';
+import { emptyReductionProfile } from '../types';
+import type { ArmourItem, ArmourReductionProfile, DamageTypeKey, EquipmentItem } from '../types';
 import type { LandableService, ServiceType } from '../types/landable';
 import type { Screen } from './screenManager';
 
@@ -35,6 +38,25 @@ interface TabRect {
 }
 
 export class LandableScreen implements Screen {
+  private isArmourItem(item: EquipmentItem | null): item is ArmourItem {
+    return item?.type === 'armour';
+  }
+
+  private static readonly DAMAGE_TYPE_ORDER: DamageTypeKey[] = [
+    'kinetic',
+    'antimatter_kinetic',
+    'darkmatter_kinetic',
+    'explosive',
+    'antimatter_explosive',
+    'darkmatter_explosive',
+    'laser',
+    'anti_photon_laser',
+    'dark_energy_laser',
+    'plasma',
+    'antimatter_plasma',
+    'darkmatter_plasma',
+    'void'
+  ];
   private static readonly DEV_CREDIT_GRANT = 1000;
   private activeTab: TabId = 'overview';
   private isRefuelHeld = false;
@@ -561,6 +583,64 @@ export class LandableScreen implements Screen {
       ctx.fillStyle = COLOURS.WARNING;
       ctx.fillText(`MAX REPAIR WITH CURRENT CREDITS: ${maxRepairHP} HP - ${maxRepairCost.toFixed(1)} ₢`, x, y + 290);
     }
+
+    this.renderArmourReductionProfile(ctx, ship, x + width - 420, y + 10);
+  }
+
+  private renderArmourReductionProfile(
+    ctx: CanvasRenderingContext2D,
+    ship: ReturnType<WorldState['getPlayerShipState']>,
+    x: number,
+    y: number
+  ): void {
+    const equippedArmour = ship.equipmentSlots
+      .filter((slot) => slot.itemId !== null)
+      .map((slot) => this.worldState.getEquipmentItem(slot.itemId!))
+      .filter((item) => this.isArmourItem(item));
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = "13px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+
+    if (equippedArmour.length === 0) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText('ARMOUR: NONE', x, y);
+      return;
+    }
+
+    const profile = this.sumArmourReductions(equippedArmour);
+    const primaryArmour = equippedArmour[0]!;
+    const title = equippedArmour.length > 1 ? `${primaryArmour.name} +${equippedArmour.length - 1}` : primaryArmour.name;
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.fillText(`ARMOUR   ${title}`, x, y);
+
+    const rowStartY = y + 26;
+    const columnWidth = 120;
+    const valueOffset = 52;
+    for (let i = 0; i < LandableScreen.DAMAGE_TYPE_ORDER.length; i += 1) {
+      const key = LandableScreen.DAMAGE_TYPE_ORDER[i];
+      const row = Math.floor(i / 3);
+      const col = i % 3;
+      const drawX = x + col * columnWidth;
+      const drawY = rowStartY + row * 20;
+      const value = profile[key];
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.fillText(DAMAGE_TYPE_LABELS[key], drawX, drawY);
+      ctx.fillStyle = value > 0 ? COLOURS.SAFE : value < 0 ? COLOURS.DANGER : COLOURS.UI_SECONDARY;
+      const display = value > 0 ? `+${value}` : `${value}`;
+      ctx.fillText(display.padStart(4, ' '), drawX + valueOffset, drawY);
+    }
+  }
+
+  private sumArmourReductions(armourItems: Array<{ reductions: ArmourReductionProfile }>): ArmourReductionProfile {
+    const total = emptyReductionProfile();
+    for (const item of armourItems) {
+      for (const key of LandableScreen.DAMAGE_TYPE_ORDER) {
+        total[key] += item.reductions[key] ?? 0;
+      }
+    }
+    return total;
   }
 
   private getRefuelPricePerUnit(): number {
