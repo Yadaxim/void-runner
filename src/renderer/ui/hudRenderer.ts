@@ -66,26 +66,24 @@ export class HudRenderer {
     const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
     const credits = Math.floor(Math.max(0, playerShip.state.credits));
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
-    const speedText = `SPD: ${speed.toString().padStart(3, '0')}`;
     const headingText = `HDG: ${heading.toString().padStart(3, '0')}°`;
-    const fuelText = `FUEL: ${Math.floor(fuelCurrent).toString().padStart(3, '0')} / ${Math.floor(fuelMax).toString().padStart(3, '0')} (${fuelPercent.toString().padStart(3, '0')}%)`;
     const creditsText = `CR: ${credits.toString()}`;
-    const linearBrakeText = `L-BRK: ${autoBrakeInstalled ? (playerShip.isLinearAutoBrakeEnabled() ? 'ON' : 'OFF') : 'NOT INSTALLED'}`;
-    const rotationBrakeText = `R-BRK: ${autoBrakeInstalled ? (playerShip.isRotationAutoBrakeEnabled() ? 'ON' : 'OFF') : 'NOT INSTALLED'}`;
-
-    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
-    this.ctx.font = "12px 'Courier New', monospace";
-    this.ctx.textBaseline = 'top';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(speedText, 12, 12);
-    this.ctx.fillText(headingText, 12, 28);
-    this.ctx.fillText(fuelText, 12, 44);
-    this.ctx.fillText(creditsText, 12, 60);
-    this.ctx.fillText(linearBrakeText, 12, 76);
-    this.ctx.fillText(rotationBrakeText, 12, 92);
-    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    this.ctx.fillText('[R] DEV REFUEL', 12, 108);
-    this.renderHpBar(playerShip, radiationIntensity, worldState, playerBurnRemainingSeconds);
+    this.renderShipTelemetryPanel({
+      speed,
+      headingText,
+      fuelCurrent,
+      fuelMax,
+      fuelPercent,
+      creditsText,
+      linearBrakeEnabled: autoBrakeInstalled && playerShip.isLinearAutoBrakeEnabled(),
+      rotationBrakeEnabled: autoBrakeInstalled && playerShip.isRotationAutoBrakeEnabled(),
+      autoBrakeInstalled,
+      hpCurrent: Math.max(0, playerShip.state.currentHP),
+      hpMax: Math.max(1, playerShip.state.maxHP),
+      hullBaseHP: worldState.getHullSpec(playerShip.state.hullSpecId)?.baseHP ?? Math.max(1, playerShip.state.maxHP),
+      radiationIntensity,
+      playerBurnRemainingSeconds
+    });
     this.renderSectorReputationIndicator(sectorFaction);
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
@@ -191,12 +189,232 @@ export class HudRenderer {
     }
   }
 
+  private renderShipTelemetryPanel(config: {
+    speed: number;
+    headingText: string;
+    fuelCurrent: number;
+    fuelMax: number;
+    fuelPercent: number;
+    creditsText: string;
+    linearBrakeEnabled: boolean;
+    rotationBrakeEnabled: boolean;
+    autoBrakeInstalled: boolean;
+    hpCurrent: number;
+    hpMax: number;
+    hullBaseHP: number;
+    radiationIntensity: number;
+    playerBurnRemainingSeconds: number | null;
+  }): void {
+    const panelX = 12;
+    const panelY = 12;
+    const panelWidth = 330;
+    const panelHeight = 134;
+    const headerY = panelY + 8;
+    const speedGaugeMax = Math.max(LANDING_SPEED_THRESHOLD * 4, 400);
+    const speedRatio = Math.max(0, Math.min(1, config.speed / speedGaugeMax));
+    const fuelRatio = Math.max(0, Math.min(1, config.fuelMax > 0 ? config.fuelCurrent / config.fuelMax : 0));
+    const speedColour = config.speed > LANDING_SPEED_THRESHOLD ? COLOURS.WARNING : COLOURS.SAFE;
+    const fuelColour =
+      config.fuelPercent > 50 ? COLOURS.SAFE : config.fuelPercent > 25 ? COLOURS.WARNING : COLOURS.DANGER;
+
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.82)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 8);
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText(config.headingText, panelX + 8, headerY);
+    this.ctx.textAlign = 'right';
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.fillText(config.creditsText, panelX + panelWidth - 8, headerY);
+
+    this.renderGauge({
+      centerX: panelX + 104,
+      centerY: panelY + 62,
+      radius: 26,
+      ratio: speedRatio,
+      accent: speedColour,
+      label: 'SPEED',
+      value: config.speed.toString().padStart(3, '0'),
+      subvalue: `SAFE <= ${LANDING_SPEED_THRESHOLD}`
+    });
+    this.renderGauge({
+      centerX: panelX + 194,
+      centerY: panelY + 62,
+      radius: 26,
+      ratio: fuelRatio,
+      accent: fuelColour,
+      label: 'FUEL',
+      value: `${config.fuelPercent.toString().padStart(3, '0')}%`,
+      subvalue: `${Math.floor(config.fuelCurrent).toString().padStart(3, '0')} / ${Math.floor(config.fuelMax).toString().padStart(3, '0')}`
+    });
+
+    this.renderBrakeChip(
+      panelX + 260,
+      panelY + 44,
+      'L-BRK',
+      config.autoBrakeInstalled ? config.linearBrakeEnabled : null
+    );
+    this.renderBrakeChip(
+      panelX + 260,
+      panelY + 66,
+      'R-BRK',
+      config.autoBrakeInstalled ? config.rotationBrakeEnabled : null
+    );
+    this.renderPanelHpBar(panelX + 8, panelY + 106, panelWidth - 16, config);
+    this.ctx.font = "10px 'Courier New', monospace";
+    this.ctx.textAlign = 'right';
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText('[R] DEV REFUEL', panelX + panelWidth - 8, panelY + 120);
+    this.ctx.restore();
+  }
+
+  private renderGauge(config: {
+    centerX: number;
+    centerY: number;
+    radius: number;
+    ratio: number;
+    accent: string;
+    label: string;
+    value: string;
+    subvalue: string;
+  }): void {
+    const start = Math.PI * 0.75;
+    const end = Math.PI * 2.25;
+    const clampedRatio = Math.max(0, Math.min(1, config.ratio));
+    const valueAngle = start + (end - start) * clampedRatio;
+
+    this.ctx.save();
+    this.ctx.lineWidth = 4;
+    this.ctx.strokeStyle = COLOURS.STAR_DIM;
+    this.ctx.beginPath();
+    this.ctx.arc(config.centerX, config.centerY, config.radius, start, end);
+    this.ctx.stroke();
+
+    this.ctx.strokeStyle = config.accent;
+    this.ctx.beginPath();
+    this.ctx.arc(config.centerX, config.centerY, config.radius, start, valueAngle);
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = config.accent;
+    this.ctx.beginPath();
+    this.ctx.arc(
+      config.centerX + Math.cos(valueAngle) * config.radius,
+      config.centerY + Math.sin(valueAngle) * config.radius,
+      2.5,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.fill();
+
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.font = "10px 'Courier New', monospace";
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText(config.label, config.centerX, config.centerY - 12);
+    this.ctx.font = "12px 'Courier New', monospace";
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.fillText(config.value, config.centerX, config.centerY + 2);
+    this.ctx.font = "9px 'Courier New', monospace";
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText(config.subvalue, config.centerX, config.centerY + config.radius + 6);
+    this.ctx.restore();
+  }
+
+  private renderBrakeChip(x: number, y: number, label: string, enabled: boolean | null): void {
+    const width = 62;
+    const height = 18;
+    const status = enabled === null ? 'N/A' : enabled ? 'ON' : 'OFF';
+    const accent = enabled === null ? COLOURS.UI_SECONDARY : enabled ? COLOURS.SAFE : COLOURS.WARNING;
+
+    this.ctx.strokeStyle = accent;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.roundRect(x, y, width, height, 4);
+    this.ctx.stroke();
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.font = "9px 'Courier New', monospace";
+    this.ctx.fillText(label, x + 5, y + height / 2);
+    this.ctx.fillStyle = accent;
+    this.ctx.textAlign = 'right';
+    this.ctx.fillText(status, x + width - 5, y + height / 2);
+  }
+
+  private renderPanelHpBar(
+    barX: number,
+    barY: number,
+    barWidth: number,
+    config: {
+      hpCurrent: number;
+      hpMax: number;
+      hullBaseHP: number;
+      radiationIntensity: number;
+      playerBurnRemainingSeconds: number | null;
+    }
+  ): void {
+    const barHeight = 10;
+    const hpRatio = Math.max(0, Math.min(1, config.hpCurrent / config.hpMax));
+    const fillWidth = Math.max(0, Math.floor((barWidth - 2) * hpRatio));
+
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+    this.ctx.fillStyle = COLOURS.SAFE;
+    this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
+
+    if (config.radiationIntensity > 0) {
+      const flicker = 0.65 + (Math.sin(performance.now() * 0.02) + 1) * 0.175;
+      this.ctx.save();
+      this.ctx.globalAlpha = config.radiationIntensity * 0.6 * flicker;
+      this.ctx.fillStyle = COLOURS.DANGER;
+      this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
+      this.ctx.restore();
+    }
+    if (config.hullBaseHP < config.hpMax) {
+      const baseRatio = Math.max(0, Math.min(1, config.hullBaseHP / config.hpMax));
+      const tickX = barX + 1 + (barWidth - 2) * baseRatio;
+      this.ctx.save();
+      this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+      this.ctx.globalAlpha = 0.7;
+      this.ctx.beginPath();
+      this.ctx.moveTo(tickX, barY - 2);
+      this.ctx.lineTo(tickX, barY + barHeight + 2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.font = "10px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillText(
+      `HP ${Math.round(config.hpCurrent).toString()} / ${Math.round(config.hpMax).toString()}`,
+      barX,
+      barY + 12
+    );
+    if (config.playerBurnRemainingSeconds !== null && config.playerBurnRemainingSeconds > 0) {
+      const hpTextWidth = this.ctx.measureText(
+        `HP ${Math.round(config.hpCurrent).toString()} / ${Math.round(config.hpMax).toString()}`
+      ).width;
+      this.ctx.fillStyle = '#80ff40';
+      this.ctx.fillText(`⬡ ${config.playerBurnRemainingSeconds.toFixed(1)}s`, barX + hpTextWidth + 10, barY + 12);
+    }
+  }
+
   private renderTargets(
     shipTarget: { name: string; hpRatio: number; hostility: 'none' | 'toPlayer' | 'toOther' } | null,
     landableTarget: { name: string } | null
   ): void {
     const leftMargin = 12;
-    const topY = 132;
+    const topY = 160;
     const boxWidth = 320;
     const boxHeight = 20;
     const gap = 6;
