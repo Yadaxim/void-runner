@@ -1,4 +1,4 @@
-import type { DamageTypeKey, GridCoord } from './types';
+import type { DamageTypeKey } from './types';
 
 // Physics and simulation
 export const GRAVITY_CONSTANT = 10;
@@ -33,8 +33,6 @@ export const REPAIR_RATE = 10;
 export const REPAIR_PRICE_DEFAULT = 3;
 export const INSURANCE_REPAIR_COST_FRACTION = 0.1;
 export const INSURANCE_PAYOUT_FRACTION = 0.9;
-export const STARTING_CREDITS = 1000;
-export const STARTING_SECTOR: GridCoord = { x: 5, y: 5 };
 
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;

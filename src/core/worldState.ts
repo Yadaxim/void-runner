@@ -6,12 +6,12 @@ import {
   REP_FLOOR_COMBAT_KILL,
   REP_FLOOR_MISSION_FAIL,
   RADIATION_INNER_RADIUS,
-  RADIATION_OUTER_RADIUS,
-  STARTING_CREDITS
+  RADIATION_OUTER_RADIUS
 } from '../constants';
 import { childPRNG } from '../core/prng';
 import { Vector2 } from '../physics/vector2';
 import type {
+  ArmourItem,
   BulletSpec,
   EquipmentItem,
   EquipmentSlot,
@@ -22,6 +22,7 @@ import type {
   Landable,
   SectorMetadata,
   ShipState,
+  StartingConditions,
   WeaponSlot,
   WorldFile
 } from '../types';
@@ -138,25 +139,42 @@ function defaultFactionReputations(worldFile: WorldFile): Record<string, number>
 }
 
 export function buildStarterShipState(worldState: WorldState): ShipState {
-  const hullSpec = worldState.getHullSpec('fighter_mk1');
-  const loadout = worldState.getDefaultLoadout('fighter');
+  const sc = worldState.getStartingConditions();
+  const hullSpec = worldState.getHullSpec(sc.hullSpecId);
+
+  if (!hullSpec) {
+    throw new Error(`Starting hull spec not found: ${sc.hullSpecId}`);
+  }
+
+  const armourBonus = sc.equipmentSlots.reduce((total, slot) => {
+    if (!slot.itemId) {
+      return total;
+    }
+    const item = worldState.getEquipmentItem(slot.itemId);
+    if (!item || item.type !== 'armour') {
+      return total;
+    }
+    return total + (item as ArmourItem).hpBonus;
+  }, 0);
+
+  const maxHP = hullSpec.baseHP + armourBonus;
 
   return {
     id: 'player',
-    hullSpecId: 'fighter_mk1',
+    hullSpecId: sc.hullSpecId,
     factionId: null,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     angle: 0,
     angularVelocity: 0,
-    currentHP: hullSpec?.baseHP ?? 100,
-    maxHP: hullSpec?.baseHP ?? 100,
+    currentHP: maxHP,
+    maxHP,
     fuel: 100,
     maxFuel: 100,
-    credits: STARTING_CREDITS,
+    credits: sc.credits,
     cargo: [],
-    equipmentSlots: loadout.equipmentSlots,
-    weaponLoadout: loadout.weaponLoadout,
+    equipmentSlots: sc.equipmentSlots.map((slot) => ({ ...slot })),
+    weaponLoadout: sc.weaponLoadout.map((slot) => ({ ...slot })),
     activeMissions: [],
     brain: null,
     memoryCards: [],
@@ -469,6 +487,10 @@ export class WorldState {
 
   getWorldFile(): WorldFile {
     return this.worldFile;
+  }
+
+  getStartingConditions(): StartingConditions {
+    return this.worldFile.startingConditions;
   }
 
   getPilotName(): string {

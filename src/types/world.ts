@@ -42,6 +42,14 @@ export interface SectorMetadata {
   landables: Landable[];
 }
 
+export interface StartingConditions {
+  sectorCoord: GridCoord;
+  credits: number;
+  hullSpecId: string;
+  equipmentSlots: EquipmentSlot[];
+  weaponLoadout: WeaponSlot[];
+}
+
 export interface WorldFile {
   metadata: {
     name: string;
@@ -69,4 +77,5 @@ export interface WorldFile {
       }
     >
   >;
+  startingConditions: StartingConditions;
 }

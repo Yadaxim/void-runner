@@ -610,6 +610,17 @@
       "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 2, "cooldownRemaining": 0 }]
     }
   },
+  "startingConditions": {
+    "sectorCoord": { "x": 5, "y": 5 },
+    "credits": 1000,
+    "hullSpecId": "fighter_mk1",
+    "equipmentSlots": [
+      { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+      { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_fighter" },
+      { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_fighter" }
+    ],
+    "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
+  },
   "missionTemplates": [],
   "sectors": [
     {

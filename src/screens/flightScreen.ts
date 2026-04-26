@@ -22,7 +22,6 @@ import {
   SECTOR_EDGE_THRESHOLD,
   SECTOR_HEIGHT,
   SECTOR_WIDTH,
-  STARTING_SECTOR,
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
@@ -802,7 +801,7 @@ export class FlightScreen implements Screen {
         const db = Math.abs(b!.coord.x - current.x) + Math.abs(b!.coord.y - current.y);
         return da - db;
       });
-    return candidates[0]?.coord ?? STARTING_SECTOR;
+    return candidates[0]?.coord ?? this.worldState.getStartingConditions().sectorCoord;
   }
 
   private findLastVisitedLandableSectorCoord(): { x: number; y: number } {

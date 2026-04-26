@@ -1,4 +1,4 @@
-import { COLOURS, STARTING_SECTOR } from '../constants';
+import { COLOURS } from '../constants';
 import { GameLoop } from '../core/gameLoop';
 import { buildStarterShipState, WorldState } from '../core/worldState';
 import {
@@ -280,7 +280,8 @@ export class NewGameScreen implements Screen {
     try {
       WorldState.deleteSave(world.seed);
       const worldFile = await loadWorldForEntry(world);
-      const worldState = new WorldState(worldFile, STARTING_SECTOR, {
+      const startSector = worldFile.startingConditions.sectorCoord;
+      const worldState = new WorldState(worldFile, startSector, {
         id: 'player',
         hullSpecId: 'fighter_mk1',
         factionId: null,
