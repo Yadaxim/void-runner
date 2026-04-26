@@ -1,4 +1,4 @@
-import { COLOURS } from '../../constants';
+import { COLOURS, REP_FLOOR_COMBAT_HIT, REP_FLOOR_COMBAT_KILL } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
 import type { ReputationTier, WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
@@ -320,6 +320,9 @@ export class HudRenderer {
     const barText = `${'█'.repeat(fillBars)}${'░'.repeat(Math.max(0, bars - fillBars))}`;
     const warnPrefix = tier === 'unfriendly' || tier === 'hostile' ? '⚠ ' : '';
     const shouldFlash = tier === 'hostile' && Math.floor(performance.now() / 250) % 2 === 0;
+    const nearFloor =
+      (value > REP_FLOOR_COMBAT_HIT - 10 && value <= REP_FLOOR_COMBAT_HIT) ||
+      (value > REP_FLOOR_COMBAT_KILL - 10 && value <= REP_FLOOR_COMBAT_KILL);
     this.ctx.save();
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
@@ -329,6 +332,10 @@ export class HudRenderer {
     this.ctx.fillStyle = shouldFlash ? COLOURS.DANGER : colour;
     this.ctx.fillText(barText, x + barWidth, y);
     this.ctx.fillText(`${value >= 0 ? '+' : ''}${value}`, x + barWidth + 66, y);
+    if (nearFloor) {
+      this.ctx.fillStyle = COLOURS.WARNING;
+      this.ctx.fillText('⚠ near limit', x + barWidth + 116, y);
+    }
     this.ctx.restore();
   }
 

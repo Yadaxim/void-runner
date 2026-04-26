@@ -4,6 +4,13 @@ export const MIN_GRAVITY_DISTANCE = 100;
 export const MAX_DELTA_SECONDS = 0.1;
 export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
 export const BULLET_MAX_IMPACT_DELTA_V = 45;
+// Reputation action floors (most negative value this action can reach)
+export const REP_FLOOR_COMBAT_HIT = -50;
+export const REP_FLOOR_COMBAT_KILL = -70;
+export const REP_FLOOR_MISSION_FAIL = -30;
+// Reputation action ceilings (most positive value this action can reach)
+export const REP_CEILING_MISSION_COMPLETE = 60;
+export const REP_CEILING_MISSION_SPECIAL = 85;
 export const REP_PENALTY_HIT = -2;
 export const REP_PENALTY_KILL = -15;
 

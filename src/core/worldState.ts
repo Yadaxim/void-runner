@@ -1,5 +1,10 @@
 import {
   DEFAULT_FACTION_VISUAL,
+  REP_CEILING_MISSION_COMPLETE,
+  REP_CEILING_MISSION_SPECIAL,
+  REP_FLOOR_COMBAT_HIT,
+  REP_FLOOR_COMBAT_KILL,
+  REP_FLOOR_MISSION_FAIL,
   RADIATION_INNER_RADIUS,
   RADIATION_OUTER_RADIUS
 } from '../constants';
@@ -29,6 +34,13 @@ interface PersistedWorldState {
 }
 
 export type ReputationTier = 'allied' | 'friendly' | 'neutral' | 'unfriendly' | 'hostile';
+export type RepActionType =
+  | 'combat_hit'
+  | 'combat_kill'
+  | 'mission_fail'
+  | 'mission_complete'
+  | 'mission_special'
+  | 'manual';
 
 export interface RepEvent {
   factionId: string;
@@ -293,9 +305,19 @@ export class WorldState {
     return this.factionReputations[factionId] ?? 0;
   }
 
-  changeReputation(factionId: string, delta: number): void {
+  changeReputation(factionId: string, delta: number, actionType: RepActionType): void {
     const current = this.getReputation(factionId);
-    this.factionReputations[factionId] = clamp(current + delta, -100, 100);
+    const { floor, ceiling } = this.getRepLimits(actionType);
+    if (delta < 0 && current <= floor) {
+      return;
+    }
+    if (delta > 0 && current >= ceiling) {
+      return;
+    }
+    const newRep = Math.max(floor, Math.min(ceiling, clamp(current + delta, -100, 100)));
+    const actualDelta = newRep - current;
+    this.factionReputations[factionId] = newRep;
+    this.logRepEvent(factionId, actualDelta, this.getActionLabel(actionType));
   }
 
   getPirateReputation(): number {
@@ -332,18 +354,20 @@ export class WorldState {
     return 'hostile';
   }
 
-  logRepEvent(factionId: string, delta: number, reason: string): void {
+  logRepEvent(factionId: string, actualDelta: number, reason: string): void {
+    if (actualDelta === 0) {
+      return;
+    }
     const faction = this.getFaction(factionId);
-    const event: RepEvent = {
+    this.repLog.unshift({
       factionId,
       factionName: faction?.name ?? factionId,
-      delta,
+      delta: actualDelta,
       reason,
       timestamp: Date.now()
-    };
-    this.repLog.push(event);
+    });
     if (this.repLog.length > 8) {
-      this.repLog = this.repLog.slice(this.repLog.length - 8);
+      this.repLog.pop();
     }
   }
 
@@ -443,5 +467,39 @@ export class WorldState {
   private getEquipmentValue(item: EquipmentItem): number {
     const tierValues = [200, 500, 1200, 3000, 7000];
     return tierValues[Math.min(item.tier - 1, 4)];
+  }
+
+  private getRepLimits(actionType: RepActionType): { floor: number; ceiling: number } {
+    switch (actionType) {
+      case 'combat_hit':
+        return { floor: REP_FLOOR_COMBAT_HIT, ceiling: 100 };
+      case 'combat_kill':
+        return { floor: REP_FLOOR_COMBAT_KILL, ceiling: 100 };
+      case 'mission_fail':
+        return { floor: REP_FLOOR_MISSION_FAIL, ceiling: 100 };
+      case 'mission_complete':
+        return { floor: -100, ceiling: REP_CEILING_MISSION_COMPLETE };
+      case 'mission_special':
+        return { floor: -100, ceiling: REP_CEILING_MISSION_SPECIAL };
+      case 'manual':
+        return { floor: -100, ceiling: 100 };
+    }
+  }
+
+  private getActionLabel(actionType: RepActionType): string {
+    switch (actionType) {
+      case 'combat_hit':
+        return 'Attacked ship';
+      case 'combat_kill':
+        return 'Destroyed ship';
+      case 'mission_fail':
+        return 'Failed mission';
+      case 'mission_complete':
+        return 'Completed mission';
+      case 'mission_special':
+        return 'Completed special mission';
+      case 'manual':
+        return 'Event';
+    }
   }
 }

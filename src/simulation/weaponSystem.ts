@@ -99,8 +99,7 @@ export class WeaponSystem {
 
           const isPlayerAggressor = bullet.instance.ownerId === 'player' && !ship.state.isPlayerControlled;
           if (isPlayerAggressor && ship.state.factionId) {
-            worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT);
-            worldState.logRepEvent(ship.state.factionId, REP_PENALTY_HIT, 'Attacked ship');
+            worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT, 'combat_hit');
           }
           ship.applyDamage(this.getBulletDamage(bullet), worldState);
           const nextHP = ship.state.currentHP;
@@ -113,8 +112,7 @@ export class WeaponSystem {
           if (nextHP <= 0) {
             ship.markDestroyed();
             if (isPlayerAggressor && ship.state.factionId) {
-              worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL);
-              worldState.logRepEvent(ship.state.factionId, REP_PENALTY_KILL, 'Destroyed ship');
+              worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL, 'combat_kill');
             }
             if (ship.state.isPlayerControlled) {
               this.playerDestroyed = true;

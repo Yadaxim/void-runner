@@ -1,4 +1,14 @@
-import { COLOURS, REFUEL_PRICE_PER_UNIT, REFUEL_RATE, REPAIR_PRICE_DEFAULT, REPAIR_RATE } from '../constants';
+import {
+  COLOURS,
+  REFUEL_PRICE_PER_UNIT,
+  REFUEL_RATE,
+  REP_CEILING_MISSION_COMPLETE,
+  REP_CEILING_MISSION_SPECIAL,
+  REP_FLOOR_COMBAT_HIT,
+  REP_FLOOR_COMBAT_KILL,
+  REPAIR_PRICE_DEFAULT,
+  REPAIR_RATE
+} from '../constants';
 import type { ReputationTier, WorldState } from '../core/worldState';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
@@ -779,6 +789,28 @@ export class LandableScreen implements Screen {
       ctx.fillStyle = COLOURS.DANGER;
       ctx.fillRect(centre - magnitude, y + 1, magnitude, height - 2);
     }
+    this.drawRepLimitTick(ctx, x, y, width, height, REP_FLOOR_COMBAT_KILL, 'rgba(255, 64, 64, 0.6)');
+    this.drawRepLimitTick(ctx, x, y, width, height, REP_FLOOR_COMBAT_HIT, 'rgba(255, 170, 0, 0.6)');
+    this.drawRepLimitTick(ctx, x, y, width, height, REP_CEILING_MISSION_COMPLETE, 'rgba(64, 255, 128, 0.6)');
+    this.drawRepLimitTick(ctx, x, y, width, height, REP_CEILING_MISSION_SPECIAL, 'rgba(120, 255, 170, 0.6)');
+  }
+
+  private drawRepLimitTick(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    repValue: number,
+    colour: string
+  ): void {
+    const clamped = Math.max(-100, Math.min(100, repValue));
+    const tickX = x + ((clamped + 100) / 200) * width;
+    const tickY = y + Math.floor((height - 4) / 2);
+    ctx.save();
+    ctx.fillStyle = colour;
+    ctx.fillRect(Math.round(tickX), tickY, 1, 4);
+    ctx.restore();
   }
 
   private renderRepLog(ctx: CanvasRenderingContext2D, x: number, y: number): void {
