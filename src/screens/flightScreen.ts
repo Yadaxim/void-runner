@@ -22,6 +22,7 @@ import {
   SECTOR_EDGE_THRESHOLD,
   SECTOR_HEIGHT,
   SECTOR_WIDTH,
+  STARTING_SECTOR,
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
@@ -61,8 +62,84 @@ export class FlightScreen implements Screen {
   private insuranceScreen: InsuranceScreen | null = null;
   private destructionPending = false;
   private lastShipValue = 0;
+  private isPaused = false;
+  private pauseSelection: 0 | 1 = 0;
+  private pauseConfirmMainMenu = false;
+  private pauseMouseResumeRect: { x: number; y: number; width: number; height: number } | null = null;
+  private pauseMouseMainRect: { x: number; y: number; width: number; height: number } | null = null;
+  private pauseConfirmYesRect: { x: number; y: number; width: number; height: number } | null = null;
+  private pauseConfirmNoRect: { x: number; y: number; width: number; height: number } | null = null;
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
+  };
+  private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      if (this.pauseConfirmMainMenu) {
+        this.pauseConfirmMainMenu = false;
+      } else {
+        this.isPaused = !this.isPaused;
+        if (!this.isPaused) {
+          this.pauseSelection = 0;
+        }
+      }
+      return;
+    }
+    if (!this.isPaused) {
+      return;
+    }
+    if (this.pauseConfirmMainMenu) {
+      if (event.code === 'ArrowLeft' || event.code === 'ArrowRight' || event.code === 'Tab') {
+        event.preventDefault();
+        this.pauseSelection = this.pauseSelection === 1 ? 0 : 1;
+      } else if (event.code === 'Enter') {
+        event.preventDefault();
+        if (this.pauseSelection === 1) {
+          this.returnToMainMenu();
+        } else {
+          this.pauseConfirmMainMenu = false;
+          this.pauseSelection = 1;
+        }
+      }
+      return;
+    }
+    if (event.code === 'ArrowUp') {
+      event.preventDefault();
+      this.pauseSelection = this.pauseSelection === 0 ? 1 : 0;
+    } else if (event.code === 'ArrowDown') {
+      event.preventDefault();
+      this.pauseSelection = this.pauseSelection === 0 ? 1 : 0;
+    } else if (event.code === 'Enter') {
+      event.preventDefault();
+      this.activatePauseSelection();
+    }
+  };
+  private readonly onPauseMouseDown = (event: MouseEvent): void => {
+    if (!this.isPaused) {
+      return;
+    }
+    const point = this.getCanvasPoint(event);
+    if (!point) {
+      return;
+    }
+    if (this.pauseConfirmMainMenu) {
+      if (this.pauseConfirmYesRect && this.inRect(point.x, point.y, this.pauseConfirmYesRect)) {
+        this.returnToMainMenu();
+        return;
+      }
+      if (this.pauseConfirmNoRect && this.inRect(point.x, point.y, this.pauseConfirmNoRect)) {
+        this.pauseConfirmMainMenu = false;
+        this.pauseSelection = 1;
+      }
+      return;
+    }
+    if (this.pauseMouseResumeRect && this.inRect(point.x, point.y, this.pauseMouseResumeRect)) {
+      this.pauseSelection = 0;
+      this.activatePauseSelection();
+    } else if (this.pauseMouseMainRect && this.inRect(point.x, point.y, this.pauseMouseMainRect)) {
+      this.pauseSelection = 1;
+      this.activatePauseSelection();
+    }
   };
 
   constructor(
@@ -107,6 +184,8 @@ export class FlightScreen implements Screen {
     this.targeting = new TargetingSystem();
     this.autosaveAccumulator = 0;
     window.addEventListener('beforeunload', this.onBeforeUnload);
+    window.addEventListener('keydown', this.onPauseKeyDown);
+    this.canvas.addEventListener('mousedown', this.onPauseMouseDown);
 
     this.gameLoop = new GameLoop({
       update: (dt: number) => this.update(dt),
@@ -203,6 +282,8 @@ export class FlightScreen implements Screen {
     this.gameLoop?.stop();
     this.gameLoop = null;
     window.removeEventListener('beforeunload', this.onBeforeUnload);
+    window.removeEventListener('keydown', this.onPauseKeyDown);
+    this.canvas.removeEventListener('mousedown', this.onPauseMouseDown);
     this.worldState.saveToLocalStorage();
     this.playerController?.destroy();
     this.playerController = null;
@@ -229,6 +310,10 @@ export class FlightScreen implements Screen {
 
     if (this.isLanded) {
       this.landableScreen?.update(dt);
+      return;
+    }
+
+    if (this.isPaused) {
       return;
     }
 
@@ -299,6 +384,7 @@ export class FlightScreen implements Screen {
       return;
     }
     this.applyRadiationDamage(dt);
+    this.worldState.addPlayTime(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
       velocity: this.playerShip.state.velocity,
@@ -372,6 +458,103 @@ export class FlightScreen implements Screen {
     });
     this.landableScreen?.render(this.ctx);
     this.insuranceScreen?.render(this.ctx);
+    if (this.isPaused) {
+      this.renderPauseOverlay(this.ctx);
+    }
+  }
+
+  private renderPauseOverlay(ctx: CanvasRenderingContext2D): void {
+    const panelWidth = 420;
+    const panelHeight = this.pauseConfirmMainMenu ? 220 : 260;
+    const panelX = (this.canvas.width - panelWidth) / 2;
+    const panelY = (this.canvas.height - panelHeight) / 2;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = 'rgba(8, 8, 16, 0.95)';
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+    ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "22px 'Courier New', monospace";
+    ctx.fillText('PAUSED', panelX + panelWidth / 2, panelY + 34);
+
+    if (this.pauseConfirmMainMenu) {
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.WARNING;
+      ctx.fillText(
+        'YOUR PROGRESS IS SAVED. RETURN TO MAIN MENU?',
+        panelX + panelWidth / 2,
+        panelY + 88
+      );
+      this.pauseConfirmYesRect = { x: panelX + 100, y: panelY + 130, width: 90, height: 36 };
+      this.pauseConfirmNoRect = { x: panelX + 230, y: panelY + 130, width: 90, height: 36 };
+      this.drawPauseButton(ctx, this.pauseConfirmYesRect, '[ YES ]', this.pauseSelection === 1);
+      this.drawPauseButton(ctx, this.pauseConfirmNoRect, '[ NO ]', this.pauseSelection === 0);
+    } else {
+      const options = ['[ RESUME ]', '[ MAIN MENU ]'];
+      const baseY = panelY + 90;
+      const buttonWidth = 220;
+      const buttonHeight = 40;
+      this.pauseMouseResumeRect = { x: panelX + 100, y: baseY, width: buttonWidth, height: buttonHeight };
+      this.pauseMouseMainRect = { x: panelX + 100, y: baseY + 52, width: buttonWidth, height: buttonHeight };
+      const rects = [this.pauseMouseResumeRect, this.pauseMouseMainRect];
+      for (let i = 0; i < rects.length; i += 1) {
+        this.drawPauseButton(ctx, rects[i], options[i], this.pauseSelection === i);
+      }
+    }
+    ctx.restore();
+  }
+
+  private drawPauseButton(
+    ctx: CanvasRenderingContext2D,
+    rect: { x: number; y: number; width: number; height: number },
+    label: string,
+    selected: boolean
+  ): void {
+    ctx.strokeStyle = selected ? COLOURS.UI_ACCENT : COLOURS.UI_SECONDARY;
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.fillStyle = selected ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
+    ctx.font = "16px 'Courier New', monospace";
+    ctx.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2);
+  }
+
+  private activatePauseSelection(): void {
+    if (this.pauseSelection === 0) {
+      this.isPaused = false;
+      return;
+    }
+    if (this.pauseSelection === 1) {
+      this.pauseConfirmMainMenu = true;
+      this.pauseSelection = 0;
+      return;
+    }
+  }
+
+  private returnToMainMenu(): void {
+    this.worldState.saveToLocalStorage();
+    this.isPaused = false;
+    this.pauseConfirmMainMenu = false;
+    this.screenManager.popToRoot();
+  }
+
+  private inRect(x: number, y: number, rect: { x: number; y: number; width: number; height: number }): boolean {
+    return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
+  }
+
+  private getCanvasPoint(event: MouseEvent): { x: number; y: number } | null {
+    const bounds = this.canvas.getBoundingClientRect();
+    if (bounds.width === 0 || bounds.height === 0) {
+      return null;
+    }
+    const scaleX = this.canvas.width / bounds.width;
+    const scaleY = this.canvas.height / bounds.height;
+    return {
+      x: (event.clientX - bounds.left) * scaleX,
+      y: (event.clientY - bounds.top) * scaleY
+    };
   }
 
   private getDestructionMessageAlpha(): number {
@@ -619,7 +802,7 @@ export class FlightScreen implements Screen {
         const db = Math.abs(b!.coord.x - current.x) + Math.abs(b!.coord.y - current.y);
         return da - db;
       });
-    return candidates[0]?.coord ?? { x: 5, y: 5 };
+    return candidates[0]?.coord ?? STARTING_SECTOR;
   }
 
   private findLastVisitedLandableSectorCoord(): { x: number; y: number } {

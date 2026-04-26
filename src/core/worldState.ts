@@ -6,7 +6,8 @@ import {
   REP_FLOOR_COMBAT_KILL,
   REP_FLOOR_MISSION_FAIL,
   RADIATION_INNER_RADIUS,
-  RADIATION_OUTER_RADIUS
+  RADIATION_OUTER_RADIUS,
+  STARTING_CREDITS
 } from '../constants';
 import { childPRNG } from '../core/prng';
 import { Vector2 } from '../physics/vector2';
@@ -31,6 +32,19 @@ interface PersistedWorldState {
   playerShipState: ShipState;
   factionReputations: Record<string, number>;
   repLog: RepEvent[];
+  pilotName: string;
+  playTimeSeconds: number;
+}
+
+export interface SaveMetadata {
+  worldSeed: number;
+  worldName: string;
+  pilotName: string;
+  savedAt: number;
+  playTimeSeconds: number;
+  currentSectorCoord: GridCoord;
+  credits: number;
+  shipHullName: string;
 }
 
 export type ReputationTier = 'allied' | 'friendly' | 'neutral' | 'unfriendly' | 'hostile';
@@ -123,6 +137,42 @@ function defaultFactionReputations(worldFile: WorldFile): Record<string, number>
   return rep;
 }
 
+export function buildStarterShipState(worldState: WorldState): ShipState {
+  const hullSpec = worldState.getHullSpec('fighter_mk1');
+  const loadout = worldState.getDefaultLoadout('fighter');
+
+  return {
+    id: 'player',
+    hullSpecId: 'fighter_mk1',
+    factionId: null,
+    position: { x: 0, y: 0 },
+    velocity: { x: 0, y: 0 },
+    angle: 0,
+    angularVelocity: 0,
+    currentHP: hullSpec?.baseHP ?? 100,
+    maxHP: hullSpec?.baseHP ?? 100,
+    fuel: 100,
+    maxFuel: 100,
+    credits: STARTING_CREDITS,
+    cargo: [],
+    equipmentSlots: loadout.equipmentSlots,
+    weaponLoadout: loadout.weaponLoadout,
+    activeMissions: [],
+    brain: null,
+    memoryCards: [],
+    activeCardId: null,
+    activeMode: null,
+    guardMode: false,
+    autoBrakeLinearEnabled: false,
+    autoBrakeRotationEnabled: false,
+    fleetRole: 'lead',
+    targets: {},
+    isPlayerControlled: true,
+    insuranceActive: true,
+    lastLandedLandableId: null
+  };
+}
+
 function createRuntimeVoidSector(worldFile: WorldFile, coord: GridCoord): SectorMetadata {
   return {
     coord: { ...coord },
@@ -151,6 +201,8 @@ export class WorldState {
   private factionReputations: Record<string, number>;
   private repLog: RepEvent[] = [];
   private readonly sectorIndex: Map<string, SectorMetadata>;
+  private pilotName = 'Pilot';
+  private playTimeSeconds = 0;
 
   constructor(worldFile: WorldFile, startSector: GridCoord, playerShipState: ShipState) {
     const normalisedWorldFile = normaliseWorldFile(worldFile);
@@ -415,6 +467,26 @@ export class WorldState {
     return this.worldFile.galaxy.gridHeight;
   }
 
+  getWorldFile(): WorldFile {
+    return this.worldFile;
+  }
+
+  getPilotName(): string {
+    return this.pilotName;
+  }
+
+  setPilotName(name: string): void {
+    this.pilotName = name.trim() || 'Pilot';
+  }
+
+  addPlayTime(dt: number): void {
+    this.playTimeSeconds += dt;
+  }
+
+  getPlayTime(): number {
+    return this.playTimeSeconds;
+  }
+
   getGalaxyCentre(): GridCoord {
     return { x: 0, y: 0 };
   }
@@ -440,9 +512,24 @@ export class WorldState {
       visitedSectors: Array.from(this.visitedSectors),
       playerShipState: this.playerShipState,
       factionReputations: this.factionReputations,
-      repLog: this.repLog
+      repLog: this.repLog,
+      pilotName: this.pilotName,
+      playTimeSeconds: this.playTimeSeconds
     };
-    localStorage.setItem(`voidrunner_save_${this.worldFile.metadata.seed}`, JSON.stringify(payload));
+    const worldSeed = this.worldFile.metadata.seed;
+    localStorage.setItem(`voidrunner_save_${worldSeed}`, JSON.stringify(payload));
+    const shipHull = this.getHullSpec(this.playerShipState.hullSpecId);
+    const metadata: SaveMetadata = {
+      worldSeed,
+      worldName: this.worldFile.metadata.name,
+      pilotName: this.pilotName,
+      savedAt: Date.now(),
+      playTimeSeconds: this.playTimeSeconds,
+      currentSectorCoord: this.currentSectorCoord,
+      credits: this.playerShipState.credits,
+      shipHullName: shipHull?.name ?? this.playerShipState.hullSpecId
+    };
+    localStorage.setItem(`voidrunner_meta_${worldSeed}`, JSON.stringify(metadata));
   }
 
   static loadFromLocalStorage(worldFile: WorldFile): WorldState | null {
@@ -458,10 +545,38 @@ export class WorldState {
       state.visitedSectors = new Set(parsed.visitedSectors);
       state.factionReputations = { ...defaultFactionReputations(worldFile), ...parsed.factionReputations };
       state.repLog = Array.isArray(parsed.repLog) ? parsed.repLog.slice(-8) : [];
+      state.pilotName = typeof parsed.pilotName === 'string' ? parsed.pilotName : 'Pilot';
+      state.playTimeSeconds = Number.isFinite(parsed.playTimeSeconds) ? Math.max(0, parsed.playTimeSeconds) : 0;
       return state;
     } catch {
       return null;
     }
+  }
+
+  static listSaves(): SaveMetadata[] {
+    const saves: SaveMetadata[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith('voidrunner_meta_')) {
+        continue;
+      }
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+          continue;
+        }
+        const meta = JSON.parse(raw) as SaveMetadata;
+        saves.push(meta);
+      } catch {
+        // Skip corrupted metadata entries.
+      }
+    }
+    return saves.sort((a, b) => b.savedAt - a.savedAt);
+  }
+
+  static deleteSave(worldSeed: number): void {
+    localStorage.removeItem(`voidrunner_save_${worldSeed}`);
+    localStorage.removeItem(`voidrunner_meta_${worldSeed}`);
   }
 
   private getEquipmentValue(item: EquipmentItem): number {

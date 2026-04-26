@@ -29,9 +29,8 @@ export class PlayerController {
     'ArrowDown',
     'ArrowLeft',
     'ArrowRight',
-    'Space',
-    'ShiftLeft',
-    'ShiftRight',
+    'KeyQ',
+    'KeyE',
     'KeyL',
     'KeyR',
     'Tab',
@@ -47,15 +46,10 @@ export class PlayerController {
     if (this.controlledKeys.has(event.code)) {
       event.preventDefault();
     }
-    if (!event.repeat && event.code === 'Space') {
+    if (!event.repeat && event.code === 'KeyQ') {
       this.autoBrakeLinearEnabled = !this.autoBrakeLinearEnabled;
     }
-    if (
-      !event.repeat &&
-      (event.code === 'ShiftLeft' || event.code === 'ShiftRight') &&
-      !this.pressedKeys.has('ShiftLeft') &&
-      !this.pressedKeys.has('ShiftRight')
-    ) {
+    if (!event.repeat && event.code === 'KeyE') {
       this.autoBrakeRotationEnabled = !this.autoBrakeRotationEnabled;
     }
     if (!event.repeat && event.code === 'KeyL') {

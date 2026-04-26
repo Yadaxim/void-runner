@@ -29,4 +29,11 @@ export class ScreenManager {
   top(): Screen | undefined {
     return this.stack[this.stack.length - 1];
   }
+
+  popToRoot(): void {
+    while (this.stack.length > 1) {
+      this.stack.pop()?.onExit();
+    }
+    this.stack[0]?.onEnter();
+  }
 }
