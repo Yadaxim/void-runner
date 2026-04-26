@@ -1,4 +1,5 @@
 import type { BrainMode, MemoryCard, NeuralBrain } from './ai';
+import type { EquipmentItem } from './equipment';
 import type { EquipType } from './equipment';
 import type { CargoItem, Mission } from './mission';
 import type { Vector2 } from './physics';
@@ -64,6 +65,7 @@ export interface ShipState {
   maxFuel: number;
   credits: number;
   cargo: CargoItem[];
+  inventory: EquipmentItem[];
   equipmentSlots: EquipmentSlot[];
   weaponLoadout: WeaponSlot[];
   activeMissions: Mission[];

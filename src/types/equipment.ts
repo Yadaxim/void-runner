@@ -13,6 +13,18 @@ export type EquipType =
   | 'memoryCard';
 
 export type MountPosition = 'forward' | 'rear';
+export type EquipmentInstallSlotClass =
+  | 'thruster_forward'
+  | 'thruster_reverse'
+  | 'thruster_rotation'
+  | 'armour'
+  | 'fuelTank'
+  | 'hyperspaceDrive'
+  | 'autoBrake'
+  | 'sensorArray'
+  | 'neuralBrain'
+  | 'memoryCard'
+  | 'weapon';
 
 export interface BaseEquipment {
   id: string;
@@ -23,6 +35,7 @@ export interface BaseEquipment {
   mass: number;
   tier: number;
   factionAffinity: string;
+  installSlotClass?: EquipmentInstallSlotClass;
 }
 
 export interface ThrusterItem extends BaseEquipment {

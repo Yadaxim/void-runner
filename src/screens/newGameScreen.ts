@@ -295,6 +295,7 @@ export class NewGameScreen implements Screen {
         maxFuel: 100,
         credits: 0,
         cargo: [],
+        inventory: [],
         equipmentSlots: [],
         weaponLoadout: [],
         activeMissions: [],

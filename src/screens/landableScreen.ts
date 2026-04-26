@@ -1,6 +1,7 @@
 import {
   COLOURS,
   DAMAGE_TYPE_LABELS,
+  EQUIPMENT_STORE_COUNT,
   MISSION_DELIVERY_DISPLAY_TIME,
   REFUEL_PRICE_PER_UNIT,
   REFUEL_RATE,
@@ -12,6 +13,7 @@ import {
   REPAIR_RATE
 } from '../constants';
 import type { ReputationTier, WorldState } from '../core/worldState';
+import type { EquipmentInstallSlotType } from '../core/worldState';
 import type { CompletedMission } from '../types';
 import type { Mission } from '../types';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
@@ -20,8 +22,10 @@ import { drawStation } from '../renderer/landables/stationRenderer';
 import type { Landable } from '../types';
 import { emptyReductionProfile } from '../types';
 import type { ArmourItem, ArmourReductionProfile, DamageTypeKey, EquipmentItem } from '../types';
+import type { EquipmentSlot } from '../types';
 import type { LandableService, ServiceType } from '../types/landable';
 import { MissionBoard } from '../simulation/missionBoard';
+import { EquipmentStore } from '../simulation/equipmentStore';
 import type { Screen } from './screenManager';
 
 type TabId =
@@ -33,6 +37,9 @@ type TabId =
   | 'shipyard'
   | 'equipmentStore'
   | 'trainingSimulator';
+
+type EquipmentSubTabId = 'store' | 'installed' | 'inventory';
+type WeaponFireKey = 'Z' | 'X' | 'C' | 'V' | 'B';
 
 interface TabRect {
   id: TabId;
@@ -83,6 +90,22 @@ export class LandableScreen implements Screen {
   private pendingDeliveries: CompletedMission[] = [];
   private deliveryDismissAt = 0;
   private missionsTabScrollOffset = 0;
+  private equipmentSubTab: EquipmentSubTabId = 'store';
+  private equipmentInventory: EquipmentItem[] = [];
+  private equipmentSubTabRects: Array<{ id: EquipmentSubTabId; x: number; y: number; width: number; height: number }> = [];
+  private equipmentActionRects: Array<{
+    action: 'buy' | 'sell' | 'install' | 'uninstall' | 'confirmSell' | 'cancelSell' | 'pickWeaponSlot';
+    itemId?: string;
+    slotType?: EquipmentInstallSlotType;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> = [];
+  private equipmentFlashMessage = '';
+  private equipmentFlashTimer = 0;
+  private pendingSellItemId: string | null = null;
+  private pendingWeaponItemId: string | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (this.pendingDeliveries.length > 0) {
@@ -190,6 +213,23 @@ export class LandableScreen implements Screen {
         return;
       }
     }
+    if (this.activeTab === 'equipmentStore' && this.canAccessService('equipmentStore')) {
+      for (const tab of this.equipmentSubTabRects) {
+        if (this.inRect(hit.x, hit.y, tab)) {
+          this.equipmentSubTab = tab.id;
+          this.pendingSellItemId = null;
+          this.pendingWeaponItemId = null;
+          return;
+        }
+      }
+      for (const action of this.equipmentActionRects) {
+        if (!this.inRect(hit.x, hit.y, action)) {
+          continue;
+        }
+        this.handleEquipmentAction(action);
+        return;
+      }
+    }
   };
 
   private readonly onMouseUp = (): void => {
@@ -233,6 +273,9 @@ export class LandableScreen implements Screen {
       this.pendingDeliveries = completed;
       this.deliveryDismissAt = Date.now() + MISSION_DELIVERY_DISPLAY_TIME * 1000;
     }
+    if (this.hasService('equipmentStore')) {
+      this.equipmentInventory = EquipmentStore.generateInventory(this.landable, this.worldState, EQUIPMENT_STORE_COUNT);
+    }
     window.addEventListener('keydown', this.onKeyDown);
     this.canvas.addEventListener('mousedown', this.onMouseDown);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
@@ -252,6 +295,7 @@ export class LandableScreen implements Screen {
     this.updateRefuel(dt);
     this.updateRepair(dt);
     this.missionFlashTimer = Math.max(0, this.missionFlashTimer - dt);
+    this.equipmentFlashTimer = Math.max(0, this.equipmentFlashTimer - dt);
     if (this.pendingDeliveries.length > 0 && Date.now() >= this.deliveryDismissAt) {
       this.pendingDeliveries = [];
     }
@@ -436,11 +480,13 @@ export class LandableScreen implements Screen {
       } else {
         this.renderMissionBoardTab(ctx, contentX, contentY, contentWidth, contentHeight);
       }
-    } else if (
-      this.activeTab === 'shipyard' ||
-      this.activeTab === 'equipmentStore' ||
-      this.activeTab === 'trainingSimulator'
-    ) {
+    } else if (this.activeTab === 'equipmentStore') {
+      if (!this.canAccessService('equipmentStore')) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderEquipmentStore(ctx, contentX, contentY, contentWidth, contentHeight);
+      }
+    } else if (this.activeTab === 'shipyard' || this.activeTab === 'trainingSimulator') {
       if (!this.canAccessService(this.activeTab)) {
         this.renderAccessDenied(ctx, contentX, contentY);
       } else {
@@ -888,6 +934,7 @@ export class LandableScreen implements Screen {
   }
 
   private hasService(serviceType: ServiceType): boolean {
+
     return this.landable.services.some((service) => service.type === serviceType);
   }
 
@@ -905,6 +952,7 @@ export class LandableScreen implements Screen {
         }
         return tier !== 'hostile' && tier !== 'unfriendly';
       case 'equipmentStore':
+        return tier !== 'hostile';
       case 'shipyard':
       case 'trainingSimulator':
         return tier !== 'hostile' && tier !== 'unfriendly';
@@ -1079,6 +1127,422 @@ export class LandableScreen implements Screen {
       ctx.fillStyle = this.missionFlashMessage.includes('INSUFFICIENT') ? COLOURS.DANGER : COLOURS.SAFE;
       ctx.fillText(this.missionFlashMessage, x, y + height - 24);
     }
+  }
+
+  private renderEquipmentStore(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    const ship = this.worldState.getPlayerShipState();
+    this.equipmentActionRects = [];
+    this.equipmentSubTabRects = [];
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('EQUIPMENT', x, y);
+    ctx.fillStyle = COLOURS.CREDITS;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText(`Credits: ${Math.round(ship.credits).toLocaleString()} ₢`, x + width - 240, y + 2);
+    this.renderEquipmentCapacityBar(ctx, x, y + 30, width - 8);
+
+    const tabs: EquipmentSubTabId[] = ['store', 'installed', 'inventory'];
+    let tabX = x;
+    for (const tab of tabs) {
+      const label = tab.toUpperCase();
+      const tabWidth = 118;
+      const rect = { id: tab, x: tabX, y: y + 58, width: tabWidth, height: 28 };
+      this.equipmentSubTabRects.push(rect);
+      this.drawButton(ctx, rect, `[ ${label} ]`, true);
+      if (this.equipmentSubTab === tab) {
+        ctx.strokeStyle = COLOURS.UI_ACCENT;
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      }
+      tabX += tabWidth + 10;
+    }
+
+    if (this.equipmentSubTab === 'store') {
+      this.renderEquipmentStoreSubTab(ctx, x, y + 98, width, height - 100);
+    } else if (this.equipmentSubTab === 'installed') {
+      this.renderInstalledEquipmentSubTab(ctx, x, y + 98, width, height - 100);
+    } else {
+      this.renderInventoryEquipmentSubTab(ctx, x, y + 98, width, height - 100);
+    }
+
+    if (this.equipmentFlashTimer > 0 && this.equipmentFlashMessage) {
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillStyle = this.equipmentFlashMessage.includes('NO ') || this.equipmentFlashMessage.includes('cannot')
+        ? COLOURS.WARNING
+        : COLOURS.SAFE;
+      ctx.fillText(this.equipmentFlashMessage, x, y + height - 24);
+    }
+  }
+
+  private renderEquipmentStoreSubTab(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, _height: number): void {
+    const ship = this.worldState.getPlayerShipState();
+    const hullSpec = this.worldState.getHullSpec(ship.hullSpecId);
+    const cardHeight = 88;
+    const items = this.equipmentInventory.slice(0, EQUIPMENT_STORE_COUNT);
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      const cardY = y + i * (cardHeight + 8);
+      const cardW = width - 10;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(x, cardY, cardW, cardHeight);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillText(item.name, x + 8, cardY + 8);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(`Tier ${item.tier}  ${item.type}`, x + cardW - 170, cardY + 8);
+      const lines = this.formatEquipmentStats(item);
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(lines[0] ?? `Mass: ${item.mass}`, x + 8, cardY + 30);
+      if (lines[1]) {
+        ctx.fillText(lines[1], x + 8, cardY + 47);
+      }
+      const buyPrice = EquipmentStore.getBuyPrice(item, this.worldState, this.landable.factionId);
+      ctx.fillStyle = COLOURS.CREDITS;
+      ctx.fillText(`Buy: ${buyPrice} ₢`, x + 8, cardY + 64);
+      const canAfford = ship.credits >= buyPrice;
+      const canCarry = this.worldState.getInstalledEquipmentMass() + this.getInventoryMass() + item.mass <= (hullSpec?.equipmentCapacity ?? 0);
+      const label = !canAfford ? '[ NO CREDITS ]' : !canCarry ? '[ NO CAPACITY ]' : '[ BUY ]';
+      const button = { x: x + cardW - 170, y: cardY + 50, width: 156, height: 30 };
+      this.drawButton(ctx, button, label, canAfford && canCarry);
+      if (canAfford && canCarry) {
+        this.equipmentActionRects.push({ action: 'buy', itemId: item.id, ...button });
+      }
+    }
+  }
+
+  private renderInstalledEquipmentSubTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    _height: number
+  ): void {
+    const ship = this.worldState.getPlayerShipState();
+    const rows: Array<{ label: string; slotType: EquipmentInstallSlotType; item: EquipmentItem | null }> = [
+      { label: 'Forward Thruster', slotType: 'thruster_forward', item: this.getItemForSlot('thruster_forward') },
+      { label: 'Reverse Thruster', slotType: 'thruster_reverse', item: this.getItemForSlot('thruster_reverse') },
+      { label: 'Rotation Thrusters (CW / CCW)', slotType: 'thruster_rotateCW', item: this.getRotationThrusterItem() },
+      { label: 'Armour', slotType: 'armour', item: this.getItemForSlot('armour') },
+      { label: 'Auto Brake', slotType: 'autoBrake', item: this.getItemForSlot('autoBrake') }
+    ];
+    const maxWeaponSlots = Math.min(5, this.worldState.getHullSpec(ship.hullSpecId)?.weaponSlots ?? 0);
+    const weaponKeys = ['Z', 'X', 'C', 'V', 'B'].slice(0, maxWeaponSlots) as WeaponFireKey[];
+    for (const key of weaponKeys) {
+      const slot = ship.weaponLoadout.find((entry) => entry.fireKey === key);
+      rows.push({
+        label: `Weapon Slot ${key}`,
+        slotType: `weapon_${key}`,
+        item: slot ? this.worldState.getEquipmentItem(slot.itemId) : null
+      });
+    }
+
+    const cardHeight = 74;
+    rows.forEach((row, index) => {
+      const cardY = y + index * (cardHeight + 8);
+      const cardW = width - 10;
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(row.label.toUpperCase(), x, cardY);
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(x, cardY + 16, cardW, cardHeight - 6);
+      if (!row.item) {
+        ctx.fillStyle = COLOURS.STAR_MID;
+        ctx.font = "12px 'Courier New', monospace";
+        ctx.fillText('[ EMPTY SLOT ]', x + 8, cardY + 38);
+        const installBtn = { x: x + cardW - 212, y: cardY + 26, width: 198, height: 28 };
+        this.drawButton(ctx, installBtn, '[ + INSTALL FROM INVENTORY ]', true);
+        this.equipmentActionRects.push({ action: 'install', slotType: row.slotType, ...installBtn });
+        return;
+      }
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillText(`${row.item.name}  (Tier ${row.item.tier})`, x + 8, cardY + 24);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      const stats = this.formatEquipmentStats(row.item).join('  ');
+      const displayStats = row.slotType === 'thruster_rotateCW' ? `${stats} (x2)` : stats;
+      ctx.fillText(displayStats, x + 8, cardY + 42);
+      const btn = { x: x + cardW - 146, y: cardY + 30, width: 132, height: 28 };
+      this.drawButton(ctx, btn, '[ UNINSTALL ]', true);
+      this.equipmentActionRects.push({ action: 'uninstall', slotType: row.slotType, ...btn });
+    });
+  }
+
+  private renderInventoryEquipmentSubTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    _height: number
+  ): void {
+    const ship = this.worldState.getPlayerShipState();
+    const cardHeight = 94;
+    if (ship.inventory.length === 0) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillText('Inventory empty. Buy equipment from STORE.', x, y);
+      return;
+    }
+    ship.inventory.forEach((item, index) => {
+      const cardY = y + index * (cardHeight + 8);
+      const cardW = width - 10;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(x, cardY, cardW, cardHeight);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillText(`${item.name}  (Tier ${item.tier})`, x + 8, cardY + 8);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      const stats = this.formatEquipmentStats(item);
+      ctx.fillText(stats[0] ?? `Mass: ${item.mass}`, x + 8, cardY + 30);
+      if (stats[1]) {
+        ctx.fillText(stats[1], x + 8, cardY + 47);
+      }
+      ctx.fillStyle = COLOURS.CREDITS;
+      const sellPrice = EquipmentStore.getSellPrice(item);
+      ctx.fillText(`Sell: ${sellPrice} ₢`, x + 8, cardY + 66);
+      if (this.pendingSellItemId === item.id) {
+        const yesBtn = { x: x + cardW - 248, y: cardY + 60, width: 108, height: 28 };
+        const noBtn = { x: x + cardW - 128, y: cardY + 60, width: 108, height: 28 };
+        this.drawButton(ctx, yesBtn, '[ YES ]', true);
+        this.drawButton(ctx, noBtn, '[ NO ]', true);
+        this.equipmentActionRects.push({ action: 'confirmSell', itemId: item.id, ...yesBtn });
+        this.equipmentActionRects.push({ action: 'cancelSell', itemId: item.id, ...noBtn });
+      } else {
+        const installLabel = this.getInventoryInstallLabel(item);
+        const installBtn = { x: x + cardW - 292, y: cardY + 60, width: 170, height: 28 };
+        const sellBtn = { x: x + cardW - 112, y: cardY + 60, width: 98, height: 28 };
+        this.drawButton(ctx, installBtn, installLabel, true);
+        this.drawButton(ctx, sellBtn, '[ SELL ]', true);
+        this.equipmentActionRects.push({ action: 'install', itemId: item.id, ...installBtn });
+        this.equipmentActionRects.push({ action: 'sell', itemId: item.id, ...sellBtn });
+      }
+
+      if (this.pendingWeaponItemId === item.id) {
+        const slotKeys = this.getWeaponKeys();
+        ctx.fillStyle = COLOURS.WARNING;
+        ctx.fillText('INSTALL TO SLOT:', x + 8, cardY + 78);
+        slotKeys.forEach((key, i) => {
+          const btn = { x: x + 124 + i * 52, y: cardY + 74, width: 46, height: 20 };
+          this.drawButton(ctx, btn, `[${key}]`, true);
+          this.equipmentActionRects.push({ action: 'pickWeaponSlot', itemId: item.id, slotType: `weapon_${key}`, ...btn });
+        });
+      }
+    });
+  }
+
+  private renderEquipmentCapacityBar(ctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
+    const ship = this.worldState.getPlayerShipState();
+    const hullSpec = this.worldState.getHullSpec(ship.hullSpecId);
+    const used = this.worldState.getInstalledEquipmentMass();
+    const cap = hullSpec?.equipmentCapacity ?? 0;
+    const ratio = cap > 0 ? Math.min(1, used / cap) : 0;
+    const colour = ratio >= 0.9 ? COLOURS.DANGER : ratio >= 0.75 ? COLOURS.WARNING : COLOURS.SAFE;
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.strokeRect(x, y, width, 14);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x + 1, y + 1, (width - 2) * ratio, 12);
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillText(`Equip capacity  ${Math.round(used)} / ${Math.round(cap)} mass`, x, y - 16);
+  }
+
+  private handleEquipmentAction(action: {
+    action: 'buy' | 'sell' | 'install' | 'uninstall' | 'confirmSell' | 'cancelSell' | 'pickWeaponSlot';
+    itemId?: string;
+    slotType?: EquipmentInstallSlotType;
+  }): void {
+    const ship = this.worldState.getPlayerShipState();
+    if (action.action === 'buy' && action.itemId) {
+      const item = this.equipmentInventory.find((entry) => entry.id === action.itemId);
+      if (!item) return;
+      const price = EquipmentStore.getBuyPrice(item, this.worldState, this.landable.factionId);
+      if (ship.credits < price) {
+        this.setEquipmentFlash('NO CREDITS');
+        return;
+      }
+      this.worldState.updatePlayerShipState({ credits: ship.credits - price });
+      this.worldState.addToInventory(item);
+      this.worldState.saveToLocalStorage();
+      this.setEquipmentFlash(`Bought ${item.name}`);
+      return;
+    }
+    if (action.action === 'sell' && action.itemId) {
+      this.pendingSellItemId = action.itemId;
+      return;
+    }
+    if (action.action === 'cancelSell') {
+      this.pendingSellItemId = null;
+      return;
+    }
+    if (action.action === 'confirmSell' && action.itemId) {
+      const currentShip = this.worldState.getPlayerShipState();
+      const item = currentShip.inventory.find((entry) => entry.id === action.itemId);
+      if (!item) {
+        this.pendingSellItemId = null;
+        return;
+      }
+      const value = EquipmentStore.getSellPrice(item);
+      this.worldState.removeFromInventory(item.id);
+      this.worldState.updatePlayerShipState({ credits: this.worldState.getPlayerShipState().credits + value });
+      this.worldState.saveToLocalStorage();
+      this.pendingSellItemId = null;
+      this.setEquipmentFlash(`Sold ${item.name} for ${value} ₢`);
+      return;
+    }
+    if (action.action === 'uninstall' && action.slotType) {
+      const success = this.worldState.uninstallEquipment(action.slotType);
+      this.setEquipmentFlash(success ? 'Uninstalled' : 'Nothing to uninstall');
+      return;
+    }
+    if (action.action === 'install') {
+      const itemId = action.itemId;
+      if (!itemId && action.slotType) {
+        this.equipmentSubTab = 'inventory';
+        return;
+      }
+      const item = this.worldState.getPlayerShipState().inventory.find((entry) => entry.id === itemId);
+      if (!item) return;
+      if (item.type === 'weapon' && this.getWeaponKeys().length > 1 && !action.slotType) {
+        this.pendingWeaponItemId = item.id;
+        return;
+      }
+      const slotType = action.slotType ?? this.defaultSlotForItem(item);
+      if (!slotType) {
+        this.setEquipmentFlash('No compatible slot');
+        return;
+      }
+      const result = this.worldState.installEquipment(item.id, slotType);
+      this.pendingWeaponItemId = null;
+      this.setEquipmentFlash(result.success ? `Installed ${item.name}` : result.reason);
+      return;
+    }
+    if (action.action === 'pickWeaponSlot' && action.itemId && action.slotType) {
+      const result = this.worldState.installEquipment(action.itemId, action.slotType);
+      this.pendingWeaponItemId = null;
+      this.setEquipmentFlash(result.success ? 'Weapon installed' : result.reason);
+    }
+  }
+
+  private setEquipmentFlash(message: string): void {
+    this.equipmentFlashMessage = message;
+    this.equipmentFlashTimer = 1.6;
+  }
+
+  private defaultSlotForItem(item: EquipmentItem): EquipmentInstallSlotType | null {
+    const installClass = item.installSlotClass ?? this.legacyInstallClass(item);
+    if (installClass === 'weapon') {
+      const keys = this.getWeaponKeys();
+      return keys.length > 0 ? (`weapon_${keys[0]}` as EquipmentInstallSlotType) : null;
+    }
+    if (installClass === 'thruster_rotation') return 'thruster_rotateCW';
+    if (installClass === 'thruster_forward') return 'thruster_forward';
+    if (installClass === 'thruster_reverse') return 'thruster_reverse';
+    if (installClass === 'armour') return 'armour';
+    if (installClass === 'autoBrake') return 'autoBrake';
+    if (installClass === 'fuelTank') return 'fuelTank';
+    if (installClass === 'hyperspaceDrive') return 'hyperspaceDrive';
+    if (installClass === 'sensorArray') return 'sensorArray';
+    if (installClass === 'neuralBrain') return 'neuralBrain';
+    if (installClass === 'memoryCard') return 'memoryCard';
+    return null;
+  }
+
+  private legacyInstallClass(item: EquipmentItem): string {
+    if (item.type === 'weapon') return 'weapon';
+    if (item.type === 'armour') return 'armour';
+    if (item.type === 'autoBrake') return 'autoBrake';
+    if (item.type === 'fuelTank') return 'fuelTank';
+    if (item.type === 'hyperspaceDrive') return 'hyperspaceDrive';
+    if (item.type === 'sensorArray') return 'sensorArray';
+    if (item.type === 'neuralBrain') return 'neuralBrain';
+    if (item.type === 'memoryCard') return 'memoryCard';
+    if (item.type === 'thruster') {
+      return item.mountPosition === 'rear' ? 'thruster_forward' : 'thruster_reverse';
+    }
+    return '';
+  }
+
+  private getItemForSlot(slotType: EquipmentSlot['slotType']): EquipmentItem | null {
+    const ship = this.worldState.getPlayerShipState();
+    const slot = ship.equipmentSlots.find((entry) => entry.slotType === slotType);
+    if (!slot?.itemId) return null;
+    return this.worldState.getEquipmentItem(slot.itemId);
+  }
+
+  private getRotationThrusterItem(): EquipmentItem | null {
+    return this.getItemForSlot('thruster_rotateCW') ?? this.getItemForSlot('thruster_rotateCCW');
+  }
+
+  private getWeaponKeys(): WeaponFireKey[] {
+    const ship = this.worldState.getPlayerShipState();
+    const maxSlots = Math.min(5, this.worldState.getHullSpec(ship.hullSpecId)?.weaponSlots ?? 0);
+    return ['Z', 'X', 'C', 'V', 'B'].slice(0, maxSlots) as WeaponFireKey[];
+  }
+
+  private getInventoryMass(): number {
+    const ship = this.worldState.getPlayerShipState();
+    return ship.inventory.reduce((sum, item) => sum + item.mass, 0);
+  }
+
+  private getInventoryInstallLabel(item: EquipmentItem): string {
+    if (item.type === 'weapon') {
+      return '[ INSTALL -> WEAPON ]';
+    }
+    const slot = this.defaultSlotForItem(item);
+    if (!slot) {
+      return '[ INSTALL ]';
+    }
+    return `[ INSTALL -> ${slot} ]`;
+  }
+
+  private formatEquipmentStats(item: EquipmentItem): string[] {
+    switch (item.type) {
+      case 'thruster':
+        return [`Force: ${item.force}`, `Mass: ${item.mass}`];
+      case 'weapon': {
+        const spec = this.worldState.getBulletSpec(item.bulletSpecId);
+        return [`${this.formatDamageType(spec)} Dmg: ${spec?.damage ?? '?'}`, `Rate: ${item.fireRate}/s  Mass: ${item.mass}`];
+      }
+      case 'armour':
+        return [`HP +${item.hpBonus}  Mass: ${item.mass}`, this.formatArmourSummary(item.reductions)];
+      case 'autoBrake':
+        return [`Damping: ${item.dampingFactor}`, `Mass: ${item.mass}`];
+      case 'fuelTank':
+        return [`Capacity: ${item.fuelCapacity}`, `Mass: ${item.mass}`];
+      case 'hyperspaceDrive':
+        return [`Range: ${item.jumpRange} sectors`, `Mass: ${item.mass}`];
+      case 'sensorArray':
+        return [`Range: ${item.range}  Slots: ${item.trackedObjectSlots}`, `Mass: ${item.mass}`];
+      case 'neuralBrain':
+        return [`${item.maxLayers}x${item.maxNeuronsPerLayer}`, `Mass: ${item.mass}`];
+      case 'memoryCard':
+        return [`Slots: ${item.storageSlots}`, `Mass: ${item.mass}`];
+    }
+    return ['Mass: ?'];
+  }
+
+  private formatDamageType(spec: ReturnType<WorldState['getBulletSpec']>): string {
+    if (!spec) return '?';
+    const cat = spec.damageCategory.charAt(0).toUpperCase() + spec.damageCategory.slice(1);
+    const mat = spec.matterType === 'normal' ? '' : ` / ${spec.matterType}`;
+    return `${cat}${mat}`;
+  }
+
+  private formatArmourSummary(reductions: ArmourReductionProfile): string {
+    const parts = Object.entries(reductions)
+      .filter(([, value]) => value !== 0)
+      .map(([key, value]) => `${DAMAGE_TYPE_LABELS[key as DamageTypeKey]} ${value > 0 ? '+' : ''}${value}`)
+      .slice(0, 6);
+    return parts.join('  ') || 'No resistances';
   }
 
   private drawLockGlyph(

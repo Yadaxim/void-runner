@@ -38,6 +38,10 @@ export const MISSION_MIN_DISTANCE = 2;
 export const MISSION_MAX_DISTANCE = 20;
 export const MISSION_DELIVERY_DISPLAY_TIME = 5;
 export const MISSION_PAYOFF_MIN = 200;
+export const EQUIPMENT_STORE_COUNT = 12;
+export const EQUIPMENT_SELL_FRACTION = 0.6;
+export const EQUIPMENT_TIER_MULTIPLIERS = [1.0, 2.5, 6.0, 15.0, 35.0] as const;
+export const EQUIPMENT_BASE_PRICE_PER_MASS = 20;
 
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;

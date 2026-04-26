@@ -163,7 +163,7 @@
       "hullClass": "fighter",
       "hullMass": 80,
       "cargoCapacity": 80,
-      "equipmentCapacity": 40,
+      "equipmentCapacity": 160,
       "equipmentWhitelist": [
         "thruster",
         "weapon",
@@ -360,6 +360,7 @@
       "mass": 12,
       "tier": 1,
       "factionAffinity": "federation",
+      "installSlotClass": "thruster_forward",
       "force": 15000,
       "energyPerSecond": 0,
       "mountPosition": "rear"
@@ -372,6 +373,7 @@
       "mass": 35,
       "tier": 1,
       "factionAffinity": "frontier_clans",
+      "installSlotClass": "thruster_forward",
       "force": 15000,
       "energyPerSecond": 0,
       "mountPosition": "rear"
@@ -384,6 +386,7 @@
       "mass": 8,
       "tier": 1,
       "factionAffinity": "federation",
+      "installSlotClass": "thruster_reverse",
       "force": 12000,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -396,6 +399,7 @@
       "mass": 20,
       "tier": 1,
       "factionAffinity": "frontier_clans",
+      "installSlotClass": "thruster_reverse",
       "force": 10000,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -408,6 +412,7 @@
       "mass": 5,
       "tier": 1,
       "factionAffinity": "federation",
+      "installSlotClass": "thruster_rotation",
       "force": 700,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -420,6 +425,7 @@
       "mass": 8,
       "tier": 1,
       "factionAffinity": "federation",
+      "installSlotClass": "thruster_rotation",
       "force": 700,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -432,6 +438,7 @@
       "mass": 18,
       "tier": 1,
       "factionAffinity": "frontier_clans",
+      "installSlotClass": "thruster_rotation",
       "force": 350,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -839,6 +846,9 @@
             },
             {
               "type": "missionBoard"
+            },
+            {
+              "type": "equipmentStore"
             }
           ],
           "rotationSpeed": 0,
@@ -894,6 +904,9 @@
             },
             {
               "type": "missionBoard"
+            },
+            {
+              "type": "equipmentStore"
             }
           ],
           "rotationSpeed": 0.003,

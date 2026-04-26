@@ -27,6 +27,7 @@ import type {
   ShipState,
   StartingConditions,
   WeaponSlot,
+  WeaponFireKey,
   WorldFile
 } from '../types';
 
@@ -52,6 +53,7 @@ export interface SaveMetadata {
 }
 
 export type ReputationTier = 'allied' | 'friendly' | 'neutral' | 'unfriendly' | 'hostile';
+export type EquipmentInstallSlotType = EquipmentSlot['slotType'] | `weapon_${WeaponFireKey}`;
 export type RepActionType =
   | 'combat_hit'
   | 'combat_kill'
@@ -126,6 +128,7 @@ function normaliseShipState(shipState: ShipState): ShipState {
     ...shipState,
     autoBrakeLinearEnabled: shipState.autoBrakeLinearEnabled ?? false,
     autoBrakeRotationEnabled: shipState.autoBrakeRotationEnabled ?? false,
+    inventory: shipState.inventory ?? [],
     position: toVector2(shipState.position),
     velocity: toVector2(shipState.velocity)
   };
@@ -176,6 +179,7 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     maxFuel: 100,
     credits: sc.credits,
     cargo: [],
+    inventory: [],
     equipmentSlots: sc.equipmentSlots.map((slot) => ({ ...slot })),
     weaponLoadout: sc.weaponLoadout.map((slot) => ({ ...slot })),
     activeMissions: [],
@@ -450,6 +454,229 @@ export class WorldState {
 
   getPlayerShipState(): ShipState {
     return this.playerShipState;
+  }
+
+  addToInventory(item: EquipmentItem): void {
+    const ship = this.getPlayerShipState();
+    this.updatePlayerShipState({ inventory: [...ship.inventory, item] });
+  }
+
+  removeFromInventory(itemId: string): EquipmentItem | null {
+    const ship = this.getPlayerShipState();
+    const idx = ship.inventory.findIndex((item) => item.id === itemId);
+    if (idx < 0) {
+      return null;
+    }
+    const item = ship.inventory[idx];
+    const inventory = [...ship.inventory];
+    inventory.splice(idx, 1);
+    this.updatePlayerShipState({ inventory });
+    return item;
+  }
+
+  getInstalledEquipmentMass(): number {
+    const ship = this.getPlayerShipState();
+    const equippedMass = ship.equipmentSlots.reduce((total, slot) => {
+      if (!slot.itemId) {
+        return total;
+      }
+      return total + (this.getEquipmentItem(slot.itemId)?.mass ?? 0);
+    }, 0);
+    const weaponMass = ship.weaponLoadout.reduce((total, slot) => {
+      const item = this.getEquipmentItem(slot.itemId);
+      if (!item || item.type !== 'weapon') {
+        return total;
+      }
+      return total + item.mass;
+    }, 0);
+    return equippedMass + weaponMass;
+  }
+
+  recalculateMaxHP(): void {
+    const ship = this.getPlayerShipState();
+    const hullSpec = this.getHullSpec(ship.hullSpecId);
+    if (!hullSpec) {
+      return;
+    }
+    const armourBonus = ship.equipmentSlots.reduce((total, slot) => {
+      if (!slot.itemId) {
+        return total;
+      }
+      const item = this.getEquipmentItem(slot.itemId);
+      if (!item || item.type !== 'armour') {
+        return total;
+      }
+      return total + item.hpBonus;
+    }, 0);
+    const maxHP = hullSpec.baseHP + armourBonus;
+    this.updatePlayerShipState({
+      maxHP,
+      currentHP: Math.min(ship.currentHP, maxHP)
+    });
+  }
+
+  installEquipment(itemId: string, slotType: EquipmentInstallSlotType): { success: true } | { success: false; reason: string } {
+    const ship = this.getPlayerShipState();
+    const hullSpec = this.getHullSpec(ship.hullSpecId);
+    const item = ship.inventory.find((candidate) => candidate.id === itemId);
+    if (!item) {
+      return { success: false, reason: 'Item not in inventory' };
+    }
+    if (!this.isCompatibleInstallSlot(item, slotType)) {
+      return { success: false, reason: 'Item cannot be installed in that slot' };
+    }
+
+    const inventory = ship.inventory.filter((candidate) => candidate.id !== itemId);
+    const equipmentSlots = [...ship.equipmentSlots];
+    const weaponLoadout = [...ship.weaponLoadout];
+
+    if (slotType.startsWith('weapon_')) {
+      if (item.type !== 'weapon') {
+        return { success: false, reason: 'Item is not a weapon' };
+      }
+      const availableWeaponSlots = Math.min(5, hullSpec?.weaponSlots ?? 0);
+      const fireKey = slotType.replace('weapon_', '') as WeaponFireKey;
+      if (availableWeaponSlots <= 0 || ['Z', 'X', 'C', 'V', 'B'].slice(0, availableWeaponSlots).indexOf(fireKey) < 0) {
+        return { success: false, reason: 'Weapon slot unavailable on this hull' };
+      }
+      const existing = weaponLoadout.find((slot) => slot.fireKey === fireKey);
+      const displacedMass = existing ? (this.getEquipmentItem(existing.itemId)?.mass ?? 0) : 0;
+      const massAfterInstall = this.getInstalledEquipmentMass() - displacedMass + item.mass;
+      if (massAfterInstall > (hullSpec?.equipmentCapacity ?? 0)) {
+        return { success: false, reason: 'Insufficient equipment capacity' };
+      }
+      if (existing) {
+        const existingItem = this.getEquipmentItem(existing.itemId);
+        if (existingItem && existingItem.type === 'weapon') {
+          inventory.push(existingItem);
+        }
+      }
+      const next = weaponLoadout.filter((slot) => slot.fireKey !== fireKey);
+      next.push({ fireKey, itemId: item.id, stackCount: 1, cooldownRemaining: 0 });
+      next.sort((a, b) => a.fireKey.localeCompare(b.fireKey));
+      this.updatePlayerShipState({ weaponLoadout: next, inventory });
+    } else {
+      const equipmentSlotType = slotType as EquipmentSlot['slotType'];
+      const slotTargets =
+        equipmentSlotType === 'thruster_rotateCW' || equipmentSlotType === 'thruster_rotateCCW'
+          ? (['thruster_rotateCW', 'thruster_rotateCCW'] as const)
+          : ([equipmentSlotType] as const);
+      const displacedItemIds = new Set<string>();
+      for (const target of slotTargets) {
+        const idx = equipmentSlots.findIndex((slot) => slot.slotType === target);
+        if (idx >= 0 && equipmentSlots[idx].itemId) {
+          displacedItemIds.add(equipmentSlots[idx].itemId!);
+        }
+      }
+      const displacedMass = Array.from(displacedItemIds).reduce(
+        (sum, displacedId) => sum + (this.getEquipmentItem(displacedId)?.mass ?? 0),
+        0
+      );
+      const massAfterInstall = this.getInstalledEquipmentMass() - displacedMass + item.mass;
+      if (massAfterInstall > (hullSpec?.equipmentCapacity ?? 0)) {
+        return { success: false, reason: 'Insufficient equipment capacity' };
+      }
+      for (const displacedId of displacedItemIds) {
+        const existingItem = this.getEquipmentItem(displacedId);
+        if (existingItem) {
+          inventory.push(existingItem);
+        }
+      }
+
+      for (const target of slotTargets) {
+        const idx = equipmentSlots.findIndex((slot) => slot.slotType === target);
+        if (idx >= 0) {
+          equipmentSlots[idx] = { slotType: target, itemId: item.id };
+        } else {
+          equipmentSlots.push({ slotType: target, itemId: item.id });
+        }
+      }
+      this.updatePlayerShipState({ equipmentSlots, inventory });
+    }
+
+    this.recalculateMaxHP();
+    this.saveToLocalStorage();
+    return { success: true };
+  }
+
+  uninstallEquipment(slotType: EquipmentInstallSlotType): boolean {
+    const ship = this.getPlayerShipState();
+    const inventory = [...ship.inventory];
+    if (slotType.startsWith('weapon_')) {
+      const fireKey = slotType.replace('weapon_', '') as WeaponFireKey;
+      const existing = ship.weaponLoadout.find((slot) => slot.fireKey === fireKey);
+      if (!existing) {
+        return false;
+      }
+      const item = this.getEquipmentItem(existing.itemId);
+      if (item) {
+        inventory.push(item);
+      }
+      this.updatePlayerShipState({
+        weaponLoadout: ship.weaponLoadout.filter((slot) => slot.fireKey !== fireKey),
+        inventory
+      });
+      this.recalculateMaxHP();
+      this.saveToLocalStorage();
+      return true;
+    }
+
+    const equipmentSlots = [...ship.equipmentSlots];
+    const equipmentSlotType = slotType as EquipmentSlot['slotType'];
+    const slotTargets =
+      equipmentSlotType === 'thruster_rotateCW' || equipmentSlotType === 'thruster_rotateCCW'
+        ? (['thruster_rotateCW', 'thruster_rotateCCW'] as const)
+        : ([equipmentSlotType] as const);
+    const installedItemIds = new Set<string>();
+    for (const target of slotTargets) {
+      const idx = equipmentSlots.findIndex((slot) => slot.slotType === target);
+      if (idx >= 0 && equipmentSlots[idx].itemId) {
+        installedItemIds.add(equipmentSlots[idx].itemId!);
+        equipmentSlots[idx] = { slotType: target, itemId: null };
+      }
+    }
+    if (installedItemIds.size === 0) {
+      return false;
+    }
+    const item = this.getEquipmentItem(Array.from(installedItemIds)[0]);
+    if (item) {
+      inventory.push(item);
+    }
+    this.updatePlayerShipState({ equipmentSlots, inventory });
+    this.recalculateMaxHP();
+    this.saveToLocalStorage();
+    return true;
+  }
+
+  private isCompatibleInstallSlot(item: EquipmentItem, slotType: EquipmentInstallSlotType): boolean {
+    if (slotType.startsWith('weapon_')) {
+      return this.getItemInstallSlotClass(item) === 'weapon';
+    }
+    const installClass = this.getItemInstallSlotClass(item);
+    if (slotType === 'thruster_forward') return installClass === 'thruster_forward';
+    if (slotType === 'thruster_reverse') return installClass === 'thruster_reverse';
+    if (slotType === 'thruster_rotateCW' || slotType === 'thruster_rotateCCW') return installClass === 'thruster_rotation';
+    return installClass === slotType;
+  }
+
+  private getItemInstallSlotClass(item: EquipmentItem): string {
+    if (item.installSlotClass) {
+      return item.installSlotClass;
+    }
+    // Legacy fallback for worlds that do not yet define installSlotClass.
+    if (item.type === 'weapon') return 'weapon';
+    if (item.type === 'armour') return 'armour';
+    if (item.type === 'fuelTank') return 'fuelTank';
+    if (item.type === 'hyperspaceDrive') return 'hyperspaceDrive';
+    if (item.type === 'autoBrake') return 'autoBrake';
+    if (item.type === 'sensorArray') return 'sensorArray';
+    if (item.type === 'neuralBrain') return 'neuralBrain';
+    if (item.type === 'memoryCard') return 'memoryCard';
+    if (item.type === 'thruster') {
+      if (item.id.includes('rot_thruster')) return 'thruster_rotation';
+      return item.mountPosition === 'rear' ? 'thruster_forward' : 'thruster_reverse';
+    }
+    return '';
   }
 
   acceptMission(mission: Mission): boolean {
