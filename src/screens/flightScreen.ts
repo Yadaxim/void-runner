@@ -299,7 +299,11 @@ export class FlightScreen implements Screen {
       showBoundaryWarning: performance.now() <= this.boundaryWarningUntilMs,
       radiationIntensity: this.worldState.getRadiationIntensity(),
       arrivalMessage: this.getArrivalMessage(),
-      destructionMessageAlpha: this.getDestructionMessageAlpha()
+      destructionMessageAlpha: this.getDestructionMessageAlpha(),
+      spawnRuleDebugLines: (this.sectorSimulation?.getSpawnRuleDebugRows() ?? []).map((row) => {
+        const next = row.nextArrivalIn.toFixed(1).padStart(5, ' ');
+        return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;
+      })
     });
     this.landableScreen?.render(this.ctx);
     this.insuranceScreen?.render(this.ctx);
@@ -716,6 +720,7 @@ export class FlightScreen implements Screen {
     };
     this.playerShip.recalculateMaxHP(this.worldState);
     this.worldState.updatePlayerShipState(this.playerShip.state);
+    this.sectorSimulation?.respawnNPCs();
     this.playerController?.getLandPressed();
     this.landingCooldownSeconds = FlightScreen.TAKEOFF_LANDING_COOLDOWN_SECONDS;
     this.isLanded = false;

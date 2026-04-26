@@ -45,6 +45,37 @@ export const RADIATION_PARTICLE_COUNT = 60;
 export const MAX_LANDABLES_PER_SECTOR = 4;
 export const MAX_FLEET_SIZE = 5;
 
+// NPC spawning
+export const NPC_ARRIVAL_SPEED_MIN = 60;
+export const NPC_ARRIVAL_SPEED_MAX = 140;
+export const NPC_EDGE_INSET = 20;
+export const NPC_ALLY_ALERT_RANGE = 800;
+
+// Transit behaviour
+export const TRANSIT_LOITER_RADIUS = 120;
+export const TRANSIT_LOITER_MIN = 30;
+export const TRANSIT_LOITER_MAX = 120;
+export const TRANSIT_APPROACH_BRAKE_RADIUS = 300;
+export const TRANSIT_LOITER_DRIFT_INTERVAL = 2;
+export const TRANSIT_LOITER_DRIFT_FORCE = 15;
+
+// Patrol behaviour
+export const PATROL_WAYPOINT_ARRIVAL_RADIUS = 80;
+export const PATROL_WAYPOINT_COUNT = 4;
+
+// Combat behaviour
+export const NPC_AGGRO_RANGE = 600;
+export const NPC_FLEE_HP_THRESHOLD = 0.25;
+export const NPC_FIRE_RANGE = 400;
+export const NPC_PREFERRED_COMBAT_RANGE = 280;
+export const NPC_STRAFE_INTERVAL = 1.5;
+export const NPC_DEAGGRO_RANGE_MULTIPLIER = 1.5;
+export const NPC_THREAT_MEMORY_DURATION = 10;
+
+// Opacity
+export const NPC_FADE_DURATION = 1.0;
+export const NPC_LEAVING_OPACITY = 0.3;
+
 // Rendering and UI sizing
 export const STAR_LAYER_COUNTS = [7000, 3500, 100, 40] as const;
 export const STAR_SCROLL_FACTORS = [0.02, 0.08, 0.2, 0.5] as const;

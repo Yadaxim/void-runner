@@ -3,6 +3,8 @@ import {
   FUEL_USE_ROTATION_THRUSTER_PER_SECOND,
   PLACEHOLDER_ANGULAR_DAMPING,
   PLACEHOLDER_LINEAR_DAMPING,
+  NPC_FADE_DURATION,
+  NPC_LEAVING_OPACITY,
   PLACEHOLDER_ROTATE_TORQUE,
   PLACEHOLDER_SHIP_MASS,
   PLACEHOLDER_THRUST_FORCE,
@@ -24,6 +26,7 @@ import { Vector2 } from '../physics/vector2';
 import type { Landable } from '../types';
 import type { WorldState } from '../core/worldState';
 import type { NPCController, NPCInputs, NPCState } from './npcController';
+import type { SpawnRuleState } from './sector';
 
 export interface ThrusterInputs {
   forward: boolean;
@@ -40,6 +43,9 @@ export class ShipEntity {
   private npcController: NPCController | null = null;
   private npcBehaviourType: NPCState | null = null;
   private npcLastState: NPCState | null = null;
+  spawnRuleStateRef: SpawnRuleState | null = null;
+  spawnAge = 0;
+  isLeaving = false;
 
   private accumulatedForce: Vector2 = Vector2.zero();
 
@@ -94,11 +100,25 @@ export class ShipEntity {
     return this.npcLastState;
   }
 
+  getNPCController(): NPCController | null {
+    return this.npcController;
+  }
+
   isNPCHostile(): boolean {
     if (this.npcLastState !== null) {
       return this.npcLastState === 'hostile';
     }
     return this.npcBehaviourType === 'hostile';
+  }
+
+  getOpacity(): number {
+    if (this.spawnAge < NPC_FADE_DURATION) {
+      return this.spawnAge / NPC_FADE_DURATION;
+    }
+    if (this.isLeaving) {
+      return NPC_LEAVING_OPACITY;
+    }
+    return 1.0;
   }
 
   markDestroyed(): void {
@@ -161,6 +181,7 @@ export class ShipEntity {
     externalInputs?: ThrusterInputs,
     context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[]; worldState: WorldState }
   ): NPCInputs | null {
+    this.spawnAge += dt;
     let npcInputs: NPCInputs | null = null;
     if (this.npcController && !this.state.isPlayerControlled && context) {
       npcInputs = this.npcController.update(

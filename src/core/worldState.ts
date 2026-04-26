@@ -211,6 +211,20 @@ export class WorldState {
     return this.worldFile.factions.find((faction) => faction.id === id) ?? null;
   }
 
+  getFactionDisposition(factionA: string, factionB: string): number {
+    const faction = this.getFaction(factionA);
+    if (!faction) {
+      return 0;
+    }
+    return faction.disposition[factionB] ?? 0;
+  }
+
+  areFactionsHostile(factionA: string, factionB: string): boolean {
+    const ab = this.getFactionDisposition(factionA, factionB);
+    const ba = this.getFactionDisposition(factionB, factionA);
+    return ab < -0.5 || ba < -0.5;
+  }
+
   getFactions(): FactionDefinition[] {
     return this.worldFile.factions;
   }

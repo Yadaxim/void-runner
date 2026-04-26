@@ -36,6 +36,7 @@ interface RenderPipelineState {
     alpha: number;
   } | null;
   destructionMessageAlpha: number;
+  spawnRuleDebugLines: string[];
 }
 
 export class RenderPipeline {
@@ -162,6 +163,11 @@ export class RenderPipeline {
           tier: state.worldState.getReputationTier(factionId) as ReputationTier
         };
       })(),
+      state.otherShips.slice(0, 6).map((ship) => {
+        const targetId = ship.getNPCController()?.getAggroTargetId() ?? 'none';
+        return `DBG NPC ${ship.state.id.split('_').slice(-1)[0]} -> ${targetId}`;
+      }),
+      state.spawnRuleDebugLines,
       state.playerShip.state.weaponLoadout,
       state.worldState,
       state.heldFireKeys

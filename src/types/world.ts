@@ -14,8 +14,10 @@ export interface GridCoord {
 
 export interface NPCSpawnRule {
   factionId: string;
-  behaviourType: 'patrol' | 'trade' | 'hostile' | 'escort';
+  behaviourType: 'patrol' | 'transit' | 'trade' | 'hostile' | 'escort';
   countRange: [number, number];
+  maxPresent: number;
+  arrivalIntervalRange: [number, number];
 }
 
 export interface AmbientVisuals {

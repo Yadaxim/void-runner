@@ -52,6 +52,8 @@ export class HudRenderer {
     shipTarget: { name: string; hpRatio: number; hostile: boolean } | null,
     landableTarget: { name: string } | null,
     sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null,
+    npcDebugLines: string[],
+    spawnRuleDebugLines: string[],
     weaponLoadout: WeaponSlot[],
     worldState: WorldState,
     heldFireKeys: Record<WeaponFireKey, boolean>
@@ -132,6 +134,8 @@ export class HudRenderer {
     this.renderRadiationWarning(radiationIntensity, showBoundaryWarning, arrivalMessage !== null);
     this.renderDestructionMessage(destructionMessageAlpha);
     this.renderTargets(shipTarget, landableTarget);
+    this.renderNPCDebug(npcDebugLines);
+    this.renderSpawnRuleDebug(spawnRuleDebugLines);
     this.weaponStripRenderer.render(
       weaponLoadout,
       heldFireKeys,
@@ -356,6 +360,69 @@ export class HudRenderer {
       this.ctx.canvas.width / 2,
       this.ctx.canvas.height / 2
     );
+    this.ctx.restore();
+  }
+
+  private renderNPCDebug(npcDebugLines: string[]): void {
+    if (npcDebugLines.length === 0) {
+      return;
+    }
+    this.ctx.save();
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'bottom';
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    const baseY = this.ctx.canvas.height - 148;
+    for (let i = 0; i < npcDebugLines.length; i += 1) {
+      this.ctx.fillText(npcDebugLines[i], 12, baseY - i * 14);
+    }
+    this.ctx.restore();
+  }
+
+  private renderSpawnRuleDebug(spawnRuleDebugLines: string[]): void {
+    if (spawnRuleDebugLines.length === 0) {
+      return;
+    }
+    const x = this.ctx.canvas.width - 316;
+    const y = this.ctx.canvas.height - 286;
+    const width = 304;
+    const visibleRows = spawnRuleDebugLines.slice(0, 5);
+    const height = 18 + visibleRows.length * 13;
+
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.82)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.roundRect(x, y, width, height, 6);
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillStyle = COLOURS.UI_ACCENT;
+    this.ctx.fillText('SPAWN RULES', x + 8, y + 4);
+
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    for (let i = 0; i < visibleRows.length; i += 1) {
+      const line = visibleRows[i];
+      const parts = line.split(' ');
+      const countPart = parts[4] ?? '0/0';
+      const timerPartRaw = parts[5] ?? 't:0.0s';
+      const [currentRaw, maxRaw] = countPart.split('/');
+      const current = Number(currentRaw);
+      const max = Number(maxRaw);
+      const timerValue = Number(timerPartRaw.replace('t:', '').replace('s', ''));
+      if (current >= max && max > 0) {
+        this.ctx.fillStyle = COLOURS.WARNING;
+      } else if (!Number.isNaN(timerValue) && timerValue < 2) {
+        this.ctx.fillStyle = COLOURS.DANGER;
+      } else {
+        this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+      }
+      this.ctx.fillText(line, x + 8, y + 19 + i * 13);
+    }
     this.ctx.restore();
   }
 }

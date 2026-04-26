@@ -2,6 +2,7 @@ import {
   BULLET_MAX_IMPACT_DELTA_V,
   BULLET_MOMENTUM_TRANSFER_SCALE,
   HULL_DIMENSIONS,
+  NPC_ALLY_ALERT_RANGE,
   REP_PENALTY_HIT,
   REP_PENALTY_KILL
 } from '../constants';
@@ -72,6 +73,8 @@ export class WeaponSystem {
     _landables: Landable[]
   ): void {
     this.playerDestroyed = false;
+    const player = ships.find((ship) => ship.state.id === 'player') ?? null;
+    const otherNPCs = ships.filter((ship) => ship.state.id !== 'player');
     for (const bullet of this.activeBullets) {
       const targetId = bullet.instance.targetId ?? null;
       const targetShip = targetId ? ships.find((ship) => ship.state.id === targetId) ?? null : null;
@@ -83,6 +86,17 @@ export class WeaponSystem {
         }
         const hitRadius = this.getShipHitRadius(ship, worldState);
         if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, hitRadius)) {
+          const attackerFactionId = this.getAttackerFactionId(bullet.instance.ownerId, player, otherNPCs);
+          const npcController = ship.getNPCController();
+          if (npcController && !ship.state.isPlayerControlled) {
+            npcController.receiveAttack(
+              bullet.instance.ownerId,
+              attackerFactionId,
+              this.getBulletDamage(bullet)
+            );
+            this.alertNearbyAllies(ship, bullet.instance.ownerId, attackerFactionId, otherNPCs);
+          }
+
           const isPlayerAggressor = bullet.instance.ownerId === 'player' && !ship.state.isPlayerControlled;
           if (isPlayerAggressor && ship.state.factionId) {
             worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT);
@@ -166,5 +180,34 @@ export class WeaponSystem {
       deltaV = deltaV.normalise().scale(BULLET_MAX_IMPACT_DELTA_V);
     }
     return (ship.state.velocity as Vector2).add(deltaV);
+  }
+
+  private getAttackerFactionId(ownerId: string, player: ShipEntity | null, otherNPCs: ShipEntity[]): string | null {
+    if (ownerId === 'player') {
+      return player?.state.factionId ?? null;
+    }
+    const attacker = otherNPCs.find((npc) => npc.state.id === ownerId);
+    return attacker?.state.factionId ?? null;
+  }
+
+  private alertNearbyAllies(
+    victim: ShipEntity,
+    attackerId: string,
+    attackerFactionId: string | null,
+    otherNPCs: ShipEntity[]
+  ): void {
+    for (const ally of otherNPCs) {
+      if (ally.state.id === victim.state.id) {
+        continue;
+      }
+      if (ally.state.factionId !== victim.state.factionId) {
+        continue;
+      }
+      const allyDistance = Vector2.distance(ally.state.position as Vector2, victim.state.position as Vector2);
+      if (allyDistance > NPC_ALLY_ALERT_RANGE) {
+        continue;
+      }
+      ally.getNPCController()?.receiveAttack(attackerId, attackerFactionId, 1);
+    }
   }
 }

@@ -29,6 +29,7 @@ export class ShipLayer {
         ? worldState.getFactionVisual(ship.state.factionId)
         : DEFAULT_FACTION_VISUAL;
       this.ctx.save();
+      this.ctx.globalAlpha = ship.getOpacity();
       this.ctx.translate(screenPos.x, screenPos.y);
       this.ctx.rotate(ship.state.angle);
       const armourMass = ship.getTotalArmourMass(worldState);
