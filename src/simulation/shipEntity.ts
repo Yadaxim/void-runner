@@ -153,7 +153,7 @@ export class ShipEntity {
   }
 
   getThrusterForce(
-    slotType: 'thruster_forward' | 'thruster_reverse' | 'thruster_rotateCW' | 'thruster_rotateCCW',
+    slotType: 'thruster_forward' | 'thruster_reverse' | 'thruster_rotate',
     worldState: WorldState
   ): number {
     const slot = this.state.equipmentSlots.find((s) => s.slotType === slotType);
@@ -216,15 +216,12 @@ export class ShipEntity {
     const reverseForce = this.reverseThrusterRequested
       ? this.getThrusterForce('thruster_reverse', worldState)
       : 0;
-    const rotateCWForce = this.rotateCWThrusterRequested
-      ? this.getThrusterForce('thruster_rotateCW', worldState)
-      : 0;
-    const rotateCCWForce = this.rotateCCWThrusterRequested
-      ? this.getThrusterForce('thruster_rotateCCW', worldState)
+    const rotateForce = (this.rotateCWThrusterRequested || this.rotateCCWThrusterRequested)
+      ? this.getThrusterForce('thruster_rotate', worldState)
       : 0;
 
     const activeLinearThrusters = (forwardForce > 0 ? 1 : 0) + (reverseForce > 0 ? 1 : 0);
-    const activeRotationThrusters = (rotateCWForce > 0 ? 1 : 0) + (rotateCCWForce > 0 ? 1 : 0);
+    const activeRotationThrusters = rotateForce > 0 && (this.rotateCWThrusterRequested || this.rotateCCWThrusterRequested) ? 1 : 0;
     const requestedFuel =
       (activeLinearThrusters * FUEL_USE_LINEAR_THRUSTER_PER_SECOND +
         activeRotationThrusters * FUEL_USE_ROTATION_THRUSTER_PER_SECOND) *
@@ -240,11 +237,17 @@ export class ShipEntity {
       const dir = Vector2.fromAngle(this.state.angle).scale(-1);
       this.pendingForce = this.pendingForce.add(dir.scale(reverseForce * fuelScale));
     }
-    if (rotateCWForce > 0 && fuelScale > 0) {
-      this.pendingTorque += (rotateCWForce * fuelScale) / mass;
+    if (this.rotateCWThrusterRequested && rotateForce > 0 && fuelScale > 0) {
+      this.pendingTorque += (rotateForce * fuelScale) / mass;
     }
-    if (rotateCCWForce > 0 && fuelScale > 0) {
-      this.pendingTorque -= (rotateCCWForce * fuelScale) / mass;
+    if (this.rotateCCWThrusterRequested && rotateForce > 0 && fuelScale > 0) {
+      this.pendingTorque -= (rotateForce * fuelScale) / mass;
+    }
+    if (this.autoBrakeRotation && rotateForce > 0 && fuelScale > 0) {
+      const av = this.state.angularVelocity;
+      if (Math.abs(av) > 0.01) {
+        this.pendingTorque -= Math.sign(av) * ((rotateForce * fuelScale) / mass) * 0.5;
+      }
     }
 
     if (this.autoBrakeLinear && autoBrake) {

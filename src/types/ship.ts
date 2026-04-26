@@ -1,5 +1,4 @@
 import type { BrainMode, MemoryCard, NeuralBrain } from './ai';
-import type { EquipmentItem } from './equipment';
 import type { EquipType } from './equipment';
 import type { CargoItem, Mission } from './mission';
 import type { Vector2 } from './physics';
@@ -12,19 +11,21 @@ export interface TargetState {
   landableTargetId?: string;
 }
 
+export type EquipmentSlotType =
+  | 'thruster_forward'
+  | 'thruster_reverse'
+  | 'thruster_rotate'
+  | 'weapon'
+  | 'armour'
+  | 'autoBrake'
+  | 'fuelTank'
+  | 'hyperspaceDrive'
+  | 'sensorArray'
+  | 'neuralBrain'
+  | 'memoryCard';
+
 export interface EquipmentSlot {
-  slotType:
-    | 'thruster_forward'
-    | 'thruster_reverse'
-    | 'thruster_rotateCW'
-    | 'thruster_rotateCCW'
-    | 'armour'
-    | 'fuelTank'
-    | 'hyperspaceDrive'
-    | 'autoBrake'
-    | 'sensorArray'
-    | 'neuralBrain'
-    | 'memoryCard';
+  slotType: EquipmentSlotType;
   itemId: string | null;
 }
 
@@ -48,7 +49,8 @@ export interface HullSpec {
   topAngularSpeed: number;
   baseHP: number;
   weaponSlots: number;
-  defaultWeaponLoadout?: WeaponSlot[];
+  slotCounts?: Partial<Record<EquipmentSlot['slotType'], number>>;
+  equipmentLoadout?: EquipmentSlot[];
 }
 
 export interface ShipState {
@@ -65,7 +67,6 @@ export interface ShipState {
   maxFuel: number;
   credits: number;
   cargo: CargoItem[];
-  inventory: EquipmentItem[];
   equipmentSlots: EquipmentSlot[];
   weaponLoadout: WeaponSlot[];
   activeMissions: Mission[];

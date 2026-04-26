@@ -277,7 +277,7 @@ export class SectorSimulation {
           ? 'courier_mk1'
           : 'fighter_raider_mk1');
     const hullSpec = this.worldState.getHullSpec(hullSpecId);
-    const loadout = this.worldState.getDefaultLoadout(hullSpec?.hullClass ?? 'fighter');
+    const loadout = this.worldState.getHullLoadout(hullSpec?.hullClass ?? 'fighter');
     const maxHP = hullSpec?.baseHP ?? 100;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {

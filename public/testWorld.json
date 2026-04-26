@@ -178,13 +178,17 @@
       "topAngularSpeed": 3.5,
       "baseHP": 100,
       "weaponSlots": 1,
-      "defaultWeaponLoadout": [
-        {
-          "fireKey": "Z",
-          "itemId": "pulse_cannon_t1",
-          "stackCount": 1,
-          "cooldownRemaining": 0
-        }
+      "slotCounts": {
+        "thruster_forward": 1,
+        "thruster_rotate": 1,
+        "weapon": 1,
+        "armour": 1,
+        "autoBrake": 1
+      },
+      "equipmentLoadout": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_rotate", "itemId": "rot_thruster_fighter" },
+        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
       ]
     },
     {
@@ -209,13 +213,17 @@
       "topAngularSpeed": 3.2,
       "baseHP": 110,
       "weaponSlots": 1,
-      "defaultWeaponLoadout": [
-        {
-          "fireKey": "Z",
-          "itemId": "pulse_cannon_t1",
-          "stackCount": 1,
-          "cooldownRemaining": 0
-        }
+      "slotCounts": {
+        "thruster_forward": 1,
+        "thruster_rotate": 1,
+        "weapon": 1,
+        "armour": 1,
+        "autoBrake": 1
+      },
+      "equipmentLoadout": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_rotate", "itemId": "rot_thruster_fighter" },
+        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
       ]
     },
     {
@@ -241,13 +249,19 @@
       "topAngularSpeed": 2.8,
       "baseHP": 160,
       "weaponSlots": 2,
-      "defaultWeaponLoadout": [
-        {
-          "fireKey": "Z",
-          "itemId": "pulse_cannon_t1",
-          "stackCount": 1,
-          "cooldownRemaining": 0
-        }
+      "slotCounts": {
+        "thruster_forward": 1,
+        "thruster_reverse": 1,
+        "thruster_rotate": 1,
+        "weapon": 2,
+        "armour": 1,
+        "autoBrake": 1
+      },
+      "equipmentLoadout": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_reverse", "itemId": "rev_thruster_standard" },
+        { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
+        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
       ]
     },
     {
@@ -272,13 +286,62 @@
       "topAngularSpeed": 1.8,
       "baseHP": 240,
       "weaponSlots": 1,
-      "defaultWeaponLoadout": [
-        {
-          "fireKey": "Z",
-          "itemId": "pulse_cannon_t1",
-          "stackCount": 1,
-          "cooldownRemaining": 0
-        }
+      "slotCounts": {
+        "thruster_forward": 1,
+        "thruster_reverse": 1,
+        "thruster_rotate": 1,
+        "weapon": 1,
+        "armour": 2,
+        "autoBrake": 1
+      },
+      "equipmentLoadout": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
+        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
+        { "slotType": "thruster_rotate", "itemId": "rot_thruster_heavy" },
+        { "slotType": "autoBrake", "itemId": "auto_brake_t1" },
+        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+      ]
+    },
+    {
+      "id": "dev_store_rig",
+      "name": "Store Test Rig",
+      "description": "Bench hull for equipment UI: five weapon hardpoints plus forward and rotation thrusters only.",
+      "hullClass": "fighter",
+      "hullMass": 100,
+      "cargoCapacity": 60,
+      "equipmentCapacity": 320,
+      "equipmentWhitelist": [
+        "thruster",
+        "weapon",
+        "armour",
+        "fuelTank",
+        "autoBrake",
+        "sensorArray",
+        "neuralBrain",
+        "memoryCard"
+      ],
+      "topSpeed": 190,
+      "topAngularSpeed": 3.0,
+      "baseHP": 120,
+      "weaponSlots": 5,
+      "slotCounts": {
+        "thruster_forward": 2,
+        "thruster_rotate": 1,
+        "weapon": 5,
+        "armour": 2,
+        "autoBrake": 1
+      },
+      "equipmentLoadout": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_forward", "itemId": null },
+        { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
+        { "slotType": "armour", "itemId": "light_plating_t1" },
+        { "slotType": "armour", "itemId": "heavy_plating_t1" },
+        { "slotType": "weapon", "itemId": "pulse_cannon_t1" },
+        { "slotType": "weapon", "itemId": null },
+        { "slotType": "weapon", "itemId": null },
+        { "slotType": "weapon", "itemId": null },
+        { "slotType": "weapon", "itemId": null }
       ]
     }
   ],
@@ -360,7 +423,7 @@
       "mass": 12,
       "tier": 1,
       "factionAffinity": "federation",
-      "installSlotClass": "thruster_forward",
+      "slotType": "thruster_forward",
       "force": 15000,
       "energyPerSecond": 0,
       "mountPosition": "rear"
@@ -373,7 +436,7 @@
       "mass": 35,
       "tier": 1,
       "factionAffinity": "frontier_clans",
-      "installSlotClass": "thruster_forward",
+      "slotType": "thruster_forward",
       "force": 15000,
       "energyPerSecond": 0,
       "mountPosition": "rear"
@@ -386,7 +449,7 @@
       "mass": 8,
       "tier": 1,
       "factionAffinity": "federation",
-      "installSlotClass": "thruster_reverse",
+      "slotType": "thruster_reverse",
       "force": 12000,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -399,7 +462,7 @@
       "mass": 20,
       "tier": 1,
       "factionAffinity": "frontier_clans",
-      "installSlotClass": "thruster_reverse",
+      "slotType": "thruster_reverse",
       "force": 10000,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -412,7 +475,7 @@
       "mass": 5,
       "tier": 1,
       "factionAffinity": "federation",
-      "installSlotClass": "thruster_rotation",
+      "slotType": "thruster_rotate",
       "force": 700,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -425,7 +488,7 @@
       "mass": 8,
       "tier": 1,
       "factionAffinity": "federation",
-      "installSlotClass": "thruster_rotation",
+      "slotType": "thruster_rotate",
       "force": 700,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -438,7 +501,7 @@
       "mass": 18,
       "tier": 1,
       "factionAffinity": "frontier_clans",
-      "installSlotClass": "thruster_rotation",
+      "slotType": "thruster_rotate",
       "force": 350,
       "energyPerSecond": 0,
       "mountPosition": "forward"
@@ -578,55 +641,15 @@
       }
     }
   ],
-  "defaultLoadouts": {
-    "fighter": {
-      "equipmentSlots": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_fighter" },
-        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_fighter" }
-      ],
-      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
-    },
-    "courier": {
-      "equipmentSlots": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_reverse", "itemId": "rev_thruster_standard" },
-        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_standard" },
-        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_standard" }
-      ],
-      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
-    },
-    "freighter": {
-      "equipmentSlots": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
-        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
-        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_heavy" },
-        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_heavy" },
-        { "slotType": "autoBrake", "itemId": "auto_brake_t1" }
-      ],
-      "weaponLoadout": []
-    },
-    "heavy": {
-      "equipmentSlots": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
-        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
-        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_heavy" },
-        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_heavy" },
-        { "slotType": "autoBrake", "itemId": "auto_brake_t1" }
-      ],
-      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 2, "cooldownRemaining": 0 }]
-    }
-  },
   "startingConditions": {
     "sectorCoord": { "x": 5, "y": 5 },
-    "credits": 1000,
-    "hullSpecId": "fighter_mk1",
+    "credits": 50000,
+    "hullSpecId": "dev_store_rig",
     "equipmentSlots": [
       { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-      { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_fighter" },
-      { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_fighter" }
-    ],
-    "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
+      { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
+      { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+    ]
   },
   "missionTemplates": [
     {

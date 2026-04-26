@@ -281,9 +281,10 @@ export class NewGameScreen implements Screen {
       WorldState.deleteSave(world.seed);
       const worldFile = await loadWorldForEntry(world);
       const startSector = worldFile.startingConditions.sectorCoord;
+      const startHullSpecId = worldFile.startingConditions.hullSpecId;
       const worldState = new WorldState(worldFile, startSector, {
         id: 'player',
-        hullSpecId: 'fighter_mk1',
+        hullSpecId: startHullSpecId,
         factionId: null,
         position: { x: 0, y: 0 },
         velocity: { x: 0, y: 0 },
@@ -295,7 +296,6 @@ export class NewGameScreen implements Screen {
         maxFuel: 100,
         credits: 0,
         cargo: [],
-        inventory: [],
         equipmentSlots: [],
         weaponLoadout: [],
         activeMissions: [],

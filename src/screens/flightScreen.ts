@@ -1,5 +1,5 @@
 import { GameLoop } from '../core/gameLoop';
-import { WorldState } from '../core/worldState';
+import { buildStarterShipState, WorldState } from '../core/worldState';
 import { computeGravity } from '../physics/gravity';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
@@ -9,7 +9,7 @@ import { PlayerController } from '../simulation/playerController';
 import { SectorSimulation } from '../simulation/sector';
 import { ShipEntity } from '../simulation/shipEntity';
 import { TargetingSystem } from '../simulation/targetingSystem';
-import type { Landable, WeaponSlot } from '../types';
+import type { Landable } from '../types';
 import {
   ARRIVAL_MESSAGE_DURATION_MS,
   AUTOSAVE_INTERVAL_SECONDS,
@@ -177,8 +177,6 @@ export class FlightScreen implements Screen {
       autoBrakeRotationEnabled: this.playerShip.state.autoBrakeRotationEnabled
     });
     this.ensureDefaultLoadout();
-    this.ensurePlayerAutoBrakeInstalled();
-    this.ensurePlayerDevWeaponLoadout();
     this.sectorSimulation = new SectorSimulation(
       currentSector,
       this.playerShip,
@@ -203,75 +201,21 @@ export class FlightScreen implements Screen {
     if (!this.playerShip) {
       return;
     }
-    const hasMovementThrusters = this.playerShip.state.equipmentSlots.some(
-      (slot) =>
-        !!slot.itemId &&
-        (slot.slotType === 'thruster_forward' ||
-          slot.slotType === 'thruster_reverse' ||
-          slot.slotType === 'thruster_rotateCW' ||
-          slot.slotType === 'thruster_rotateCCW')
-    );
-    if (hasMovementThrusters && this.playerShip.state.weaponLoadout.length > 0) {
+    const starter = buildStarterShipState(this.worldState);
+    const hasAnyEquipment = this.playerShip.state.equipmentSlots.some((slot) => slot.itemId !== null);
+    const hasAnyWeapons = this.playerShip.state.weaponLoadout.length > 0;
+    if (hasAnyEquipment || hasAnyWeapons) {
       return;
     }
-    const defaultLoadout = this.worldState.getDefaultLoadout('fighter');
     this.playerShip.state = {
       ...this.playerShip.state,
-      equipmentSlots: defaultLoadout.equipmentSlots,
-      weaponLoadout: defaultLoadout.weaponLoadout
+      equipmentSlots: starter.equipmentSlots,
+      weaponLoadout: starter.weaponLoadout
     };
     this.worldState.updatePlayerShipState({
-      equipmentSlots: defaultLoadout.equipmentSlots,
-      weaponLoadout: defaultLoadout.weaponLoadout
+      equipmentSlots: starter.equipmentSlots,
+      weaponLoadout: starter.weaponLoadout
     });
-    this.worldState.saveToLocalStorage();
-  }
-
-  private ensurePlayerAutoBrakeInstalled(): void {
-    if (!this.playerShip) {
-      return;
-    }
-    const hasAutoBrake = this.playerShip.state.equipmentSlots.some(
-      (slot) => slot.slotType === 'autoBrake' && slot.itemId !== null
-    );
-    if (hasAutoBrake) {
-      return;
-    }
-    const nextEquipmentSlots = [
-      ...this.playerShip.state.equipmentSlots,
-      { slotType: 'autoBrake' as const, itemId: 'auto_brake_t1' }
-    ];
-    this.playerShip.state = {
-      ...this.playerShip.state,
-      equipmentSlots: nextEquipmentSlots
-    };
-    this.worldState.updatePlayerShipState({ equipmentSlots: nextEquipmentSlots });
-    this.worldState.saveToLocalStorage();
-  }
-
-  private ensurePlayerDevWeaponLoadout(): void {
-    if (!this.playerShip) {
-      return;
-    }
-    const devLoadout: WeaponSlot[] = [
-      { fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'X', itemId: 'slug_thrower_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'C', itemId: 'seeker_launcher_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'V', itemId: 'plasma_launcher_t1', stackCount: 1, cooldownRemaining: 0 }
-    ];
-    const existingByKey = new Map(this.playerShip.state.weaponLoadout.map((slot) => [slot.fireKey, slot]));
-    const hasAllDevWeapons = devLoadout.every((slot) => {
-      const existing = existingByKey.get(slot.fireKey);
-      return existing?.itemId === slot.itemId;
-    });
-    if (hasAllDevWeapons) {
-      return;
-    }
-    this.playerShip.state = {
-      ...this.playerShip.state,
-      weaponLoadout: devLoadout
-    };
-    this.worldState.updatePlayerShipState({ weaponLoadout: devLoadout });
     this.worldState.saveToLocalStorage();
   }
 
@@ -819,19 +763,13 @@ export class FlightScreen implements Screen {
 
   private buildStarterShipState() {
     const current = this.worldState.getPlayerShipState();
-    const loadout = this.worldState.getDefaultLoadout('fighter');
-    const hull = this.worldState.getHullSpec('fighter_mk1');
-    const baseHP = hull?.baseHP ?? 100;
+    const starter = buildStarterShipState(this.worldState);
     const maxFuel = current.maxFuel;
     return {
       ...current,
-      hullSpecId: 'fighter_mk1',
-      currentHP: baseHP,
-      maxHP: baseHP,
+      ...starter,
       fuel: maxFuel,
       maxFuel,
-      equipmentSlots: loadout.equipmentSlots,
-      weaponLoadout: loadout.weaponLoadout,
       position: Vector2.zero(),
       velocity: Vector2.zero(),
       angle: 0,

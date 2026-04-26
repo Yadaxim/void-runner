@@ -1,4 +1,4 @@
-import type { DamageTypeKey } from './types';
+import type { DamageTypeKey, EquipmentSlot } from './types';
 
 // Physics and simulation
 export const GRAVITY_CONSTANT = 5;
@@ -42,6 +42,7 @@ export const EQUIPMENT_STORE_COUNT = 12;
 export const EQUIPMENT_SELL_FRACTION = 0.6;
 export const EQUIPMENT_TIER_MULTIPLIERS = [1.0, 2.5, 6.0, 15.0, 35.0] as const;
 export const EQUIPMENT_BASE_PRICE_PER_MASS = 20;
+export const REQUIRED_SLOT_TYPES: EquipmentSlot['slotType'][] = ['thruster_forward', 'thruster_rotate'];
 
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;
