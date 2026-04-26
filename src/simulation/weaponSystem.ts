@@ -88,9 +88,9 @@ export class WeaponSystem {
             worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT);
             worldState.logRepEvent(ship.state.factionId, REP_PENALTY_HIT, 'Attacked ship');
           }
-          const nextHP = Math.max(0, ship.state.currentHP - this.getBulletDamage(bullet));
+          ship.applyDamage(this.getBulletDamage(bullet), worldState);
+          const nextHP = ship.state.currentHP;
           const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
-          ship.state = { ...ship.state, currentHP: nextHP };
           if (nextVelocity) {
             ship.state = { ...ship.state, velocity: nextVelocity };
           }

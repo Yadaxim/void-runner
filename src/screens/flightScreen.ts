@@ -13,6 +13,9 @@ import type { Landable, WeaponSlot } from '../types';
 import {
   ARRIVAL_MESSAGE_DURATION_MS,
   AUTOSAVE_INTERVAL_SECONDS,
+  COLOURS,
+  INSURANCE_PAYOUT_FRACTION,
+  INSURANCE_REPAIR_COST_FRACTION,
   LANDING_RADIUS_MULTIPLIER,
   LANDING_SPEED_THRESHOLD,
   MAX_RADIATION_DAMAGE_PER_SECOND,
@@ -23,6 +26,7 @@ import {
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
+import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
 import { ScreenManager, type Screen } from './screenManager';
 
 type SectorEdge = 'north' | 'south' | 'east' | 'west';
@@ -54,6 +58,10 @@ export class FlightScreen implements Screen {
   private arrivalMessageSectorName = '';
   private arrivalMessageLandables = '';
   private destructionMessageUntilMs = 0;
+  private pendingInsuranceSeconds = 0;
+  private insuranceScreen: InsuranceScreen | null = null;
+  private destructionPending = false;
+  private lastShipValue = 0;
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
   };
@@ -78,6 +86,11 @@ export class FlightScreen implements Screen {
     this.landables.push(...this.worldState.getLandablesInCurrentSector());
     this.worldState.markVisited(currentSector.coord);
     this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
+    this.playerShip.recalculateMaxHP(this.worldState);
+    this.worldState.updatePlayerShipState({
+      currentHP: this.playerShip.state.currentHP,
+      maxHP: this.playerShip.state.maxHP
+    });
     this.playerController = new PlayerController({
       autoBrakeLinearEnabled: this.playerShip.state.autoBrakeLinearEnabled,
       autoBrakeRotationEnabled: this.playerShip.state.autoBrakeRotationEnabled
@@ -123,6 +136,10 @@ export class FlightScreen implements Screen {
   }
 
   onExit(): void {
+    if (this.insuranceScreen) {
+      this.screenManager.pop();
+      this.insuranceScreen = null;
+    }
     if (this.landableScreen) {
       this.screenManager.pop();
       this.landableScreen = null;
@@ -140,6 +157,17 @@ export class FlightScreen implements Screen {
 
   update(dt: number): void {
     if (!this.playerController || !this.playerShip) {
+      return;
+    }
+    if (this.insuranceScreen) {
+      this.insuranceScreen.update(dt);
+      return;
+    }
+    if (this.destructionPending) {
+      this.pendingInsuranceSeconds = Math.max(0, this.pendingInsuranceSeconds - dt);
+      if (this.pendingInsuranceSeconds <= 0) {
+        this.openInsuranceScreen();
+      }
       return;
     }
 
@@ -212,6 +240,8 @@ export class FlightScreen implements Screen {
       velocity: this.playerShip.state.velocity,
       angle: this.playerShip.state.angle,
       angularVelocity: this.playerShip.state.angularVelocity,
+      currentHP: this.playerShip.state.currentHP,
+      maxHP: this.playerShip.state.maxHP,
       fuel: this.playerShip.state.fuel,
       credits: this.playerShip.state.credits,
       autoBrakeLinearEnabled: this.playerShip.isLinearAutoBrakeEnabled(),
@@ -272,6 +302,7 @@ export class FlightScreen implements Screen {
       destructionMessageAlpha: this.getDestructionMessageAlpha()
     });
     this.landableScreen?.render(this.ctx);
+    this.insuranceScreen?.render(this.ctx);
   }
 
   private getDestructionMessageAlpha(): number {
@@ -386,31 +417,16 @@ export class FlightScreen implements Screen {
   }
 
   private handleShipDestruction(): void {
-    if (!this.playerShip) {
+    if (!this.playerShip || this.destructionPending || this.insuranceScreen) {
       return;
     }
-
-    const penalty = 500;
-    const ship = this.worldState.getPlayerShipState();
-    const resetState = {
-      currentHP: ship.maxHP,
-      fuel: ship.maxFuel,
-      credits: Math.max(0, ship.credits - penalty),
-      position: Vector2.zero(),
-      velocity: Vector2.zero(),
-      angularVelocity: 0
-    };
-
-    this.worldState.updatePlayerShipState(resetState);
-    this.playerShip.state = {
-      ...this.playerShip.state,
-      ...resetState
-    };
-
-    this.worldState.setCurrentSector({ x: 5, y: 5 });
-    this.loadCurrentSector();
-    this.worldState.saveToLocalStorage();
-    this.destructionMessageUntilMs = performance.now() + 3000;
+    this.lastShipValue = this.worldState.calculateShipValue(this.worldState.getPlayerShipState());
+    const playerPos = this.playerShip.state.position as Vector2;
+    this.sectorSimulation
+      ?.getParticleSystem()
+      .spawnExplosion(new Vector2(playerPos.x, playerPos.y), COLOURS.DANGER, 36);
+    this.destructionPending = true;
+    this.pendingInsuranceSeconds = 1.5;
   }
 
   private loadCurrentSector(): void {
@@ -436,6 +452,133 @@ export class FlightScreen implements Screen {
       );
       this.sectorSimulation.spawnNPCs();
     }
+  }
+
+  private openInsuranceScreen(): void {
+    this.pendingInsuranceSeconds = 0;
+    this.insuranceScreen = new InsuranceScreen(
+      this.canvas,
+      this.worldState,
+      this.lastShipValue,
+      (choice) => this.handleInsuranceChoice(choice)
+    );
+    this.screenManager.push(this.insuranceScreen);
+  }
+
+  private handleInsuranceChoice(choice: InsuranceChoice): void {
+    const ship = this.worldState.getPlayerShipState();
+    let respawnLandable: Landable | null = null;
+    if (choice.type === 'repair') {
+      const cost = Math.ceil(this.lastShipValue * INSURANCE_REPAIR_COST_FRACTION);
+      if (ship.credits < cost) {
+        return;
+      }
+      const respawnSector = this.findLastVisitedLandableSectorCoord();
+      respawnLandable = this.findLandableInSector(respawnSector, ship.lastLandedLandableId ?? null);
+      this.worldState.setCurrentSector(respawnSector);
+      const respawnPosition = respawnLandable ? new Vector2(respawnLandable.position.x, respawnLandable.position.y) : Vector2.zero();
+      this.worldState.updatePlayerShipState({
+        currentHP: ship.maxHP,
+        credits: ship.credits - cost,
+        position: respawnPosition,
+        velocity: Vector2.zero(),
+        angularVelocity: 0,
+        lastLandedLandableId: respawnLandable?.id ?? ship.lastLandedLandableId ?? null
+      });
+      this.playerShip!.state = {
+        ...this.playerShip!.state,
+        ...this.worldState.getPlayerShipState()
+      };
+      this.loadCurrentSector();
+    } else if (choice.type === 'payout') {
+      const payout = Math.floor(this.lastShipValue * INSURANCE_PAYOUT_FRACTION);
+      const starterState = this.buildStarterShipState();
+      const respawnSector = this.findNearestAccessibleSector();
+      respawnLandable = this.findLandableInSector(respawnSector, null);
+      const respawnPosition = respawnLandable ? new Vector2(respawnLandable.position.x, respawnLandable.position.y) : Vector2.zero();
+      this.worldState.updatePlayerShipState({
+        ...starterState,
+        credits: ship.credits + payout,
+        position: respawnPosition,
+        lastLandedLandableId: respawnLandable?.id ?? null
+      });
+      this.worldState.setCurrentSector(respawnSector);
+      this.playerShip!.state = this.worldState.getPlayerShipState();
+      this.loadCurrentSector();
+    }
+    this.worldState.saveToLocalStorage();
+    this.destructionPending = false;
+    this.lastShipValue = 0;
+    this.insuranceScreen = null;
+    this.screenManager.pop();
+    if (respawnLandable) {
+      this.land(respawnLandable);
+    }
+  }
+
+  private buildStarterShipState() {
+    const current = this.worldState.getPlayerShipState();
+    const hull = this.worldState.getHullSpec('fighter_mk1');
+    const baseHP = hull?.baseHP ?? 100;
+    const maxFuel = current.maxFuel;
+    return {
+      ...current,
+      hullSpecId: 'fighter_mk1',
+      currentHP: baseHP,
+      maxHP: baseHP,
+      fuel: maxFuel,
+      maxFuel,
+      equipmentSlots: [],
+      weaponLoadout: [{ fireKey: 'Z' as const, itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 }],
+      position: Vector2.zero(),
+      velocity: Vector2.zero(),
+      angle: 0,
+      angularVelocity: 0
+    };
+  }
+
+  private findNearestAccessibleSector(): { x: number; y: number } {
+    const current = this.worldState.getCurrentSectorCoord();
+    const candidates = this.worldState
+      .getVisitedSectorCoords()
+      .map((coord) => this.worldState.getSector(coord))
+      .filter((sector) => sector && sector.landables.length > 0)
+      .filter((sector) => !sector!.factionId || this.worldState.getReputationTier(sector!.factionId) !== 'hostile')
+      .sort((a, b) => {
+        const da = Math.abs(a!.coord.x - current.x) + Math.abs(a!.coord.y - current.y);
+        const db = Math.abs(b!.coord.x - current.x) + Math.abs(b!.coord.y - current.y);
+        return da - db;
+      });
+    return candidates[0]?.coord ?? { x: 5, y: 5 };
+  }
+
+  private findLastVisitedLandableSectorCoord(): { x: number; y: number } {
+    const lastLandableId = this.worldState.getPlayerShipState().lastLandedLandableId;
+    if (!lastLandableId) {
+      return this.worldState.getCurrentSectorCoord();
+    }
+    const coord = this.worldState.getSectorCoordByLandableId(lastLandableId);
+    if (coord) {
+      return coord;
+    }
+    return this.worldState.getCurrentSectorCoord();
+  }
+
+  private findLandableInSector(
+    coord: { x: number; y: number },
+    preferredLandableId: string | null
+  ): Landable | null {
+    const sector = this.worldState.getSector(coord);
+    if (!sector || sector.landables.length === 0) {
+      return null;
+    }
+    if (preferredLandableId) {
+      const preferred = sector.landables.find((landable) => landable.id === preferredLandableId);
+      if (preferred) {
+        return preferred;
+      }
+    }
+    return sector.landables[0];
   }
 
   private applyBoundaryClamp(edge: SectorEdge): void {
@@ -571,6 +714,7 @@ export class FlightScreen implements Screen {
       position: new Vector2(landable.position.x + takeoffDirection.x * (landable.radius + 14), landable.position.y + takeoffDirection.y * (landable.radius + 14)),
       velocity: takeoffDirection.scale(TAKEOFF_VELOCITY)
     };
+    this.playerShip.recalculateMaxHP(this.worldState);
     this.worldState.updatePlayerShipState(this.playerShip.state);
     this.playerController?.getLandPressed();
     this.landingCooldownSeconds = FlightScreen.TAKEOFF_LANDING_COOLDOWN_SECONDS;

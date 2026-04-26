@@ -194,6 +194,15 @@ export class WorldState {
     return null;
   }
 
+  getSectorCoordByLandableId(id: string): GridCoord | null {
+    for (const sector of this.worldFile.sectors) {
+      if (sector.landables.some((landable) => landable.id === id)) {
+        return { ...sector.coord };
+      }
+    }
+    return null;
+  }
+
   getHullSpec(id: string): HullSpec | null {
     return this.worldFile.hullSpecs.find((hull) => hull.id === id) ?? null;
   }
@@ -223,6 +232,28 @@ export class WorldState {
 
   getEquipmentItem(id: string): EquipmentItem | null {
     return this.worldFile.equipmentCatalog.find((item) => item.id === id) ?? null;
+  }
+
+  calculateShipValue(shipState: ShipState): number {
+    const hullSpec = this.getHullSpec(shipState.hullSpecId);
+    const hullValue = hullSpec ? hullSpec.baseHP * 10 + hullSpec.cargoCapacity * 5 : 500;
+    const equipmentValue = shipState.equipmentSlots
+      .filter((slot) => slot.itemId !== null)
+      .reduce((total, slot) => {
+        const item = this.getEquipmentItem(slot.itemId!);
+        if (!item) {
+          return total;
+        }
+        return total + this.getEquipmentValue(item);
+      }, 0);
+    const weaponValue = shipState.weaponLoadout.reduce((total, slot) => {
+      const item = this.getEquipmentItem(slot.itemId);
+      if (!item) {
+        return total;
+      }
+      return total + this.getEquipmentValue(item) * slot.stackCount;
+    }, 0);
+    return hullValue + equipmentValue + weaponValue;
   }
 
   getBulletSpec(id: string): BulletSpec | null {
@@ -312,6 +343,13 @@ export class WorldState {
     return this.visitedSectors.has(coordKey(coord));
   }
 
+  getVisitedSectorCoords(): GridCoord[] {
+    return Array.from(this.visitedSectors).map((key) => {
+      const [xRaw, yRaw] = key.split(':');
+      return { x: Number(xRaw), y: Number(yRaw) };
+    });
+  }
+
   getCurrentSectorCoord(): GridCoord {
     return { ...this.currentSectorCoord };
   }
@@ -371,5 +409,10 @@ export class WorldState {
     } catch {
       return null;
     }
+  }
+
+  private getEquipmentValue(item: EquipmentItem): number {
+    const tierValues = [200, 500, 1200, 3000, 7000];
+    return tierValues[Math.min(item.tier - 1, 4)];
   }
 }

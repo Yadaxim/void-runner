@@ -77,6 +77,7 @@ export class SectorSimulation {
           angularVelocity: 0,
           currentHP: maxHP,
           maxHP,
+          equipmentSlots: [],
           autoBrakeLinearEnabled: true,
           autoBrakeRotationEnabled: true,
           weaponLoadout: (hullSpec?.defaultWeaponLoadout ?? buildLoadout()).map((slot) => ({

@@ -49,7 +49,7 @@ export class HudRenderer {
     } | null,
     radiationIntensity: number,
     destructionMessageAlpha: number,
-    shipTarget: { name: string; hpRatio: number } | null,
+    shipTarget: { name: string; hpRatio: number; hostile: boolean } | null,
     landableTarget: { name: string } | null,
     sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null,
     weaponLoadout: WeaponSlot[],
@@ -79,7 +79,7 @@ export class HudRenderer {
     this.ctx.fillText(creditsText, 12, 60);
     this.ctx.fillText(linearBrakeText, 12, 76);
     this.ctx.fillText(rotationBrakeText, 12, 92);
-    this.renderHpBar(playerShip, radiationIntensity);
+    this.renderHpBar(playerShip, radiationIntensity, worldState);
     this.renderSectorReputationIndicator(sectorFaction);
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
@@ -184,7 +184,7 @@ export class HudRenderer {
   }
 
   private renderTargets(
-    shipTarget: { name: string; hpRatio: number } | null,
+    shipTarget: { name: string; hpRatio: number; hostile: boolean } | null,
     landableTarget: { name: string } | null
   ): void {
     const leftMargin = 12;
@@ -213,8 +213,10 @@ export class HudRenderer {
     this.ctx.fill();
     this.ctx.stroke();
 
-    const shipLine = shipTarget ? shipTarget.name : 'NO SHIP TARGET';
-    this.ctx.fillStyle = shipTarget ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
+    const shipLine = shipTarget
+      ? `${shipTarget.hostile ? '[HOSTILE] ' : '[NEUTRAL] '} ${shipTarget.name}`
+      : 'NO SHIP TARGET';
+    this.ctx.fillStyle = shipTarget ? (shipTarget.hostile ? COLOURS.DANGER : COLOURS.UI_PRIMARY) : COLOURS.UI_SECONDARY;
     this.ctx.fillText(shipLine, centerX, shipBoxY + boxHeight / 2);
     if (shipTarget) {
       const ratio = Math.max(0, Math.min(1, shipTarget.hpRatio));
@@ -234,7 +236,7 @@ export class HudRenderer {
     this.ctx.restore();
   }
 
-  private renderHpBar(playerShip: ShipEntity, radiationIntensity: number): void {
+  private renderHpBar(playerShip: ShipEntity, radiationIntensity: number, worldState: WorldState): void {
     const barX = 12;
     const barY = 112;
     const barWidth = 210;
@@ -258,6 +260,29 @@ export class HudRenderer {
       this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
       this.ctx.restore();
     }
+    const hullSpec = worldState.getHullSpec(playerShip.state.hullSpecId);
+    const baseHP = hullSpec?.baseHP ?? hpMax;
+    if (baseHP < hpMax) {
+      const baseRatio = Math.max(0, Math.min(1, baseHP / hpMax));
+      const tickX = barX + 1 + (barWidth - 2) * baseRatio;
+      this.ctx.save();
+      this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+      this.ctx.globalAlpha = 0.7;
+      this.ctx.beginPath();
+      this.ctx.moveTo(tickX, barY - 2);
+      this.ctx.lineTo(tickX, barY + barHeight + 2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillText(
+      `${Math.round(hpCurrent).toString()} / ${Math.round(hpMax).toString()}`,
+      barX + barWidth + 10,
+      barY - 1
+    );
   }
 
   private renderSectorReputationIndicator(

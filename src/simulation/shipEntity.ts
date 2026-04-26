@@ -9,7 +9,7 @@ import {
   PLACEHOLDER_TOP_ANGULAR_SPEED,
   PLACEHOLDER_TOP_SPEED
 } from '../constants';
-import type { ShipState } from '../types';
+import type { ArmourItem, ShipState } from '../types';
 import {
   applyAngularDamping,
   applyAngularForce,
@@ -95,7 +95,10 @@ export class ShipEntity {
   }
 
   isNPCHostile(): boolean {
-    return this.npcBehaviourType === 'hostile' || this.npcLastState === 'hostile';
+    if (this.npcLastState !== null) {
+      return this.npcLastState === 'hostile';
+    }
+    return this.npcBehaviourType === 'hostile';
   }
 
   markDestroyed(): void {
@@ -104,6 +107,53 @@ export class ShipEntity {
 
   isDestroyed(): boolean {
     return this.destroyed || this.state.currentHP <= 0;
+  }
+
+  recalculateMaxHP(worldState: WorldState): void {
+    const hullSpec = worldState.getHullSpec(this.state.hullSpecId);
+    if (!hullSpec) {
+      return;
+    }
+    const armourBonus = this.state.equipmentSlots
+      .filter((slot) => slot.itemId !== null)
+      .reduce((total, slot) => {
+        const item = worldState.getEquipmentItem(slot.itemId!);
+        if (item?.type === 'armour') {
+          return total + (item as ArmourItem).hpBonus;
+        }
+        return total;
+      }, 0);
+    const newMaxHP = hullSpec.baseHP + armourBonus;
+    const delta = newMaxHP - this.state.maxHP;
+    this.state.maxHP = newMaxHP;
+    if (delta > 0) {
+      this.state.currentHP = Math.min(this.state.currentHP + delta, newMaxHP);
+    }
+    this.state.currentHP = Math.min(this.state.currentHP, newMaxHP);
+  }
+
+  getTotalArmourMass(worldState: WorldState): number {
+    return this.state.equipmentSlots
+      .filter((slot) => slot.itemId !== null)
+      .reduce((total, slot) => {
+        const item = worldState.getEquipmentItem(slot.itemId!);
+        if (item?.type === 'armour') {
+          return total + item.mass;
+        }
+        return total;
+      }, 0);
+  }
+
+  getDamageReduction(worldState: WorldState): number {
+    return Math.min(0.5, this.getTotalArmourMass(worldState) * 0.005);
+  }
+
+  applyDamage(rawDamage: number, worldState: WorldState): number {
+    const reduction = this.getDamageReduction(worldState);
+    const actualDamage = rawDamage * (1 - reduction);
+    const nextHP = Math.max(0, this.state.currentHP - actualDamage);
+    this.state.currentHP = nextHP;
+    return actualDamage;
   }
 
   update(

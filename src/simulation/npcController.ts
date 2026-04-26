@@ -23,6 +23,7 @@ export interface NPCInputs {
 const ROTATION_THRESHOLD_RAD = 0.08;
 const WAYPOINT_REACHED_DISTANCE = 80;
 const TAIL_DISTANCE = 500;
+const PROVOKED_HOSTILE_SECONDS = 12;
 
 function wrapAngle(angle: number): number {
   let wrapped = angle;
@@ -83,6 +84,8 @@ export class NPCController {
   private tradePointB: Vector2 | null = null;
   private tradeToA = false;
   private readonly alwaysHostile: boolean;
+  private lastKnownHP: number | null = null;
+  private provokedTimer = 0;
 
   constructor(initialState: NPCState, sectorSeed: number, factionId: string) {
     this.state = initialState;
@@ -105,6 +108,13 @@ export class NPCController {
     landables: Landable[],
     worldState: WorldState
   ): NPCInputs {
+    this.provokedTimer = Math.max(0, this.provokedTimer - dt);
+    if (this.lastKnownHP !== null && self.state.currentHP < this.lastKnownHP && self.state.currentHP > 0) {
+      this.state = 'hostile';
+      this.provokedTimer = PROVOKED_HOSTILE_SECONDS;
+    }
+    this.lastKnownHP = self.state.currentHP;
+
     const selfPos = self.state.position as Vector2;
     const playerPos = player.state.position as Vector2;
     const playerDistance = Vector2.distance(selfPos, playerPos);
@@ -115,7 +125,12 @@ export class NPCController {
     if (this.state === 'hostile' && self.state.maxHP > 0 && self.state.currentHP / self.state.maxHP < this.fleeHPThreshold) {
       this.state = 'flee';
     }
-    if (this.state === 'hostile' && !this.shouldRemainHostile(worldState, self.state.factionId)) {
+    if (
+      this.state === 'hostile' &&
+      !this.alwaysHostile &&
+      this.provokedTimer <= 0 &&
+      !this.shouldRemainHostile(worldState, self.state.factionId)
+    ) {
       this.state = 'patrol';
     }
 
@@ -129,21 +144,6 @@ export class NPCController {
       return this.updateHostile(dt, self, player, playerDistance);
     }
     return this.updateFlee(self, player, playerDistance);
-  }
-
-  private shouldBeHostile(worldState: WorldState, factionId: string | null): boolean {
-    if (!factionId) {
-      return false;
-    }
-    return worldState.getReputationTier(factionId) === 'hostile';
-  }
-
-  private shouldRemainHostile(worldState: WorldState, factionId: string | null): boolean {
-    if (!factionId) {
-      return false;
-    }
-    const tier = worldState.getReputationTier(factionId);
-    return tier === 'hostile' || tier === 'unfriendly';
   }
 
   private updatePatrol(
@@ -224,7 +224,7 @@ export class NPCController {
 
   private updateHostile(dt: number, self: ShipEntity, player: ShipEntity, playerDistance: number): NPCInputs {
     const inputs = defaultInputs();
-    if (!this.alwaysHostile && playerDistance > this.aggroRange * 1.5) {
+    if (!this.alwaysHostile && this.provokedTimer <= 0 && playerDistance > this.aggroRange * 1.5) {
       this.state = 'patrol';
       return defaultInputs();
     }
@@ -318,6 +318,21 @@ export class NPCController {
     }
     this.tradePointA = this.randomSectorPoint(250);
     this.tradePointB = this.randomSectorPoint(250);
+  }
+
+  private shouldBeHostile(worldState: WorldState, factionId: string | null): boolean {
+    if (!factionId) {
+      return false;
+    }
+    return worldState.getReputationTier(factionId) === 'hostile';
+  }
+
+  private shouldRemainHostile(worldState: WorldState, factionId: string | null): boolean {
+    if (!factionId) {
+      return false;
+    }
+    const tier = worldState.getReputationTier(factionId);
+    return tier === 'hostile' || tier === 'unfriendly';
   }
 
   private randomSectorPoint(inset: number): Vector2 {

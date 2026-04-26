@@ -116,7 +116,7 @@ function createDefaultShipState(): ShipState {
     maxFuel: 1000,
     credits: 10000,
     cargo: [],
-    equipmentSlots: [],
+    equipmentSlots: [{ slotType: 'armour', itemId: 'light_plating_t1' }],
     weaponLoadout: [
       { fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 },
       { fireKey: 'X', itemId: 'slug_thrower_t1', stackCount: 1, cooldownRemaining: 0 },

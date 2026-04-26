@@ -13,18 +13,13 @@ function brightenHex(hex: string, amount: number): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-function drawFighter(
+function traceFighterPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   dimensions: { length: number; width: number },
-  factionVisual: FactionVisual
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
   const wingY = halfLength * 0.15;
-
-  ctx.fillStyle = factionVisual.primaryColour;
-  ctx.strokeStyle = brightenHex(factionVisual.primaryColour, 0.25);
-  ctx.lineWidth = 1.5;
 
   ctx.beginPath();
   ctx.moveTo(0, -halfLength);
@@ -40,16 +35,26 @@ function drawFighter(
   ctx.lineTo(-halfWidth * 1.05, halfLength * 0.55);
   ctx.lineTo(-halfWidth * 0.35, halfLength * 0.45);
   ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
 
   ctx.beginPath();
   ctx.moveTo(halfWidth * 0.2, wingY);
   ctx.lineTo(halfWidth * 1.05, halfLength * 0.55);
   ctx.lineTo(halfWidth * 0.35, halfLength * 0.45);
   ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+}
+
+export function traceHullPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  hullClass: HullClass,
+  dimensions: { length: number; width: number }
+): void {
+  if (hullClass === 'fighter') {
+    traceFighterPath(ctx, dimensions);
+    return;
+  }
+  ctx.beginPath();
+  ctx.rect(-dimensions.width / 2, -dimensions.length / 2, dimensions.width, dimensions.length);
+  ctx.closePath();
 }
 
 export function drawHull(
@@ -58,13 +63,10 @@ export function drawHull(
   dimensions: { length: number; width: number },
   factionVisual: FactionVisual
 ): void {
-  if (hullClass === 'fighter') {
-    drawFighter(ctx, dimensions, factionVisual);
-    return;
-  }
-
   ctx.fillStyle = factionVisual.primaryColour;
-  ctx.beginPath();
-  ctx.rect(-dimensions.width / 2, -dimensions.length / 2, dimensions.width, dimensions.length);
+  ctx.strokeStyle = brightenHex(factionVisual.primaryColour, 0.25);
+  ctx.lineWidth = 1.5;
+  traceHullPath(ctx, hullClass, dimensions);
   ctx.fill();
+  ctx.stroke();
 }

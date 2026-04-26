@@ -499,6 +499,9 @@ export class LandableScreen implements Screen {
     const pricePerHP = this.getRepairPricePerHP();
     const hpNeeded = Math.max(0, ship.maxHP - ship.currentHP);
     const hullRatio = ship.maxHP > 0 ? Math.min(1, Math.max(0, ship.currentHP / ship.maxHP)) : 0;
+    const hullSpec = this.worldState.getHullSpec(ship.hullSpecId);
+    const baseHullHP = hullSpec?.baseHP ?? ship.maxHP;
+    const armourHP = Math.max(0, ship.maxHP - baseHullHP);
     const fullRepairCost = hpNeeded * pricePerHP;
     const hullIntact = hpNeeded <= 0;
     const canHoldRepair = !hullIntact && ship.credits >= pricePerHP;
@@ -511,36 +514,42 @@ export class LandableScreen implements Screen {
     ctx.fillText('HULL STATUS', x, y);
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillText(`Hull integrity: ${ship.currentHP.toFixed(1)} / ${ship.maxHP.toFixed(1)} (${Math.round(hullRatio * 100)}%)`, x, y + 28);
-    this.drawStatusBar(ctx, x, y + 52, width - 260, 20, hullRatio, this.getHullColourByRatio(hullRatio));
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText(
+      `Hull: ${Math.round(baseHullHP)} HP + Armour: ${Math.round(armourHP)} HP = ${Math.round(ship.maxHP)} HP max`,
+      x,
+      y + 48
+    );
+    this.drawStatusBar(ctx, x, y + 72, width - 260, 20, hullRatio, this.getHullColourByRatio(hullRatio));
 
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    ctx.fillText(`Damage: ${hpNeeded.toFixed(1)} HP`, x, y + 82);
-    ctx.fillText(`Repair cost: ${pricePerHP} ₢ per HP`, x, y + 104);
-    ctx.fillText(`Your credits: ${ship.credits.toFixed(1)} ₢`, x, y + 126);
+    ctx.fillText(`Damage: ${hpNeeded.toFixed(1)} HP`, x, y + 102);
+    ctx.fillText(`Repair cost: ${pricePerHP} ₢ per HP`, x, y + 124);
+    ctx.fillText(`Your credits: ${ship.credits.toFixed(1)} ₢`, x, y + 146);
 
-    this.repairRect = { x, y: y + 164, width: 210, height: 36 };
+    this.repairRect = { x, y: y + 184, width: 210, height: 36 };
     this.drawButton(ctx, this.repairRect, '[ HOLD TO REPAIR ]', canHoldRepair);
     if (hullIntact) {
       ctx.fillStyle = COLOURS.SAFE;
-      ctx.fillText('HULL INTACT', x + 228, y + 174);
+      ctx.fillText('HULL INTACT', x + 228, y + 194);
     } else if (!canHoldRepair) {
       ctx.fillStyle = COLOURS.DANGER;
-      ctx.fillText('INSUFFICIENT CREDITS', x + 228, y + 174);
+      ctx.fillText('INSUFFICIENT CREDITS', x + 228, y + 194);
     } else {
       ctx.fillStyle = COLOURS.UI_SECONDARY;
-      ctx.fillText(`-> ${(pricePerHP * REPAIR_RATE).toFixed(1)} ₢/s`, x + 228, y + 174);
+      ctx.fillText(`-> ${(pricePerHP * REPAIR_RATE).toFixed(1)} ₢/s`, x + 228, y + 194);
     }
 
-    this.fullRepairRect = { x, y: y + 218, width: 210, height: 36 };
+    this.fullRepairRect = { x, y: y + 238, width: 210, height: 36 };
     this.drawButton(ctx, this.fullRepairRect, '[ FULL REPAIR ]', canFullRepair);
     if (!hullIntact) {
       ctx.fillStyle = canFullRepair ? COLOURS.UI_SECONDARY : COLOURS.DANGER;
-      ctx.fillText(`-> ${fullRepairCost.toFixed(1)} ₢ total`, x + 228, y + 228);
+      ctx.fillText(`-> ${fullRepairCost.toFixed(1)} ₢ total`, x + 228, y + 248);
     }
 
     if (!canFullRepair && !hullIntact && maxRepairHP > 0) {
       ctx.fillStyle = COLOURS.WARNING;
-      ctx.fillText(`MAX REPAIR WITH CURRENT CREDITS: ${maxRepairHP} HP - ${maxRepairCost.toFixed(1)} ₢`, x, y + 270);
+      ctx.fillText(`MAX REPAIR WITH CURRENT CREDITS: ${maxRepairHP} HP - ${maxRepairCost.toFixed(1)} ₢`, x, y + 290);
     }
   }
 

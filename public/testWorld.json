@@ -252,6 +252,36 @@
       "bulletSpecId": "plasma_orb",
       "fireRate": 1.5,
       "energyCost": 10
+    },
+    {
+      "id": "light_plating_t1",
+      "type": "armour",
+      "name": "Light Composite Plating",
+      "description": "Thin composite panels bolted over critical hull sections. Better than nothing.",
+      "mass": 15,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "hpBonus": 40
+    },
+    {
+      "id": "heavy_plating_t1",
+      "type": "armour",
+      "name": "Heavy Alloy Plating",
+      "description": "Dense alloy plates welded directly to the hull frame. Significantly improves survivability at the cost of mass.",
+      "mass": 35,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "hpBonus": 100
+    },
+    {
+      "id": "ablative_shield_t1",
+      "type": "armour",
+      "name": "Ablative Shield Layer",
+      "description": "A sacrificial outer layer that absorbs and disperses energy weapon impacts.",
+      "mass": 20,
+      "tier": 1,
+      "factionAffinity": "veth_collective",
+      "hpBonus": 60
     }
   ],
   "missionTemplates": [],
@@ -277,6 +307,11 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
+          "countRange": [1, 1]
+        },
+        {
+          "factionId": "pirates",
+          "behaviourType": "patrol",
           "countRange": [1, 1]
         }
       ],

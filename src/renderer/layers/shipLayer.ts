@@ -2,7 +2,7 @@ import { COLOURS, DEFAULT_FACTION_VISUAL, HULL_DIMENSIONS } from '../../constant
 import type { WorldState } from '../../core/worldState';
 import type { Camera } from '../camera';
 import { worldToScreen } from '../camera';
-import { drawHull } from '../ships/hullBuilder';
+import { drawShip } from '../ships/shipRenderer';
 import type { ShipEntity } from '../../simulation/shipEntity';
 
 function hpBarColour(ratio: number): string {
@@ -31,7 +31,8 @@ export class ShipLayer {
       this.ctx.save();
       this.ctx.translate(screenPos.x, screenPos.y);
       this.ctx.rotate(ship.state.angle);
-      drawHull(this.ctx, hullClass, dimensions, factionVisual);
+      const armourMass = ship.getTotalArmourMass(worldState);
+      drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass);
       this.ctx.restore();
       this.drawWorldHpBar(ship, screenPos);
       if (ship.state.id === shipTargetId) {
