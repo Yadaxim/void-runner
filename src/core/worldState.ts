@@ -8,6 +8,7 @@ import { Vector2 } from '../physics/vector2';
 import type {
   BulletSpec,
   EquipmentItem,
+  EquipmentSlot,
   FactionDefinition,
   FactionVisual,
   GridCoord,
@@ -15,6 +16,7 @@ import type {
   Landable,
   SectorMetadata,
   ShipState,
+  WeaponSlot,
   WorldFile
 } from '../types';
 
@@ -246,6 +248,19 @@ export class WorldState {
 
   getEquipmentItem(id: string): EquipmentItem | null {
     return this.worldFile.equipmentCatalog.find((item) => item.id === id) ?? null;
+  }
+
+  getDefaultLoadout(
+    hullClass: HullSpec['hullClass']
+  ): { equipmentSlots: EquipmentSlot[]; weaponLoadout: WeaponSlot[] } {
+    const loadout = this.worldFile.defaultLoadouts?.[hullClass];
+    if (!loadout) {
+      return { equipmentSlots: [], weaponLoadout: [] };
+    }
+    return {
+      equipmentSlots: loadout.equipmentSlots.map((slot) => ({ ...slot })),
+      weaponLoadout: loadout.weaponLoadout.map((slot) => ({ ...slot }))
+    };
   }
 
   calculateShipValue(shipState: ShipState): number {

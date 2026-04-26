@@ -101,7 +101,8 @@ async function loadWorld(signal: AbortSignal): Promise<WorldFile> {
   return response.json() as Promise<WorldFile>;
 }
 
-function createDefaultShipState(): ShipState {
+function createDefaultShipState(worldFile: WorldFile): ShipState {
+  const fighterLoadout = worldFile.defaultLoadouts?.fighter ?? { equipmentSlots: [], weaponLoadout: [] };
   return {
     id: 'player',
     hullSpecId: 'fighter_mk1',
@@ -116,13 +117,8 @@ function createDefaultShipState(): ShipState {
     maxFuel: 1000,
     credits: 10000,
     cargo: [],
-    equipmentSlots: [{ slotType: 'armour', itemId: 'light_plating_t1' }],
-    weaponLoadout: [
-      { fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'X', itemId: 'slug_thrower_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'C', itemId: 'seeker_launcher_t1', stackCount: 1, cooldownRemaining: 0 },
-      { fireKey: 'V', itemId: 'plasma_launcher_t1', stackCount: 1, cooldownRemaining: 0 }
-    ],
+    equipmentSlots: fighterLoadout.equipmentSlots.map((slot) => ({ ...slot })),
+    weaponLoadout: fighterLoadout.weaponLoadout.map((slot) => ({ ...slot })),
     activeMissions: [],
     brain: null,
     memoryCards: [],
@@ -149,7 +145,7 @@ async function bootstrap(): Promise<void> {
     renderLoadingProgress('building world state', 0.55);
     const worldState =
       WorldState.loadFromLocalStorage(worldFile) ??
-      new WorldState(worldFile, { x: 5, y: 5 }, createDefaultShipState());
+      new WorldState(worldFile, { x: 5, y: 5 }, createDefaultShipState(worldFile));
 
     renderLoadingProgress('initializing flight systems', 0.8);
     const currentSector = worldState.getCurrentSector();

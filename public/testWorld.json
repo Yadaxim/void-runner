@@ -174,7 +174,8 @@
         "neuralBrain",
         "memoryCard"
       ],
-      "baseTopSpeed": 250,
+      "topSpeed": 250,
+      "topAngularSpeed": 3.5,
       "baseHP": 100,
       "weaponSlots": 1,
       "defaultWeaponLoadout": [
@@ -204,7 +205,8 @@
         "neuralBrain",
         "memoryCard"
       ],
-      "baseTopSpeed": 245,
+      "topSpeed": 245,
+      "topAngularSpeed": 3.2,
       "baseHP": 110,
       "weaponSlots": 1,
       "defaultWeaponLoadout": [
@@ -235,7 +237,8 @@
         "neuralBrain",
         "memoryCard"
       ],
-      "baseTopSpeed": 200,
+      "topSpeed": 200,
+      "topAngularSpeed": 2.8,
       "baseHP": 160,
       "weaponSlots": 2,
       "defaultWeaponLoadout": [
@@ -265,7 +268,8 @@
         "neuralBrain",
         "memoryCard"
       ],
-      "baseTopSpeed": 140,
+      "topSpeed": 140,
+      "topAngularSpeed": 1.8,
       "baseHP": 240,
       "weaponSlots": 1,
       "defaultWeaponLoadout": [
@@ -338,6 +342,101 @@
     }
   ],
   "equipmentCatalog": [
+    {
+      "id": "fwd_thruster_standard",
+      "type": "thruster",
+      "name": "Standard Forward Drive",
+      "description": "A reliable forward thruster fitted to most civilian and light combat ships.",
+      "mass": 12,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "force": 15000,
+      "energyPerSecond": 0,
+      "mountPosition": "rear"
+    },
+    {
+      "id": "fwd_thruster_heavy",
+      "type": "thruster",
+      "name": "Heavy Forward Drive",
+      "description": "High-thrust drive for large hulls. Powerful but slow to respond.",
+      "mass": 35,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "force": 15000,
+      "energyPerSecond": 0,
+      "mountPosition": "rear"
+    },
+    {
+      "id": "rev_thruster_standard",
+      "type": "thruster",
+      "name": "Standard Reverse Thruster",
+      "description": "Provides braking thrust without rotating the ship. Not fitted on all hulls.",
+      "mass": 8,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "force": 12000,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "rev_thruster_heavy",
+      "type": "thruster",
+      "name": "Heavy Reverse Thruster",
+      "description": "Braking thruster for large hulls.",
+      "mass": 20,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "force": 10000,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "rot_thruster_fighter",
+      "type": "thruster",
+      "name": "Fighter Manoeuvring Jets",
+      "description": "High-torque rotation thrusters for nimble combat ships. Snappy and responsive.",
+      "mass": 5,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "force": 700,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "rot_thruster_standard",
+      "type": "thruster",
+      "name": "Standard Manoeuvring Jets",
+      "description": "Balanced rotation thrusters for mid-size ships.",
+      "mass": 8,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "force": 700,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "rot_thruster_heavy",
+      "type": "thruster",
+      "name": "Heavy Manoeuvring Jets",
+      "description": "Large rotation thrusters for big hulls. Slower to turn but authoritative.",
+      "mass": 18,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "force": 350,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "auto_brake_t1",
+      "type": "autoBrake",
+      "name": "Inertial Dampener Mk I",
+      "description": "Dampens linear and angular velocity automatically. Standard on larger hulls.",
+      "mass": 12,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "dampingFactor": 4.0,
+      "angularDampingFactor": 3.0
+    },
     {
       "id": "pulse_cannon_t1",
       "type": "weapon",
@@ -417,6 +516,45 @@
       "hpBonus": 60
     }
   ],
+  "defaultLoadouts": {
+    "fighter": {
+      "equipmentSlots": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_fighter" },
+        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_fighter" }
+      ],
+      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
+    },
+    "courier": {
+      "equipmentSlots": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
+        { "slotType": "thruster_reverse", "itemId": "rev_thruster_standard" },
+        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_standard" },
+        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_standard" }
+      ],
+      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
+    },
+    "freighter": {
+      "equipmentSlots": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
+        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
+        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_heavy" },
+        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_heavy" },
+        { "slotType": "autoBrake", "itemId": "auto_brake_t1" }
+      ],
+      "weaponLoadout": []
+    },
+    "heavy": {
+      "equipmentSlots": [
+        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
+        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
+        { "slotType": "thruster_rotateCW", "itemId": "rot_thruster_heavy" },
+        { "slotType": "thruster_rotateCCW", "itemId": "rot_thruster_heavy" },
+        { "slotType": "autoBrake", "itemId": "auto_brake_t1" }
+      ],
+      "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 2, "cooldownRemaining": 0 }]
+    }
+  },
   "missionTemplates": [],
   "sectors": [
     {
@@ -431,10 +569,12 @@
         {
           "factionId": "federation",
           "behaviourType": "patrol",
+          "hullSpecId": "courier_mk1",
           "countRange": [
             2,
             3
           ],
+          "minPresent": 1,
           "maxPresent": 3,
           "arrivalIntervalRange": [
             20,
@@ -444,10 +584,12 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
+          "hullSpecId": "courier_mk1",
           "countRange": [
             2,
             3
           ],
+          "minPresent": 1,
           "maxPresent": 5,
           "arrivalIntervalRange": [
             10,
@@ -455,12 +597,44 @@
           ]
         },
         {
+          "factionId": "federation",
+          "behaviourType": "patrol",
+          "hullSpecId": "fighter_mk1",
+          "countRange": [
+            1,
+            2
+          ],
+          "minPresent": 0,
+          "maxPresent": 2,
+          "arrivalIntervalRange": [
+            25,
+            45
+          ]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "transit",
+          "hullSpecId": "freighter_mk1",
+          "countRange": [
+            1,
+            2
+          ],
+          "minPresent": 1,
+          "maxPresent": 2,
+          "arrivalIntervalRange": [
+            40,
+            90
+          ]
+        },
+        {
           "factionId": "pirates",
           "behaviourType": "hostile",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             1
           ],
+          "minPresent": 0,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             60,
@@ -576,10 +750,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "patrol",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 1,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             30,
@@ -589,10 +765,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 0,
           "maxPresent": 3,
           "arrivalIntervalRange": [
             20,
@@ -650,10 +828,12 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
+          "hullSpecId": "courier_mk1",
           "countRange": [
             0,
             1
           ],
+          "minPresent": 0,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             40,
@@ -731,10 +911,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             0,
             1
           ],
+          "minPresent": 0,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             50,
@@ -792,10 +974,12 @@
         {
           "factionId": "federation",
           "behaviourType": "patrol",
+          "hullSpecId": "courier_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 1,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             25,
@@ -805,10 +989,12 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
+          "hullSpecId": "courier_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 1,
           "maxPresent": 4,
           "arrivalIntervalRange": [
             15,
@@ -895,10 +1081,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "patrol",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             2,
             4
           ],
+          "minPresent": 2,
           "maxPresent": 4,
           "arrivalIntervalRange": [
             15,
@@ -908,10 +1096,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             2,
             3
           ],
+          "minPresent": 1,
           "maxPresent": 5,
           "arrivalIntervalRange": [
             10,
@@ -921,10 +1111,12 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 0,
           "maxPresent": 3,
           "arrivalIntervalRange": [
             30,
@@ -1014,10 +1206,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 0,
           "maxPresent": 3,
           "arrivalIntervalRange": [
             20,
@@ -1075,10 +1269,12 @@
         {
           "factionId": "veth_collective",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             3,
             4
           ],
+          "minPresent": 2,
           "maxPresent": 6,
           "arrivalIntervalRange": [
             8,
@@ -1088,10 +1284,12 @@
         {
           "factionId": "veth_collective",
           "behaviourType": "patrol",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 1,
           "maxPresent": 2,
           "arrivalIntervalRange": [
             25,
@@ -1207,10 +1405,12 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             0,
             1
           ],
+          "minPresent": 0,
           "maxPresent": 1,
           "arrivalIntervalRange": [
             90,
@@ -1268,10 +1468,12 @@
         {
           "factionId": "pirates",
           "behaviourType": "patrol",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             2,
             3
           ],
+          "minPresent": 2,
           "maxPresent": 4,
           "arrivalIntervalRange": [
             20,
@@ -1281,10 +1483,12 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
+          "hullSpecId": "fighter_raider_mk1",
           "countRange": [
             1,
             2
           ],
+          "minPresent": 0,
           "maxPresent": 3,
           "arrivalIntervalRange": [
             30,

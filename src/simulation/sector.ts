@@ -2,7 +2,6 @@ import {
   NPC_ARRIVAL_SPEED_MAX,
   NPC_ARRIVAL_SPEED_MIN,
   NPC_EDGE_INSET,
-  PLACEHOLDER_SHIP_MASS,
   SECTOR_HEIGHT,
   SECTOR_WIDTH
 } from '../constants';
@@ -10,7 +9,7 @@ import { childPRNG } from '../core/prng';
 import type { WorldState } from '../core/worldState';
 import { computeGravity } from '../physics/gravity';
 import { Vector2 } from '../physics/vector2';
-import type { Landable, NPCSpawnRule, SectorMetadata, ShipState, WeaponFireKey, WeaponSlot } from '../types';
+import type { Landable, NPCSpawnRule, SectorMetadata, ShipState, WeaponFireKey } from '../types';
 import { NPCController, type NPCState } from './npcController';
 import { ParticleSystem } from './particleSystem';
 import { ShipEntity } from './shipEntity';
@@ -21,10 +20,6 @@ function toNPCState(input: string): NPCState {
     return input;
   }
   return 'patrol';
-}
-
-function buildLoadout(): WeaponSlot[] {
-  return [{ fireKey: 'Z', itemId: 'pulse_cannon_t1', stackCount: 1, cooldownRemaining: 0 }];
 }
 
 export interface SpawnRuleState {
@@ -53,6 +48,20 @@ export class SectorSimulation {
   private shipCounter = 0;
   private spawnRuleStates: SpawnRuleState[] = [];
 
+  private getRuleMinPresent(rule: NPCSpawnRule): number {
+    return Number.isFinite(rule.minPresent) ? Math.max(0, Math.floor(rule.minPresent)) : 0;
+  }
+
+  private getRuleMaxPresent(rule: NPCSpawnRule): number {
+    return Number.isFinite(rule.maxPresent) ? Math.max(0, Math.floor(rule.maxPresent)) : 0;
+  }
+
+  private getRuleCountRange(rule: NPCSpawnRule): [number, number] {
+    const rawMin = Number.isFinite(rule.countRange[0]) ? Math.floor(rule.countRange[0]) : 0;
+    const rawMax = Number.isFinite(rule.countRange[1]) ? Math.floor(rule.countRange[1]) : rawMin;
+    return rawMin <= rawMax ? [rawMin, rawMax] : [rawMax, rawMin];
+  }
+
   constructor(
     private readonly sector: SectorMetadata,
     playerShip: ShipEntity,
@@ -74,8 +83,11 @@ export class SectorSimulation {
   spawnNPCs(): void {
     this.npcShips = [];
     for (const ruleState of this.spawnRuleStates) {
-      const count = this.prng.nextInt(ruleState.rule.countRange[0], ruleState.rule.countRange[1]);
-      const toSpawn = Math.min(count, ruleState.rule.maxPresent);
+      const [countMin, countMax] = this.getRuleCountRange(ruleState.rule);
+      const minPresent = this.getRuleMinPresent(ruleState.rule);
+      const maxPresent = this.getRuleMaxPresent(ruleState.rule);
+      const count = this.prng.nextInt(countMin, countMax);
+      const toSpawn = Math.min(Math.max(count, minPresent), maxPresent);
       for (let i = 0; i < toSpawn; i += 1) {
         this.spawnInterior(ruleState);
       }
@@ -95,8 +107,11 @@ export class SectorSimulation {
     }
 
     for (const ruleState of this.spawnRuleStates) {
-      const count = this.prng.nextInt(ruleState.rule.countRange[0], ruleState.rule.countRange[1]);
-      const toSpawn = Math.min(count, ruleState.rule.maxPresent);
+      const [countMin, countMax] = this.getRuleCountRange(ruleState.rule);
+      const minPresent = this.getRuleMinPresent(ruleState.rule);
+      const maxPresent = this.getRuleMaxPresent(ruleState.rule);
+      const count = this.prng.nextInt(countMin, countMax);
+      const toSpawn = Math.min(Math.max(count, minPresent), maxPresent);
       for (let i = 0; i < toSpawn; i += 1) {
         this.spawnArrival(ruleState);
       }
@@ -107,7 +122,7 @@ export class SectorSimulation {
     for (const ruleState of this.spawnRuleStates) {
       ruleState.nextArrivalIn -= dt;
       if (ruleState.nextArrivalIn <= 0) {
-        if (ruleState.currentCount < ruleState.rule.maxPresent) {
+        if (ruleState.currentCount < this.getRuleMaxPresent(ruleState.rule)) {
           this.spawnArrival(ruleState);
         }
         ruleState.nextArrivalIn = this.randomRange(
@@ -115,12 +130,16 @@ export class SectorSimulation {
           ruleState.rule.arrivalIntervalRange[1]
         );
       }
+      if (ruleState.currentCount < this.getRuleMinPresent(ruleState.rule)) {
+        this.spawnArrival(ruleState);
+      }
     }
 
     for (const ship of this.npcShips) {
+      const shipMass = ship.getEffectiveMass(this.worldState);
       const gravity = computeGravity(
         ship.state.position as Vector2,
-        PLACEHOLDER_SHIP_MASS,
+        shipMass,
         this.landables.map((landable) => ({
           position: landable.position as Vector2,
           mass: landable.mass,
@@ -128,11 +147,10 @@ export class SectorSimulation {
         }))
       );
       ship.applyExternalForce(gravity);
-      const inputs = ship.update(dt, undefined, {
+      const inputs = ship.update(dt, this.worldState, undefined, {
         player: this.playerShip,
         otherNPCs: this.npcShips.filter((candidate) => candidate.state.id !== ship.state.id),
-        landables: this.landables,
-        worldState: this.worldState
+        landables: this.landables
       });
       const fireInputs: Record<WeaponFireKey, boolean> = {
         Z: inputs?.fireZ ?? false,
@@ -204,7 +222,7 @@ export class SectorSimulation {
   }
 
   private spawnInterior(ruleState: SpawnRuleState): void {
-    if (ruleState.currentCount >= ruleState.rule.maxPresent) {
+    if (ruleState.currentCount >= this.getRuleMaxPresent(ruleState.rule)) {
       return;
     }
     const hw = SECTOR_WIDTH / 2 - 100;
@@ -220,7 +238,7 @@ export class SectorSimulation {
   }
 
   private spawnArrival(ruleState: SpawnRuleState): void {
-    if (ruleState.currentCount >= ruleState.rule.maxPresent) {
+    if (ruleState.currentCount >= this.getRuleMaxPresent(ruleState.rule)) {
       return;
     }
     const edge: SectorEdge = ['north', 'south', 'east', 'west'][this.prng.nextInt(0, 3)] as SectorEdge;
@@ -252,8 +270,14 @@ export class SectorSimulation {
   }
 
   private buildNPC(rule: NPCSpawnRule, position: Vector2, velocity: Vector2): ShipEntity {
-    const hullSpecId = rule.factionId === 'federation' ? 'courier_mk1' : 'fighter_raider_mk1';
+    const hullSpecId =
+      (typeof rule.hullSpecId === 'string' && rule.hullSpecId.length > 0
+        ? rule.hullSpecId
+        : rule.factionId === 'federation'
+          ? 'courier_mk1'
+          : 'fighter_raider_mk1');
     const hullSpec = this.worldState.getHullSpec(hullSpecId);
+    const loadout = this.worldState.getDefaultLoadout(hullSpec?.hullClass ?? 'fighter');
     const maxHP = hullSpec?.baseHP ?? 100;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {
@@ -267,10 +291,10 @@ export class SectorSimulation {
       angularVelocity: 0,
       currentHP: maxHP,
       maxHP,
-      equipmentSlots: [],
+      equipmentSlots: loadout.equipmentSlots,
       autoBrakeLinearEnabled: true,
       autoBrakeRotationEnabled: true,
-      weaponLoadout: (hullSpec?.defaultWeaponLoadout ?? buildLoadout()).map((slot) => ({ ...slot })),
+      weaponLoadout: loadout.weaponLoadout,
       isPlayerControlled: false,
       fleetRole: 'escort'
     };

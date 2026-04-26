@@ -3,7 +3,7 @@ import type { EquipmentItem } from './equipment';
 import type { FactionDefinition } from './faction';
 import type { Landable } from './landable';
 import type { MissionTemplate } from './mission';
-import type { HullSpec } from './ship';
+import type { EquipmentSlot, HullSpec, WeaponSlot } from './ship';
 
 export type RegionType = 'void' | 'frontier' | 'midring' | 'core_arm' | 'contested' | 'radiation_fringe';
 
@@ -15,7 +15,9 @@ export interface GridCoord {
 export interface NPCSpawnRule {
   factionId: string;
   behaviourType: 'patrol' | 'transit' | 'trade' | 'hostile' | 'escort';
+  hullSpecId: HullSpec['id'];
   countRange: [number, number];
+  minPresent: number;
   maxPresent: number;
   arrivalIntervalRange: [number, number];
 }
@@ -58,4 +60,13 @@ export interface WorldFile {
   equipmentCatalog: EquipmentItem[];
   bulletSpecs: BulletSpec[];
   missionTemplates: MissionTemplate[];
+  defaultLoadouts?: Partial<
+    Record<
+      HullSpec['hullClass'],
+      {
+        equipmentSlots: EquipmentSlot[];
+        weaponLoadout: WeaponSlot[];
+      }
+    >
+  >;
 }

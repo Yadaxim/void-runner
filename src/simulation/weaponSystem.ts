@@ -207,6 +207,9 @@ export class WeaponSystem {
       if (allyDistance > NPC_ALLY_ALERT_RANGE) {
         continue;
       }
+      if (attackerFactionId !== null && attackerFactionId === ally.state.factionId) {
+        continue;
+      }
       ally.getNPCController()?.receiveAttack(attackerId, attackerFactionId, 1);
     }
   }

@@ -1,13 +1,6 @@
 // Physics and simulation
 export const GRAVITY_CONSTANT = 10;
 export const MIN_GRAVITY_DISTANCE = 100;
-export const PLACEHOLDER_SHIP_MASS = 100;
-export const PLACEHOLDER_THRUST_FORCE = 12000;
-export const PLACEHOLDER_ROTATE_TORQUE = 500;
-export const PLACEHOLDER_TOP_SPEED = 250;
-export const PLACEHOLDER_TOP_ANGULAR_SPEED = 3.0;
-export const PLACEHOLDER_LINEAR_DAMPING = 2.0;
-export const PLACEHOLDER_ANGULAR_DAMPING = 3.0;
 export const MAX_DELTA_SECONDS = 0.1;
 export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
 export const BULLET_MAX_IMPACT_DELTA_V = 45;
@@ -56,8 +49,8 @@ export const TRANSIT_LOITER_RADIUS = 120;
 export const TRANSIT_LOITER_MIN = 30;
 export const TRANSIT_LOITER_MAX = 120;
 export const TRANSIT_APPROACH_BRAKE_RADIUS = 300;
-export const TRANSIT_LOITER_DRIFT_INTERVAL = 2;
-export const TRANSIT_LOITER_DRIFT_FORCE = 15;
+export const TRANSIT_LOITER_DRIFT_THRESHOLD = 2.0;
+export const TRANSIT_LOITER_EXTENSION = 0.5;
 
 // Patrol behaviour
 export const PATROL_WAYPOINT_ARRIVAL_RADIUS = 80;
@@ -99,6 +92,7 @@ export const COLOURS = {
   UI_SECONDARY: '#6060a0',
   UI_ACCENT: '#40c0ff',
   DANGER: '#ff4040',
+  NPC_HOSTILE_OTHER: '#ff8c00',
   WARNING: '#ffaa00',
   SAFE: '#40ff80',
   CREDITS: '#ffd700'

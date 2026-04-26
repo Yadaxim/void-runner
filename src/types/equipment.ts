@@ -58,8 +58,8 @@ export interface HyperspaceDriveItem extends BaseEquipment {
 
 export interface AutoBrakeItem extends BaseEquipment {
   type: 'autoBrake';
-  brakeForce: number;
-  energyCost: number;
+  dampingFactor: number;
+  angularDampingFactor: number;
 }
 
 export interface SensorArrayItem extends BaseEquipment {

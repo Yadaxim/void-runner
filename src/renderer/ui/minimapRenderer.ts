@@ -80,11 +80,12 @@ export class MinimapRenderer {
       const dotX = mapX + clamp(relativeX, 0, 1) * MINIMAP_SIZE;
       const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
       const hostilePulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 600)) + 1) * 0.25;
+      const hostility = npc.getNPCHostilityState();
       this.ctx.save();
       this.ctx.globalAlpha = npc.getOpacity();
-      if (npc.isNPCHostile()) {
+      if (hostility !== 'none') {
         this.ctx.globalAlpha *= hostilePulse;
-        this.ctx.fillStyle = COLOURS.DANGER;
+        this.ctx.fillStyle = hostility === 'toPlayer' ? COLOURS.DANGER : COLOURS.NPC_HOSTILE_OTHER;
       } else {
         this.ctx.fillStyle = worldState.getFactionVisual(npc.state.factionId ?? '').primaryColour;
       }

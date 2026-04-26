@@ -1,23 +1,12 @@
 import {
   FUEL_USE_LINEAR_THRUSTER_PER_SECOND,
   FUEL_USE_ROTATION_THRUSTER_PER_SECOND,
-  PLACEHOLDER_ANGULAR_DAMPING,
-  PLACEHOLDER_LINEAR_DAMPING,
   NPC_FADE_DURATION,
-  NPC_LEAVING_OPACITY,
-  PLACEHOLDER_ROTATE_TORQUE,
-  PLACEHOLDER_SHIP_MASS,
-  PLACEHOLDER_THRUST_FORCE,
-  PLACEHOLDER_TOP_ANGULAR_SPEED,
-  PLACEHOLDER_TOP_SPEED
+  NPC_LEAVING_OPACITY
 } from '../constants';
-import type { ArmourItem, ShipState } from '../types';
+import type { ArmourItem, AutoBrakeItem, ShipState, ThrusterItem } from '../types';
 import {
-  applyAngularDamping,
-  applyAngularForce,
-  applyLinearDamping,
   applyForce,
-  clampAngularVelocity,
   clampVelocity,
   integrateAngle,
   integratePosition
@@ -47,11 +36,12 @@ export class ShipEntity {
   spawnAge = 0;
   isLeaving = false;
 
-  private accumulatedForce: Vector2 = Vector2.zero();
-
-  private accumulatedTorque = 0;
+  private pendingForce: Vector2 = Vector2.zero();
+  private pendingTorque = 0;
   private autoBrakeLinear = false;
   private autoBrakeRotation = false;
+  private autoBrakeLinearActive = false;
+  private autoBrakeRotationActive = false;
   private forwardThrusterRequested = false;
   private reverseThrusterRequested = false;
   private rotateCWThrusterRequested = false;
@@ -73,17 +63,8 @@ export class ShipEntity {
     return this.autoBrakeRotation;
   }
 
-  applyThrusterInputs(inputs: ThrusterInputs): void {
-    this.autoBrakeLinear = inputs.autoBrakeLinear;
-    this.autoBrakeRotation = inputs.autoBrakeRotation;
-    this.forwardThrusterRequested = inputs.forward;
-    this.reverseThrusterRequested = inputs.reverse;
-    this.rotateCWThrusterRequested = inputs.rotateCW;
-    this.rotateCCWThrusterRequested = inputs.rotateCCW;
-  }
-
   applyExternalForce(force: Vector2): void {
-    this.accumulatedForce = this.accumulatedForce.add(force);
+    this.pendingForce = this.pendingForce.add(force);
   }
 
   attachNPCController(controller: NPCController, behaviourType: NPCState): void {
@@ -105,10 +86,17 @@ export class ShipEntity {
   }
 
   isNPCHostile(): boolean {
-    if (this.npcLastState !== null) {
-      return this.npcLastState === 'hostile';
+    return this.getNPCHostilityState() !== 'none';
+  }
+
+  getNPCHostilityState(): 'none' | 'toPlayer' | 'toOther' {
+    if (this.npcController) {
+      return this.npcController.getHostilityState();
     }
-    return this.npcBehaviourType === 'hostile';
+    if (this.npcLastState === 'hostile' || this.npcBehaviourType === 'hostile') {
+      return 'toPlayer';
+    }
+    return 'none';
   }
 
   getOpacity(): number {
@@ -176,73 +164,143 @@ export class ShipEntity {
     return actualDamage;
   }
 
-  update(
-    dt: number,
-    externalInputs?: ThrusterInputs,
-    context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[]; worldState: WorldState }
-  ): NPCInputs | null {
-    this.spawnAge += dt;
-    let npcInputs: NPCInputs | null = null;
-    if (this.npcController && !this.state.isPlayerControlled && context) {
-      npcInputs = this.npcController.update(
-        dt,
-        this,
-        context.player,
-        context.otherNPCs,
-        context.landables,
-        context.worldState
-      );
-      this.applyThrusterInputs(npcInputs);
-      this.npcLastState = this.npcController.getState();
-    } else if (externalInputs) {
-      this.applyThrusterInputs(externalInputs);
-    }
+  getThrusterForce(
+    slotType: 'thruster_forward' | 'thruster_reverse' | 'thruster_rotateCW' | 'thruster_rotateCCW',
+    worldState: WorldState
+  ): number {
+    const slot = this.state.equipmentSlots.find((s) => s.slotType === slotType);
+    if (!slot?.itemId) return 0;
+    const item = worldState.getEquipmentItem(slot.itemId);
+    if (!item || item.type !== 'thruster') return 0;
+    return (item as ThrusterItem).force;
+  }
 
-    const activeLinearThrusters =
-      (this.forwardThrusterRequested ? 1 : 0) + (this.reverseThrusterRequested ? 1 : 0);
-    const activeRotationThrusters =
-      (this.rotateCWThrusterRequested ? 1 : 0) + (this.rotateCCWThrusterRequested ? 1 : 0);
-    const requestedFuel =
-      activeLinearThrusters * FUEL_USE_LINEAR_THRUSTER_PER_SECOND * dt +
-      activeRotationThrusters * FUEL_USE_ROTATION_THRUSTER_PER_SECOND * dt;
+  getAutoBrake(worldState: WorldState): AutoBrakeItem | null {
+    const slot = this.state.equipmentSlots.find((s) => s.slotType === 'autoBrake');
+    if (!slot?.itemId) return null;
+    const item = worldState.getEquipmentItem(slot.itemId);
+    if (!item || item.type !== 'autoBrake') return null;
+    return item as AutoBrakeItem;
+  }
+
+  hasAutoBrake(worldState: WorldState): boolean {
+    return this.getAutoBrake(worldState) !== null;
+  }
+
+  hasReverseThruster(worldState: WorldState): boolean {
+    return this.getThrusterForce('thruster_reverse', worldState) > 0;
+  }
+
+  getEffectiveMass(worldState: WorldState): number {
+    const hullSpec = worldState.getHullSpec(this.state.hullSpecId);
+    const hullMass = hullSpec?.hullMass ?? 100;
+    const equipMass = this.state.equipmentSlots.reduce((total, slot) => {
+      if (!slot.itemId) return total;
+      return total + (worldState.getEquipmentItem(slot.itemId)?.mass ?? 0);
+    }, 0);
+    return hullMass + equipMass;
+  }
+
+  getTopSpeed(worldState: WorldState): number {
+    return worldState.getHullSpec(this.state.hullSpecId)?.topSpeed ?? 250;
+  }
+
+  getTopAngularSpeed(worldState: WorldState): number {
+    return worldState.getHullSpec(this.state.hullSpecId)?.topAngularSpeed ?? 3.0;
+  }
+
+  applyThrusterInputs(inputs: ThrusterInputs, worldState: WorldState, dt: number): void {
+    this.autoBrakeLinear = inputs.autoBrakeLinear;
+    this.autoBrakeRotation = inputs.autoBrakeRotation;
+    this.forwardThrusterRequested = inputs.forward;
+    this.reverseThrusterRequested = inputs.reverse;
+    this.rotateCWThrusterRequested = inputs.rotateCW;
+    this.rotateCCWThrusterRequested = inputs.rotateCCW;
+
+    const mass = this.getEffectiveMass(worldState);
+    const autoBrake = this.getAutoBrake(worldState);
     const availableFuel = Math.max(0, this.state.fuel);
-    const fuelScale = requestedFuel > 0 ? Math.min(1, availableFuel / requestedFuel) : 1;
 
-    const forwardVector = Vector2.fromAngle(this.state.angle);
-    if (this.forwardThrusterRequested && fuelScale > 0) {
-      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(PLACEHOLDER_THRUST_FORCE * fuelScale));
-    }
-    if (this.reverseThrusterRequested && fuelScale > 0) {
-      this.accumulatedForce = this.accumulatedForce.add(forwardVector.scale(-PLACEHOLDER_THRUST_FORCE * fuelScale));
-    }
-    if (this.rotateCWThrusterRequested && fuelScale > 0) {
-      this.accumulatedTorque += PLACEHOLDER_ROTATE_TORQUE * fuelScale;
-    }
-    if (this.rotateCCWThrusterRequested && fuelScale > 0) {
-      this.accumulatedTorque -= PLACEHOLDER_ROTATE_TORQUE * fuelScale;
-    }
+    const forwardForce = this.forwardThrusterRequested
+      ? this.getThrusterForce('thruster_forward', worldState)
+      : 0;
+    const reverseForce = this.reverseThrusterRequested
+      ? this.getThrusterForce('thruster_reverse', worldState)
+      : 0;
+    const rotateCWForce = this.rotateCWThrusterRequested
+      ? this.getThrusterForce('thruster_rotateCW', worldState)
+      : 0;
+    const rotateCCWForce = this.rotateCCWThrusterRequested
+      ? this.getThrusterForce('thruster_rotateCCW', worldState)
+      : 0;
+
+    const activeLinearThrusters = (forwardForce > 0 ? 1 : 0) + (reverseForce > 0 ? 1 : 0);
+    const activeRotationThrusters = (rotateCWForce > 0 ? 1 : 0) + (rotateCCWForce > 0 ? 1 : 0);
+    const requestedFuel =
+      (activeLinearThrusters * FUEL_USE_LINEAR_THRUSTER_PER_SECOND +
+        activeRotationThrusters * FUEL_USE_ROTATION_THRUSTER_PER_SECOND) *
+      dt;
+    const fuelScale = requestedFuel > 0 ? Math.min(1, availableFuel / requestedFuel) : 1;
     const fuelConsumed = requestedFuel * fuelScale;
+
+    if (forwardForce > 0 && fuelScale > 0) {
+      const dir = Vector2.fromAngle(this.state.angle);
+      this.pendingForce = this.pendingForce.add(dir.scale(forwardForce * fuelScale));
+    }
+    if (reverseForce > 0 && fuelScale > 0) {
+      const dir = Vector2.fromAngle(this.state.angle).scale(-1);
+      this.pendingForce = this.pendingForce.add(dir.scale(reverseForce * fuelScale));
+    }
+    if (rotateCWForce > 0 && fuelScale > 0) {
+      this.pendingTorque += (rotateCWForce * fuelScale) / mass;
+    }
+    if (rotateCCWForce > 0 && fuelScale > 0) {
+      this.pendingTorque -= (rotateCCWForce * fuelScale) / mass;
+    }
+
+    if (this.autoBrakeLinear && autoBrake) {
+      this.autoBrakeLinearActive = true;
+    }
+    if (this.autoBrakeRotation && autoBrake) {
+      this.autoBrakeRotationActive = true;
+    }
+
     this.linearThrustersActive = fuelScale > 0 && activeLinearThrusters > 0;
     this.rotationThrustersActive = fuelScale > 0 && activeRotationThrusters > 0;
+    this.state.fuel = Math.max(0, this.state.fuel - fuelConsumed);
+  }
 
-    let nextVelocity = clampVelocity(
-      applyForce(this.state.velocity as Vector2, this.accumulatedForce, PLACEHOLDER_SHIP_MASS, dt),
-      PLACEHOLDER_TOP_SPEED
-    );
-    let nextAngularVelocity = applyAngularForce(
-      this.state.angularVelocity,
-      this.accumulatedTorque,
-      PLACEHOLDER_SHIP_MASS,
-      dt
-    );
-    nextAngularVelocity = clampAngularVelocity(nextAngularVelocity, PLACEHOLDER_TOP_ANGULAR_SPEED);
+  update(
+    dt: number,
+    worldState: WorldState,
+    externalInputs?: ThrusterInputs,
+    context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[] }
+  ): NPCInputs | null {
+    let npcInputs: NPCInputs | null = null;
+    if (this.npcController && !this.state.isPlayerControlled && context) {
+      npcInputs = this.npcController.update(dt, this, context.player, context.otherNPCs, context.landables, worldState);
+      this.applyThrusterInputs(npcInputs, worldState, dt);
+      this.npcLastState = this.npcController.getState();
+    } else if (externalInputs) {
+      this.applyThrusterInputs(externalInputs, worldState, dt);
+    }
 
-    if (this.autoBrakeLinear && !this.linearThrustersActive && !this.rotationThrustersActive) {
-      nextVelocity = applyLinearDamping(nextVelocity, PLACEHOLDER_LINEAR_DAMPING, dt);
+    const mass = this.getEffectiveMass(worldState);
+    const autoBrake = this.getAutoBrake(worldState);
+    let nextVelocity = applyForce(this.state.velocity as Vector2, this.pendingForce, mass, dt);
+    let nextAngularVelocity = this.state.angularVelocity + this.pendingTorque * dt;
+
+    if (this.autoBrakeLinearActive && autoBrake) {
+      nextVelocity = nextVelocity.scale(Math.max(0, 1 - autoBrake.dampingFactor * dt));
     }
-    if (this.autoBrakeRotation && !this.rotationThrustersActive) {
-      nextAngularVelocity = applyAngularDamping(nextAngularVelocity, PLACEHOLDER_ANGULAR_DAMPING, dt);
+    if (this.autoBrakeRotationActive && autoBrake) {
+      nextAngularVelocity *= Math.max(0, 1 - autoBrake.angularDampingFactor * dt);
     }
+
+    const topSpeed = this.getTopSpeed(worldState);
+    const topAngularSpeed = this.getTopAngularSpeed(worldState);
+    nextVelocity = clampVelocity(nextVelocity, topSpeed);
+    nextAngularVelocity = Math.max(-topAngularSpeed, Math.min(topAngularSpeed, nextAngularVelocity));
 
     this.state = {
       ...this.state,
@@ -250,18 +308,22 @@ export class ShipEntity {
       angularVelocity: nextAngularVelocity,
       position: integratePosition(this.state.position as Vector2, nextVelocity, dt),
       angle: integrateAngle(this.state.angle, nextAngularVelocity, dt),
-      fuel: Math.max(0, this.state.fuel - fuelConsumed),
       autoBrakeLinearEnabled: this.autoBrakeLinear,
       autoBrakeRotationEnabled: this.autoBrakeRotation
     };
 
-    this.accumulatedForce = Vector2.zero();
-    this.accumulatedTorque = 0;
+    this.pendingForce = Vector2.zero();
+    this.pendingTorque = 0;
+    this.autoBrakeLinearActive = false;
+    this.autoBrakeRotationActive = false;
+    this.linearThrustersActive = false;
+    this.rotationThrustersActive = false;
     this.forwardThrusterRequested = false;
     this.reverseThrusterRequested = false;
     this.rotateCWThrusterRequested = false;
     this.rotateCCWThrusterRequested = false;
 
+    this.spawnAge += dt;
     return npcInputs;
   }
 }

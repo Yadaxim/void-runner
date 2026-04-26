@@ -43,7 +43,8 @@ export interface HullSpec {
   cargoCapacity: number;
   equipmentCapacity: number;
   equipmentWhitelist: EquipType[];
-  baseTopSpeed: number;
+  topSpeed: number;
+  topAngularSpeed: number;
   baseHP: number;
   weaponSlots: number;
   defaultWeaponLoadout?: WeaponSlot[];

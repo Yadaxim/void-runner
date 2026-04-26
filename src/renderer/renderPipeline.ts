@@ -140,7 +140,7 @@ export class RenderPipeline {
             return {
               name: ship.state.id.split('_').join(' ').toUpperCase(),
               hpRatio,
-              hostile: ship.isNPCHostile()
+              hostility: ship.getNPCHostilityState()
             };
           })()
         : null,
@@ -164,8 +164,12 @@ export class RenderPipeline {
         };
       })(),
       state.otherShips.slice(0, 6).map((ship) => {
-        const targetId = ship.getNPCController()?.getAggroTargetId() ?? 'none';
-        return `DBG NPC ${ship.state.id.split('_').slice(-1)[0]} -> ${targetId}`;
+        const controller = ship.getNPCController();
+        const targetId = controller?.getAggroTargetId() ?? 'none';
+        const mode = controller?.getDebugModeLabel() ?? ship.getNPCState() ?? 'unknown';
+        const faction = ship.state.factionId ?? 'none';
+        const hull = ship.state.hullSpecId;
+        return `DBG NPC ${ship.state.id.split('_').slice(-1)[0]} ${faction} ${hull} ${mode} -> ${targetId}`;
       }),
       state.spawnRuleDebugLines,
       state.playerShip.state.weaponLoadout,

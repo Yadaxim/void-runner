@@ -8,6 +8,7 @@ interface ThrusterInputs {
   autoBrakeLinear: boolean;
   autoBrakeRotation: boolean;
   landPressed: boolean;
+  devRefuelPressed: boolean;
 }
 
 interface TargetInputs {
@@ -20,6 +21,7 @@ export class PlayerController {
   private autoBrakeLinearEnabled = false;
   private autoBrakeRotationEnabled = false;
   private landPressedQueued = false;
+  private devRefuelQueued = false;
   private cycleShipTargetQueued = false;
   private cycleLandableTargetQueued = false;
   private readonly controlledKeys = new Set<string>([
@@ -31,6 +33,7 @@ export class PlayerController {
     'ShiftLeft',
     'ShiftRight',
     'KeyL',
+    'KeyR',
     'Tab',
     'KeyG',
     'KeyZ',
@@ -58,6 +61,9 @@ export class PlayerController {
     if (!event.repeat && event.code === 'KeyL') {
       this.landPressedQueued = true;
     }
+    if (!event.repeat && event.code === 'KeyR') {
+      this.devRefuelQueued = true;
+    }
     if (!event.repeat && event.code === 'Tab') {
       this.cycleShipTargetQueued = true;
     }
@@ -84,6 +90,8 @@ export class PlayerController {
   update(): ThrusterInputs {
     const landPressed = this.landPressedQueued;
     this.landPressedQueued = false;
+    const devRefuelPressed = this.devRefuelQueued;
+    this.devRefuelQueued = false;
     return {
       forward: this.pressedKeys.has('ArrowUp'),
       reverse: this.pressedKeys.has('ArrowDown'),
@@ -91,7 +99,8 @@ export class PlayerController {
       rotateCCW: this.pressedKeys.has('ArrowLeft'),
       autoBrakeLinear: this.autoBrakeLinearEnabled,
       autoBrakeRotation: this.autoBrakeRotationEnabled,
-      landPressed
+      landPressed,
+      devRefuelPressed
     };
   }
 
@@ -128,6 +137,7 @@ export class PlayerController {
     this.autoBrakeLinearEnabled = false;
     this.autoBrakeRotationEnabled = false;
     this.landPressedQueued = false;
+    this.devRefuelQueued = false;
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
   }

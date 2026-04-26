@@ -49,7 +49,7 @@ export class HudRenderer {
     } | null,
     radiationIntensity: number,
     destructionMessageAlpha: number,
-    shipTarget: { name: string; hpRatio: number; hostile: boolean } | null,
+    shipTarget: { name: string; hpRatio: number; hostility: 'none' | 'toPlayer' | 'toOther' } | null,
     landableTarget: { name: string } | null,
     sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null,
     npcDebugLines: string[],
@@ -64,12 +64,13 @@ export class HudRenderer {
     const fuelMax = Math.max(0, playerShip.state.maxFuel);
     const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
     const credits = Math.floor(Math.max(0, playerShip.state.credits));
+    const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
     const speedText = `SPD: ${speed.toString().padStart(3, '0')}`;
     const headingText = `HDG: ${heading.toString().padStart(3, '0')}°`;
     const fuelText = `FUEL: ${Math.floor(fuelCurrent).toString().padStart(3, '0')} / ${Math.floor(fuelMax).toString().padStart(3, '0')} (${fuelPercent.toString().padStart(3, '0')}%)`;
     const creditsText = `CR: ${credits.toString()}`;
-    const linearBrakeText = `L-BRK: ${playerShip.isLinearAutoBrakeEnabled() ? 'ON' : 'OFF'}`;
-    const rotationBrakeText = `R-BRK: ${playerShip.isRotationAutoBrakeEnabled() ? 'ON' : 'OFF'}`;
+    const linearBrakeText = `L-BRK: ${autoBrakeInstalled ? (playerShip.isLinearAutoBrakeEnabled() ? 'ON' : 'OFF') : 'NOT INSTALLED'}`;
+    const rotationBrakeText = `R-BRK: ${autoBrakeInstalled ? (playerShip.isRotationAutoBrakeEnabled() ? 'ON' : 'OFF') : 'NOT INSTALLED'}`;
 
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.font = "12px 'Courier New', monospace";
@@ -81,6 +82,8 @@ export class HudRenderer {
     this.ctx.fillText(creditsText, 12, 60);
     this.ctx.fillText(linearBrakeText, 12, 76);
     this.ctx.fillText(rotationBrakeText, 12, 92);
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText('[R] DEV REFUEL', 12, 108);
     this.renderHpBar(playerShip, radiationIntensity, worldState);
     this.renderSectorReputationIndicator(sectorFaction);
 
@@ -188,7 +191,7 @@ export class HudRenderer {
   }
 
   private renderTargets(
-    shipTarget: { name: string; hpRatio: number; hostile: boolean } | null,
+    shipTarget: { name: string; hpRatio: number; hostility: 'none' | 'toPlayer' | 'toOther' } | null,
     landableTarget: { name: string } | null
   ): void {
     const leftMargin = 12;
@@ -218,10 +221,21 @@ export class HudRenderer {
     this.ctx.stroke();
 
     const shipLine = shipTarget
-      ? `${shipTarget.hostile ? '[HOSTILE] ' : '[NEUTRAL] '} ${shipTarget.name}`
+      ? `${shipTarget.hostility === 'toPlayer' ? '[HOSTILE TO YOU] ' : shipTarget.hostility === 'toOther' ? '[HOSTILE TO OTHER] ' : '[NEUTRAL] '} ${shipTarget.name}`
       : 'NO SHIP TARGET';
-    this.ctx.fillStyle = shipTarget ? (shipTarget.hostile ? COLOURS.DANGER : COLOURS.UI_PRIMARY) : COLOURS.UI_SECONDARY;
-    this.ctx.fillText(shipLine, centerX, shipBoxY + boxHeight / 2);
+    this.ctx.fillStyle = shipTarget
+      ? shipTarget.hostility === 'toPlayer'
+        ? COLOURS.DANGER
+        : shipTarget.hostility === 'toOther'
+          ? COLOURS.WARNING
+          : COLOURS.UI_PRIMARY
+      : COLOURS.UI_SECONDARY;
+    const hpTextPadding = 12;
+    const hpTextReservedWidth = 108;
+    const shipTextMaxWidth = boxWidth - hpTextReservedWidth - hpTextPadding * 2;
+    const shipLineFitted = fitTextToWidth(this.ctx, shipLine, shipTextMaxWidth);
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(shipLineFitted, boxX + hpTextPadding, shipBoxY + boxHeight / 2);
     if (shipTarget) {
       const ratio = Math.max(0, Math.min(1, shipTarget.hpRatio));
       const percent = Math.round(ratio * 100);

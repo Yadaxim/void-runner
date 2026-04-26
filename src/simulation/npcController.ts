@@ -1,4 +1,5 @@
 import {
+  LANDING_SPEED_THRESHOLD,
   NPC_AGGRO_RANGE,
   NPC_DEAGGRO_RANGE_MULTIPLIER,
   NPC_FIRE_RANGE,
@@ -11,8 +12,8 @@ import {
   SECTOR_HEIGHT,
   SECTOR_WIDTH,
   TRANSIT_APPROACH_BRAKE_RADIUS,
-  TRANSIT_LOITER_DRIFT_FORCE,
-  TRANSIT_LOITER_DRIFT_INTERVAL,
+  TRANSIT_LOITER_EXTENSION,
+  TRANSIT_LOITER_DRIFT_THRESHOLD,
   TRANSIT_LOITER_MAX,
   TRANSIT_LOITER_MIN,
   TRANSIT_LOITER_RADIUS
@@ -71,6 +72,22 @@ function defaultInputs(): NPCInputs {
   };
 }
 
+function allZeroInputs(): NPCInputs {
+  return {
+    forward: false,
+    reverse: false,
+    rotateCW: false,
+    rotateCCW: false,
+    autoBrakeLinear: false,
+    autoBrakeRotation: false,
+    fireZ: false,
+    fireX: false,
+    fireC: false,
+    fireV: false,
+    fireB: false
+  };
+}
+
 function rotateToward(
   selfAngle: number,
   targetAngle: number,
@@ -111,11 +128,12 @@ export class NPCController {
   private transitPhase: TransitPhase = 'approaching';
   private transitTarget: Vector2 | null = null;
   private loiterTimer = 0;
-  private loiterDriftTimer = TRANSIT_LOITER_DRIFT_INTERVAL;
   private departureTarget: Vector2 | null = null;
+  private readonly factionId: string;
 
   constructor(initialState: NPCState, sectorSeed: number, factionId: string) {
     this.state = initialState;
+    this.factionId = factionId;
     this.alwaysHostile = initialState === 'hostile';
     this.prng = childPRNG(sectorSeed, `npc_controller_${factionId}_${initialState}`);
     this.patrolPoints = Array.from({ length: PATROL_WAYPOINT_COUNT }, () => this.randomSectorPoint(300));
@@ -127,11 +145,28 @@ export class NPCController {
     return this.state;
   }
 
+  getDebugModeLabel(): string {
+    if (this.state === 'transit') {
+      return `transit:${this.transitPhase}`;
+    }
+    return this.state;
+  }
+
   getAggroTargetId(): string | null {
     return this.aggroTargetId;
   }
 
-  receiveAttack(attackerId: string, _attackerFactionId: string | null, damage: number): void {
+  getHostilityState(): 'none' | 'toPlayer' | 'toOther' {
+    if (this.state !== 'hostile' || !this.aggroTargetId) {
+      return 'none';
+    }
+    return this.aggroTargetType === 'player' ? 'toPlayer' : 'toOther';
+  }
+
+  receiveAttack(attackerId: string, attackerFactionId: string | null, damage: number): void {
+    if (attackerFactionId !== null && attackerFactionId === this.factionId) {
+      return;
+    }
     const current = this.threatMemory.get(attackerId) ?? 0;
     this.threatMemory.set(attackerId, current + damage);
     this.threatTimers.set(attackerId, NPC_THREAT_MEMORY_DURATION);
@@ -187,7 +222,7 @@ export class NPCController {
     }
 
     if (this.state === 'patrol') return this.updatePatrol(self, player, playerDistance, worldState);
-    if (this.state === 'transit') return this.updateTransit(dt, self, landables);
+    if (this.state === 'transit') return this.updateTransit(dt, self, landables, worldState);
     if (this.state === 'trade') return this.updateTrade(self, landables);
     if (this.state === 'hostile') return this.updateHostile(dt, self, player, otherNPCs);
     return this.updateFlee(self, player, otherNPCs, playerDistance);
@@ -221,7 +256,7 @@ export class NPCController {
     return inputs;
   }
 
-  private updateTransit(dt: number, self: ShipEntity, landables: Landable[]): NPCInputs {
+  private updateTransit(dt: number, self: ShipEntity, landables: Landable[], worldState: WorldState): NPCInputs {
     const inputs = defaultInputs();
     if (!this.transitTarget) {
       this.transitTarget = this.pickTransitTarget(self, landables);
@@ -232,12 +267,34 @@ export class NPCController {
       const selfPos = self.state.position as Vector2;
       const dist = Vector2.distance(selfPos, target);
       const targetAngle = angleToTarget(selfPos, target);
-      const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
+      let rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
       inputs.rotateCW = rotation.rotateCW;
       inputs.rotateCCW = rotation.rotateCCW;
       inputs.autoBrakeRotation = rotation.autoBrakeRotation;
-      if (dist <= TRANSIT_APPROACH_BRAKE_RADIUS) {
-        inputs.autoBrakeLinear = true;
+      if (dist <= TRANSIT_APPROACH_BRAKE_RADIUS && (self.state.velocity as Vector2).magnitude() > LANDING_SPEED_THRESHOLD) {
+        if (self.hasAutoBrake(worldState)) {
+          inputs.autoBrakeLinear = true;
+        } else if (self.hasReverseThruster(worldState)) {
+          if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
+            inputs.reverse = true;
+            inputs.autoBrakeLinear = false;
+          }
+        } else {
+          const velocity = self.state.velocity as Vector2;
+          const retrogradeTarget =
+            velocity.magnitudeSquared() > 0
+              ? selfPos.sub(velocity)
+              : selfPos.add(Vector2.fromAngle(self.state.angle).scale(-1));
+          const retrogradeAngle = angleToTarget(selfPos, retrogradeTarget);
+          rotation = rotateToward(self.state.angle, retrogradeAngle, self.state.angularVelocity);
+          inputs.rotateCW = rotation.rotateCW;
+          inputs.rotateCCW = rotation.rotateCCW;
+          inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+          if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
+            inputs.forward = true;
+            inputs.autoBrakeLinear = false;
+          }
+        }
       } else if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
         inputs.forward = true;
         inputs.autoBrakeLinear = false;
@@ -245,29 +302,30 @@ export class NPCController {
       if (dist <= TRANSIT_LOITER_RADIUS) {
         this.transitPhase = 'loitering';
         this.loiterTimer = this.randomRange(TRANSIT_LOITER_MIN, TRANSIT_LOITER_MAX);
-        this.loiterDriftTimer = TRANSIT_LOITER_DRIFT_INTERVAL;
       }
       return inputs;
     }
 
     if (this.transitPhase === 'loitering') {
+      const selfPos = self.state.position as Vector2;
+      const target = this.transitTarget ?? selfPos;
+      const driftDistance = Vector2.distance(selfPos, target);
       this.loiterTimer -= dt;
-      this.loiterDriftTimer -= dt;
-      inputs.autoBrakeLinear = true;
-      inputs.autoBrakeRotation = true;
-      if (this.loiterDriftTimer <= 0) {
-        const impulseAngle = this.prng.next() * Math.PI * 2;
-        self.state = {
-          ...self.state,
-          velocity: (self.state.velocity as Vector2).add(Vector2.fromAngle(impulseAngle).scale(TRANSIT_LOITER_DRIFT_FORCE))
-        };
-        this.loiterDriftTimer = TRANSIT_LOITER_DRIFT_INTERVAL;
+      if (driftDistance > TRANSIT_LOITER_RADIUS * TRANSIT_LOITER_DRIFT_THRESHOLD) {
+        this.transitPhase = 'approaching';
+        return defaultInputs();
       }
       if (this.loiterTimer <= 0) {
+        const ruleState = self.spawnRuleStateRef;
+        const minPresent = Number.isFinite(ruleState?.rule.minPresent) ? Math.max(0, Math.floor(ruleState!.rule.minPresent)) : 0;
+        if (ruleState && ruleState.currentCount - 1 < minPresent) {
+          this.loiterTimer = TRANSIT_LOITER_MIN * TRANSIT_LOITER_EXTENSION;
+          return allZeroInputs();
+        }
         this.transitPhase = 'departing';
         self.isLeaving = true;
       }
-      return inputs;
+      return allZeroInputs();
     }
 
     if (!this.departureTarget) {

@@ -27,19 +27,42 @@ function traceFighterPath(
   ctx.lineTo(0, halfLength * 0.35);
   ctx.lineTo(-halfWidth * 0.75, halfLength * 0.55);
   ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+}
 
+function traceCourierPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  dimensions: { length: number; width: number }
+): void {
+  const halfLength = dimensions.length / 2;
+  const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  ctx.moveTo(-halfWidth * 0.2, wingY);
-  ctx.lineTo(-halfWidth * 1.05, halfLength * 0.55);
-  ctx.lineTo(-halfWidth * 0.35, halfLength * 0.45);
+  // Pointed nose, flared mid-body, clipped stern.
+  ctx.moveTo(0, -halfLength);
+  ctx.lineTo(halfWidth * 0.72, -halfLength * 0.25);
+  ctx.lineTo(halfWidth * 0.9, halfLength * 0.25);
+  ctx.lineTo(halfWidth * 0.45, halfLength * 0.82);
+  ctx.lineTo(-halfWidth * 0.45, halfLength * 0.82);
+  ctx.lineTo(-halfWidth * 0.9, halfLength * 0.25);
+  ctx.lineTo(-halfWidth * 0.72, -halfLength * 0.25);
   ctx.closePath();
+}
 
+function traceFreighterPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  dimensions: { length: number; width: number }
+): void {
+  const halfLength = dimensions.length / 2;
+  const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  ctx.moveTo(halfWidth * 0.2, wingY);
-  ctx.lineTo(halfWidth * 1.05, halfLength * 0.55);
-  ctx.lineTo(halfWidth * 0.35, halfLength * 0.45);
+  // Blunt, blocky hull with a broad cargo body.
+  ctx.moveTo(-halfWidth * 0.55, -halfLength);
+  ctx.lineTo(halfWidth * 0.55, -halfLength);
+  ctx.lineTo(halfWidth, -halfLength * 0.45);
+  ctx.lineTo(halfWidth, halfLength * 0.8);
+  ctx.lineTo(halfWidth * 0.7, halfLength);
+  ctx.lineTo(-halfWidth * 0.7, halfLength);
+  ctx.lineTo(-halfWidth, halfLength * 0.8);
+  ctx.lineTo(-halfWidth, -halfLength * 0.45);
   ctx.closePath();
 }
 
@@ -50,6 +73,14 @@ export function traceHullPath(
 ): void {
   if (hullClass === 'fighter') {
     traceFighterPath(ctx, dimensions);
+    return;
+  }
+  if (hullClass === 'courier') {
+    traceCourierPath(ctx, dimensions);
+    return;
+  }
+  if (hullClass === 'freighter') {
+    traceFreighterPath(ctx, dimensions);
     return;
   }
   ctx.beginPath();
