@@ -11,6 +11,9 @@ import {
 import { childPRNG } from '../core/prng';
 import { Vector2 } from '../physics/vector2';
 import type {
+  CargoItem,
+  CompletedMission,
+  Mission,
   ArmourItem,
   BulletSpec,
   EquipmentItem,
@@ -447,6 +450,68 @@ export class WorldState {
 
   getPlayerShipState(): ShipState {
     return this.playerShipState;
+  }
+
+  acceptMission(mission: Mission): boolean {
+    const ship = this.getPlayerShipState();
+    const usedCargo = ship.cargo.reduce((total, item) => total + item.weight, 0);
+    const cargoCapacity = this.getHullSpec(ship.hullSpecId)?.cargoCapacity ?? 0;
+    const freeCargo = cargoCapacity - usedCargo;
+    if (mission.cargoWeight > freeCargo) {
+      return false;
+    }
+
+    const newCargo: CargoItem = {
+      missionId: mission.id,
+      description: `Mission cargo (${mission.cargoWeight}t)`,
+      weight: mission.cargoWeight
+    };
+
+    this.updatePlayerShipState({
+      activeMissions: [...ship.activeMissions, mission],
+      cargo: [...ship.cargo, newCargo]
+    });
+    this.saveToLocalStorage();
+    return true;
+  }
+
+  checkMissionDelivery(landableId: string): CompletedMission[] {
+    const ship = this.getPlayerShipState();
+    const completed: CompletedMission[] = [];
+    const remainingMissions = [] as ShipState['activeMissions'];
+    const remainingCargo = [...ship.cargo];
+
+    for (const mission of ship.activeMissions) {
+      if (mission.destinationLandableId === landableId) {
+        const cargoIndex = remainingCargo.findIndex((cargo) => cargo.missionId === mission.id);
+        if (cargoIndex >= 0) {
+          remainingCargo.splice(cargoIndex, 1);
+        }
+        for (const reward of mission.reputationRewards) {
+          this.changeReputation(reward.factionId, reward.amount, 'mission_complete');
+        }
+        completed.push({ mission, creditsEarned: mission.payoff });
+      } else {
+        remainingMissions.push(mission);
+      }
+    }
+
+    if (completed.length > 0) {
+      this.updatePlayerShipState({
+        activeMissions: remainingMissions,
+        cargo: remainingCargo,
+        credits: ship.credits + completed.reduce((sum, entry) => sum + entry.creditsEarned, 0)
+      });
+      this.saveToLocalStorage();
+    }
+    return completed;
+  }
+
+  getFreeCargo(): number {
+    const ship = this.getPlayerShipState();
+    const hullSpec = this.getHullSpec(ship.hullSpecId);
+    const usedCargo = ship.cargo.reduce((total, item) => total + item.weight, 0);
+    return Math.max(0, (hullSpec?.cargoCapacity ?? 0) - usedCargo);
   }
 
   updatePlayerShipState(updates: Partial<ShipState>): void {

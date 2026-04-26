@@ -7,6 +7,7 @@ import type { ScreenManager, Screen } from './screenManager';
 import { NewGameScreen } from './newGameScreen';
 import { LoadGameScreen } from './loadGameScreen';
 import { WorldGenScreen } from './worldGenScreen';
+import { GameManualScreen } from './gameManualScreen';
 
 interface MenuButton {
   label: string;
@@ -198,6 +199,13 @@ export class MainMenuScreen implements Screen {
         onClick: () => {
           this.onExit();
           this.screenManager.push(new WorldGenScreen());
+        }
+      },
+      {
+        label: '[ GAME MANUAL ]',
+        onClick: () => {
+          this.onExit();
+          this.screenManager.push(new GameManualScreen(this.canvas, this.ctx, this.screenManager));
         }
       }
     ];

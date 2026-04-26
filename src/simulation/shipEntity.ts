@@ -186,7 +186,8 @@ export class ShipEntity {
       if (!slot.itemId) return total;
       return total + (worldState.getEquipmentItem(slot.itemId)?.mass ?? 0);
     }, 0);
-    return hullMass + equipMass;
+    const cargoMass = this.state.cargo.reduce((total, item) => total + item.weight, 0);
+    return hullMass + equipMass + cargoMass;
   }
 
   getTopSpeed(worldState: WorldState): number {

@@ -1,6 +1,7 @@
 import {
   COLOURS,
   DAMAGE_TYPE_LABELS,
+  MISSION_DELIVERY_DISPLAY_TIME,
   REFUEL_PRICE_PER_UNIT,
   REFUEL_RATE,
   REP_CEILING_MISSION_COMPLETE,
@@ -11,6 +12,8 @@ import {
   REPAIR_RATE
 } from '../constants';
 import type { ReputationTier, WorldState } from '../core/worldState';
+import type { CompletedMission } from '../types';
+import type { Mission } from '../types';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
 import { drawStation } from '../renderer/landables/stationRenderer';
@@ -18,10 +21,12 @@ import type { Landable } from '../types';
 import { emptyReductionProfile } from '../types';
 import type { ArmourItem, ArmourReductionProfile, DamageTypeKey, EquipmentItem } from '../types';
 import type { LandableService, ServiceType } from '../types/landable';
+import { MissionBoard } from '../simulation/missionBoard';
 import type { Screen } from './screenManager';
 
 type TabId =
   | 'overview'
+  | 'missions'
   | 'refuel'
   | 'repair'
   | 'missionBoard'
@@ -70,14 +75,49 @@ export class LandableScreen implements Screen {
   private repairRect: { x: number; y: number; width: number; height: number } | null = null;
   private fullRepairRect: { x: number; y: number; width: number; height: number } | null = null;
   private overviewHullRect: { x: number; y: number; width: number; height: number } | null = null;
+  private generatedMissions: Mission[] | null = null;
+  private missionActionRects: Array<{ missionId: string; x: number; y: number; width: number; height: number }> = [];
+  private missionScrollOffset = 0;
+  private missionFlashMessage = '';
+  private missionFlashTimer = 0;
+  private pendingDeliveries: CompletedMission[] = [];
+  private deliveryDismissAt = 0;
+  private missionsTabScrollOffset = 0;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (this.pendingDeliveries.length > 0) {
+      this.pendingDeliveries = [];
+    }
     if (event.code === 'Tab') {
       event.preventDefault();
       this.refreshClickableTabs();
       const nextIndex = (this.clickableTabs.indexOf(this.activeTab) + 1) % this.clickableTabs.length;
       this.activeTab = this.clickableTabs[nextIndex];
       return;
+    }
+    if (this.activeTab === 'missions') {
+      if (event.code === 'ArrowDown') {
+        event.preventDefault();
+        this.missionsTabScrollOffset += 1;
+        return;
+      }
+      if (event.code === 'ArrowUp') {
+        event.preventDefault();
+        this.missionsTabScrollOffset = Math.max(0, this.missionsTabScrollOffset - 1);
+        return;
+      }
+    }
+    if (this.activeTab === 'missionBoard') {
+      if (event.code === 'ArrowDown') {
+        event.preventDefault();
+        this.missionScrollOffset += 1;
+        return;
+      }
+      if (event.code === 'ArrowUp') {
+        event.preventDefault();
+        this.missionScrollOffset = Math.max(0, this.missionScrollOffset - 1);
+        return;
+      }
     }
     if (event.code === 'KeyT') {
       event.preventDefault();
@@ -95,6 +135,9 @@ export class LandableScreen implements Screen {
   };
 
   private readonly onMouseDown = (event: MouseEvent): void => {
+    if (this.pendingDeliveries.length > 0) {
+      this.pendingDeliveries = [];
+    }
     const hit = this.getCanvasPoint(event);
     if (!hit) return;
     if (this.takeOffRect && this.inRect(hit.x, hit.y, this.takeOffRect)) {
@@ -125,12 +168,54 @@ export class LandableScreen implements Screen {
     }
     if (this.activeTab === 'repair' && this.fullRepairRect && this.inRect(hit.x, hit.y, this.fullRepairRect)) {
       this.applyFullRepair();
+      return;
+    }
+    if (this.activeTab === 'missionBoard') {
+      for (const rect of this.missionActionRects) {
+        if (!this.inRect(hit.x, hit.y, rect)) {
+          continue;
+        }
+        const mission = this.generatedMissions?.find((candidate) => candidate.id === rect.missionId);
+        if (!mission) {
+          continue;
+        }
+        if (!this.worldState.acceptMission(mission)) {
+          this.missionFlashMessage = 'INSUFFICIENT CARGO SPACE';
+          this.missionFlashTimer = 1.4;
+          return;
+        }
+        this.generatedMissions = (this.generatedMissions ?? []).filter((candidate) => candidate.id !== mission.id);
+        this.missionFlashMessage = 'MISSION ACCEPTED';
+        this.missionFlashTimer = 1.0;
+        return;
+      }
     }
   };
 
   private readonly onMouseUp = (): void => {
     this.isRefuelHeld = false;
     this.isRepairing = false;
+  };
+
+  private readonly onWheel = (event: WheelEvent): void => {
+    if (this.activeTab === 'missions') {
+      event.preventDefault();
+      if (event.deltaY > 0) {
+        this.missionsTabScrollOffset += 1;
+      } else if (event.deltaY < 0) {
+        this.missionsTabScrollOffset = Math.max(0, this.missionsTabScrollOffset - 1);
+      }
+      return;
+    }
+    if (this.activeTab !== 'missionBoard') {
+      return;
+    }
+    event.preventDefault();
+    if (event.deltaY > 0) {
+      this.missionScrollOffset += 1;
+    } else if (event.deltaY < 0) {
+      this.missionScrollOffset = Math.max(0, this.missionScrollOffset - 1);
+    }
   };
 
   constructor(
@@ -143,14 +228,21 @@ export class LandableScreen implements Screen {
   }
 
   onEnter(): void {
+    const completed = this.worldState.checkMissionDelivery(this.landable.id);
+    if (completed.length > 0) {
+      this.pendingDeliveries = completed;
+      this.deliveryDismissAt = Date.now() + MISSION_DELIVERY_DISPLAY_TIME * 1000;
+    }
     window.addEventListener('keydown', this.onKeyDown);
     this.canvas.addEventListener('mousedown', this.onMouseDown);
+    this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     window.addEventListener('mouseup', this.onMouseUp);
   }
 
   onExit(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     this.canvas.removeEventListener('mousedown', this.onMouseDown);
+    this.canvas.removeEventListener('wheel', this.onWheel);
     window.removeEventListener('mouseup', this.onMouseUp);
     this.isRefuelHeld = false;
     this.isRepairing = false;
@@ -159,6 +251,10 @@ export class LandableScreen implements Screen {
   update(dt: number): void {
     this.updateRefuel(dt);
     this.updateRepair(dt);
+    this.missionFlashTimer = Math.max(0, this.missionFlashTimer - dt);
+    if (this.pendingDeliveries.length > 0 && Date.now() >= this.deliveryDismissAt) {
+      this.pendingDeliveries = [];
+    }
   }
 
   private updateRefuel(dt: number): void {
@@ -247,6 +343,7 @@ export class LandableScreen implements Screen {
       height: 34
     };
     this.drawButton(ctx, this.takeOffRect, '[ TAKE OFF ]', true);
+    this.renderDeliveryNotifications(ctx, panelX + 18, panelY + 8, panelWidth - 220);
 
     const tabY = panelY + headerHeight + 6;
     const tabStartX = panelX + 16;
@@ -255,6 +352,7 @@ export class LandableScreen implements Screen {
     let x = tabStartX;
     const allTabs: Array<{ label: string; id: TabId; serviceType: ServiceType | null; available: boolean }> = [
       { label: 'OVERVIEW', id: 'overview', serviceType: null, available: true },
+      { label: 'MISSIONS', id: 'missions', serviceType: null, available: true },
       { label: 'REFUEL', id: 'refuel', serviceType: 'refuel', available: this.hasService('refuel') },
       { label: 'REPAIR', id: 'repair', serviceType: 'repair', available: this.hasService('repair') },
       {
@@ -318,6 +416,8 @@ export class LandableScreen implements Screen {
 
     if (this.activeTab === 'overview') {
       this.renderOverview(ctx, contentX, contentY, contentWidth, contentHeight);
+    } else if (this.activeTab === 'missions') {
+      this.renderMissionsTab(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'refuel') {
       if (!this.canAccessService('refuel')) {
         this.renderAccessDenied(ctx, contentX, contentY);
@@ -330,8 +430,13 @@ export class LandableScreen implements Screen {
       } else {
         this.renderRepair(ctx, contentX, contentY, contentWidth, contentHeight);
       }
+    } else if (this.activeTab === 'missionBoard') {
+      if (!this.canAccessService('missionBoard')) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderMissionBoardTab(ctx, contentX, contentY, contentWidth, contentHeight);
+      }
     } else if (
-      this.activeTab === 'missionBoard' ||
       this.activeTab === 'shipyard' ||
       this.activeTab === 'equipmentStore' ||
       this.activeTab === 'trainingSimulator'
@@ -690,9 +795,95 @@ export class LandableScreen implements Screen {
       'equipmentStore',
       'trainingSimulator'
     ];
-    this.clickableTabs = ['overview', ...serviceTabs.filter((serviceType) => this.hasService(serviceType))];
+    this.clickableTabs = ['overview', 'missions', ...serviceTabs.filter((serviceType) => this.hasService(serviceType))];
     if (!this.clickableTabs.includes(this.activeTab)) {
       this.activeTab = 'overview';
+    }
+  }
+
+  private renderMissionsTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    _height: number
+  ): void {
+    const ship = this.worldState.getPlayerShipState();
+    const missions = ship.activeMissions;
+    const hullCapacity = this.worldState.getHullSpec(ship.hullSpecId)?.cargoCapacity ?? 0;
+    const usedCargo = ship.cargo.reduce((sum, cargo) => sum + cargo.weight, 0);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('ACTIVE MISSIONS', x, y);
+    ctx.fillStyle = COLOURS.UI_ACCENT;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText(`Cargo: ${usedCargo} / ${hullCapacity}t`, x + width - 210, y + 2);
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 26);
+    ctx.lineTo(x + width, y + 26);
+    ctx.stroke();
+
+    if (missions.length === 0) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillText('No active missions. Visit a Mission Board to accept contracts.', x, y + 52);
+      return;
+    }
+
+    const visibleStart = Math.min(this.missionsTabScrollOffset, Math.max(0, missions.length - 1));
+    const visible = missions.slice(visibleStart, visibleStart + 4);
+    const cardHeight = 116;
+    for (let i = 0; i < visible.length; i += 1) {
+      const mission = visible[i];
+      const cardY = y + 40 + i * cardHeight;
+      const currentCoord = this.worldState.getCurrentSector().coord;
+      const distance = Math.round(
+        Math.hypot(
+          mission.destinationSectorCoord.x - currentCoord.x,
+          mission.destinationSectorCoord.y - currentCoord.y
+        )
+      );
+      const rewards = mission.reputationRewards
+        .map((reward) => `${this.worldState.getFaction(reward.factionId)?.name ?? reward.factionId} +${reward.amount}`)
+        .join('  ');
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      ctx.fillRect(x, cardY, width, cardHeight - 10);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "15px 'Courier New', monospace";
+      ctx.fillText(mission.title, x + 8, cardY + 8);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(this.fitTextToWidth(ctx, mission.description, width - 24), x + 8, cardY + 30);
+      ctx.fillStyle = COLOURS.UI_ACCENT;
+      ctx.fillText(
+        `Destination: ${mission.destinationName} (${mission.destinationSectorCoord.x},${mission.destinationSectorCoord.y})`,
+        x + 8,
+        cardY + 50
+      );
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.fillText(
+        `Distance: ~${distance} sectors    Pay: ${mission.payoff.toLocaleString()} ₢    Cargo: ${mission.cargoWeight}t`,
+        x + 8,
+        cardY + 68
+      );
+      if (mission.destinationSectorCoord.x === currentCoord.x && mission.destinationSectorCoord.y === currentCoord.y) {
+        ctx.fillStyle = COLOURS.SAFE;
+        ctx.fillText('★ You are in destination sector. Land to deliver.', x + 8, cardY + 86);
+      } else if (rewards) {
+        ctx.fillStyle = COLOURS.UI_SECONDARY;
+        ctx.fillText(`Rewards: ${rewards}`, x + 8, cardY + 86);
+      }
+
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.beginPath();
+      ctx.moveTo(x + 8, cardY + cardHeight - 12);
+      ctx.lineTo(x + width - 8, cardY + cardHeight - 12);
+      ctx.stroke();
     }
   }
 
@@ -739,6 +930,7 @@ export class LandableScreen implements Screen {
   private renderServicePreview(ctx: CanvasRenderingContext2D, x: number, y: number, tabId: TabId): void {
     const labels: Record<TabId, string> = {
       overview: 'Overview',
+      missions: 'Missions',
       refuel: 'Refuel',
       repair: 'Repair',
       missionBoard: 'Mission Board',
@@ -754,6 +946,139 @@ export class LandableScreen implements Screen {
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.fillText('Service terminal linked. Full interaction arrives in a later session.', x, y + 34);
+  }
+
+  private renderDeliveryNotifications(ctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
+    if (this.pendingDeliveries.length === 0) {
+      return;
+    }
+    const rowHeight = 52;
+    const height = 10 + this.pendingDeliveries.length * rowHeight;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 20, 12, 0.94)';
+    ctx.strokeStyle = COLOURS.SAFE;
+    ctx.strokeRect(x, y, width, height);
+    ctx.fillRect(x, y, width, height);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (let i = 0; i < this.pendingDeliveries.length; i += 1) {
+      const rowY = y + 8 + i * rowHeight;
+      const entry = this.pendingDeliveries[i];
+      const repText = entry.mission.reputationRewards
+        .map((reward) => {
+          const factionName = this.worldState.getFaction(reward.factionId)?.name ?? reward.factionId;
+          return `${factionName} +${reward.amount}`;
+        })
+        .join('  ');
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.font = "14px 'Courier New', monospace";
+      ctx.fillText('✓ DELIVERY COMPLETE', x + 10, rowY);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(entry.mission.title, x + 26, rowY + 18);
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillText(`+${Math.round(entry.creditsEarned)} ₢${repText ? `    ${repText}` : ''}`, x + 26, rowY + 34);
+    }
+    ctx.restore();
+  }
+
+  private renderMissionBoardTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    if (!this.generatedMissions) {
+      this.generatedMissions = MissionBoard.generateMissions(
+        this.landable,
+        this.worldState.getCurrentSector().coord,
+        this.worldState,
+        6
+      );
+    }
+    this.missionActionRects = [];
+    const ship = this.worldState.getPlayerShipState();
+    const hullCapacity = this.worldState.getHullSpec(ship.hullSpecId)?.cargoCapacity ?? 0;
+    const usedCargo = ship.cargo.reduce((sum, cargo) => sum + cargo.weight, 0);
+    const freeCargo = Math.max(0, hullCapacity - usedCargo);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.fillText('MISSION BOARD', x, y);
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_ACCENT;
+    ctx.fillText(`Cargo: ${usedCargo} / ${hullCapacity}t`, x + width - 210, y + 2);
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 26);
+    ctx.lineTo(x + width, y + 26);
+    ctx.stroke();
+
+    const missions = this.generatedMissions ?? [];
+    const visibleStart = Math.min(this.missionScrollOffset, Math.max(0, missions.length - 1));
+    const visible = missions.slice(visibleStart, visibleStart + 4);
+    const cardHeight = 118;
+    for (let i = 0; i < visible.length; i += 1) {
+      const mission = visible[i];
+      const cardY = y + 40 + i * cardHeight;
+      const lockedRequirement = mission.factionRequirements.find(
+        (req) => this.worldState.getReputationForFaction(req.factionId) < req.minReputation
+      );
+      const distance = Math.round(
+        Math.hypot(
+          mission.destinationSectorCoord.x - this.worldState.getCurrentSector().coord.x,
+          mission.destinationSectorCoord.y - this.worldState.getCurrentSector().coord.y
+        )
+      );
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      ctx.fillRect(x, cardY, width, cardHeight - 10);
+      ctx.font = "15px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.fillText(mission.title, x + 8, cardY + 8);
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(this.fitTextToWidth(ctx, mission.description, width - 24), x + 8, cardY + 30);
+
+      if (lockedRequirement) {
+        const currentRep = Math.round(this.worldState.getReputationForFaction(lockedRequirement.factionId));
+        const tier = this.worldState.getReputationTier(lockedRequirement.factionId).toUpperCase();
+        const factionName = this.worldState.getFaction(lockedRequirement.factionId)?.name ?? lockedRequirement.factionId;
+        ctx.fillStyle = COLOURS.WARNING;
+        ctx.fillText(`🔒 Requires: ${factionName} +${lockedRequirement.minReputation}`, x + 8, cardY + 54);
+        ctx.fillStyle = COLOURS.UI_SECONDARY;
+        ctx.fillText(`Your standing: ${currentRep >= 0 ? '+' : ''}${currentRep} (${tier})`, x + 8, cardY + 72);
+      } else {
+        const repReward = mission.reputationRewards.map((reward) => `+${reward.amount} ${reward.factionId}`).join('  ');
+        ctx.fillStyle = COLOURS.UI_PRIMARY;
+        ctx.fillText(
+          `Distance: ~${distance} sectors    Pay: ${mission.payoff.toLocaleString()} ₢${repReward ? `    ${repReward}` : ''}`,
+          x + 8,
+          cardY + 54
+        );
+        ctx.fillStyle = COLOURS.UI_SECONDARY;
+        ctx.fillText(`Cargo: ${mission.cargoWeight}t`, x + 8, cardY + 72);
+        const canAccept = mission.cargoWeight <= freeCargo;
+        const btn = { x: x + width - 150, y: cardY + 66, width: 138, height: 30 };
+        this.drawButton(ctx, btn, canAccept ? '[ ACCEPT ]' : '[ NO SPACE ]', canAccept);
+        if (canAccept) {
+          this.missionActionRects.push({ missionId: mission.id, ...btn });
+        }
+      }
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.beginPath();
+      ctx.moveTo(x + 8, cardY + cardHeight - 12);
+      ctx.lineTo(x + width - 8, cardY + cardHeight - 12);
+      ctx.stroke();
+    }
+
+    if (this.missionFlashTimer > 0 && this.missionFlashMessage) {
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillStyle = this.missionFlashMessage.includes('INSUFFICIENT') ? COLOURS.DANGER : COLOURS.SAFE;
+      ctx.fillText(this.missionFlashMessage, x, y + height - 24);
+    }
   }
 
   private drawLockGlyph(

@@ -68,6 +68,8 @@ export class FlightScreen implements Screen {
   private pauseMouseMainRect: { x: number; y: number; width: number; height: number } | null = null;
   private pauseConfirmYesRect: { x: number; y: number; width: number; height: number } | null = null;
   private pauseConfirmNoRect: { x: number; y: number; width: number; height: number } | null = null;
+  private missionsPanelExpanded = false;
+  private showControlsOverlay = false;
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
   };
@@ -85,6 +87,10 @@ export class FlightScreen implements Screen {
       return;
     }
     if (!this.isPaused) {
+      if (event.code === 'KeyH') {
+        event.preventDefault();
+        this.showControlsOverlay = !this.showControlsOverlay;
+      }
       return;
     }
     if (this.pauseConfirmMainMenu) {
@@ -370,6 +376,9 @@ export class FlightScreen implements Screen {
         this.targeting.getLandableTargetId()
       );
     }
+    if (targetInputs.toggleMissionsPanel) {
+      this.missionsPanelExpanded = !this.missionsPanelExpanded;
+    }
     this.sectorSimulation?.getWeaponSystem().update(
       dt,
       this.playerShip.state,
@@ -450,6 +459,7 @@ export class FlightScreen implements Screen {
       arrivalMessage: this.getArrivalMessage(),
       destructionMessageAlpha: this.getDestructionMessageAlpha(),
       activeBurns: this.sectorSimulation?.getWeaponSystem().getActiveBurns() ?? [],
+      missionsPanelExpanded: this.missionsPanelExpanded,
       spawnRuleDebugLines: (this.sectorSimulation?.getSpawnRuleDebugRows() ?? []).map((row) => {
         const next = row.nextArrivalIn.toFixed(1).padStart(5, ' ');
         return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;
@@ -459,6 +469,9 @@ export class FlightScreen implements Screen {
     this.insuranceScreen?.render(this.ctx);
     if (this.isPaused) {
       this.renderPauseOverlay(this.ctx);
+    }
+    if (this.showControlsOverlay) {
+      this.renderControlsOverlay(this.ctx);
     }
   }
 
@@ -504,6 +517,43 @@ export class FlightScreen implements Screen {
         this.drawPauseButton(ctx, rects[i], options[i], this.pauseSelection === i);
       }
     }
+    ctx.restore();
+  }
+
+  private renderControlsOverlay(ctx: CanvasRenderingContext2D): void {
+    const panelWidth = 560;
+    const panelHeight = 300;
+    const panelX = (this.canvas.width - panelWidth) / 2;
+    const panelY = 34;
+    ctx.save();
+    ctx.fillStyle = 'rgba(8, 8, 16, 0.94)';
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+    ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('FLIGHT CONTROLS', panelX + 16, panelY + 10);
+    ctx.font = "13px 'Courier New', monospace";
+    const lines = [
+      'Arrow Up/Down: forward/reverse thrust',
+      'Arrow Left/Right: rotate',
+      'Q: linear auto-brake, E: rotation auto-brake',
+      'L: land when landing prompt appears',
+      'M: toggle active missions panel',
+      'Tab: cycle ship target, G: cycle landable target',
+      'Z/X/C/V/B: fire weapon groups',
+      'Esc: pause, H: hide this overlay'
+    ];
+    let y = panelY + 44;
+    for (const line of lines) {
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.fillText(`- ${line}`, panelX + 22, y);
+      y += 22;
+    }
+    ctx.fillStyle = COLOURS.WARNING;
+    ctx.fillText('Landing tip: toggle both auto-brakes before approach.', panelX + 16, panelY + panelHeight - 38);
     ctx.restore();
   }
 

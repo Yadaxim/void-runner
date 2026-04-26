@@ -39,6 +39,7 @@ interface RenderPipelineState {
   destructionMessageAlpha: number;
   spawnRuleDebugLines: string[];
   activeBurns: BurnEffect[];
+  missionsPanelExpanded: boolean;
 }
 
 export class RenderPipeline {
@@ -179,12 +180,16 @@ export class RenderPipeline {
       state.worldState,
       state.heldFireKeys,
       state.activeBurns.find((burn) => burn.targetId === state.playerShip.state.id)?.remainingDuration ?? null
+      ,
+      state.playerShip.state.activeMissions,
+      state.missionsPanelExpanded
     );
     this.minimapRenderer.render(
       state.worldState,
       state.playerShip.state.position,
       state.landingCandidate,
-      state.otherShips
+      state.otherShips,
+      state.playerShip.state.activeMissions
     );
   }
 

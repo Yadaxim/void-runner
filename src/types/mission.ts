@@ -42,3 +42,8 @@ export interface Mission {
   expiryTime?: number;
   acceptedAt: number;
 }
+
+export interface CompletedMission {
+  mission: Mission;
+  creditsEarned: number;
+}

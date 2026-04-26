@@ -1,7 +1,7 @@
 import type { DamageTypeKey } from './types';
 
 // Physics and simulation
-export const GRAVITY_CONSTANT = 10;
+export const GRAVITY_CONSTANT = 5;
 export const MIN_GRAVITY_DISTANCE = 100;
 export const MAX_DELTA_SECONDS = 0.1;
 export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
@@ -33,6 +33,11 @@ export const REPAIR_RATE = 10;
 export const REPAIR_PRICE_DEFAULT = 3;
 export const INSURANCE_REPAIR_COST_FRACTION = 0.1;
 export const INSURANCE_PAYOUT_FRACTION = 0.9;
+export const MISSION_BOARD_COUNT = 6;
+export const MISSION_MIN_DISTANCE = 2;
+export const MISSION_MAX_DISTANCE = 20;
+export const MISSION_DELIVERY_DISPLAY_TIME = 5;
+export const MISSION_PAYOFF_MIN = 200;
 
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;

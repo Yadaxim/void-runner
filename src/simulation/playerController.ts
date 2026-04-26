@@ -14,6 +14,7 @@ interface ThrusterInputs {
 interface TargetInputs {
   cycleShipTarget: boolean;
   cycleLandableTarget: boolean;
+  toggleMissionsPanel: boolean;
 }
 
 export class PlayerController {
@@ -24,6 +25,7 @@ export class PlayerController {
   private devRefuelQueued = false;
   private cycleShipTargetQueued = false;
   private cycleLandableTargetQueued = false;
+  private toggleMissionsPanelQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -35,6 +37,7 @@ export class PlayerController {
     'KeyR',
     'Tab',
     'KeyG',
+    'KeyM',
     'KeyZ',
     'KeyX',
     'KeyC',
@@ -63,6 +66,9 @@ export class PlayerController {
     }
     if (!event.repeat && event.code === 'KeyG') {
       this.cycleLandableTargetQueued = true;
+    }
+    if (!event.repeat && event.code === 'KeyM') {
+      this.toggleMissionsPanelQueued = true;
     }
     this.pressedKeys.add(event.code);
   };
@@ -107,10 +113,12 @@ export class PlayerController {
   getTargetInputs(): TargetInputs {
     const inputs = {
       cycleShipTarget: this.cycleShipTargetQueued,
-      cycleLandableTarget: this.cycleLandableTargetQueued
+      cycleLandableTarget: this.cycleLandableTargetQueued,
+      toggleMissionsPanel: this.toggleMissionsPanelQueued
     };
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
+    this.toggleMissionsPanelQueued = false;
     return inputs;
   }
 
@@ -134,5 +142,6 @@ export class PlayerController {
     this.devRefuelQueued = false;
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
+    this.toggleMissionsPanelQueued = false;
   }
 }

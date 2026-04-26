@@ -162,7 +162,7 @@
       "description": "A nimble single-seat fighter. Fast and responsive but limited cargo space.",
       "hullClass": "fighter",
       "hullMass": 80,
-      "cargoCapacity": 20,
+      "cargoCapacity": 80,
       "equipmentCapacity": 40,
       "equipmentWhitelist": [
         "thruster",
@@ -621,7 +621,104 @@
     ],
     "weaponLoadout": [{ "fireKey": "Z", "itemId": "pulse_cannon_t1", "stackCount": 1, "cooldownRemaining": 0 }]
   },
-  "missionTemplates": [],
+  "missionTemplates": [
+    {
+      "id": "tpl_fed_standard_cargo",
+      "title": "Standard Freight Run",
+      "descriptionTemplate": "Deliver {cargo} to {destination}. Reliable pay, no questions.",
+      "factionRequirements": [{ "factionId": "federation", "minReputation": 0 }],
+      "regionType": "core_arm",
+      "cargoWeightRange": [10, 40],
+      "payoffPerDistanceUnit": 8,
+      "reputationRewards": [{ "factionId": "federation", "amount": 5 }]
+    },
+    {
+      "id": "tpl_fed_priority_cargo",
+      "title": "Priority Delivery",
+      "descriptionTemplate": "Time-sensitive freight to {destination}. Extra pay for speed.",
+      "factionRequirements": [{ "factionId": "federation", "minReputation": 30 }],
+      "regionType": "core_arm",
+      "cargoWeightRange": [5, 20],
+      "payoffPerDistanceUnit": 15,
+      "reputationRewards": [{ "factionId": "federation", "amount": 8 }]
+    },
+    {
+      "id": "tpl_public_frontier",
+      "title": "Frontier Supply Run",
+      "descriptionTemplate": "Basic supplies needed at {destination}. No faction affiliation required.",
+      "factionRequirements": [],
+      "regionType": "frontier",
+      "cargoWeightRange": [5, 25],
+      "payoffPerDistanceUnit": 10,
+      "reputationRewards": []
+    },
+    {
+      "id": "tpl_clan_run",
+      "title": "Clan Cargo Run",
+      "descriptionTemplate": "Move this load to {destination}. Clanners pay fair.",
+      "factionRequirements": [{ "factionId": "frontier_clans", "minReputation": 0 }],
+      "regionType": "midring",
+      "cargoWeightRange": [20, 60],
+      "payoffPerDistanceUnit": 12,
+      "reputationRewards": [{ "factionId": "frontier_clans", "amount": 5 }]
+    },
+    {
+      "id": "tpl_clan_priority",
+      "title": "Urgent Clan Shipment",
+      "descriptionTemplate": "Rush delivery to {destination}. Don't ask what's in the crates.",
+      "factionRequirements": [{ "factionId": "frontier_clans", "minReputation": 25 }],
+      "regionType": "midring",
+      "cargoWeightRange": [10, 30],
+      "payoffPerDistanceUnit": 18,
+      "reputationRewards": [{ "factionId": "frontier_clans", "amount": 10 }]
+    },
+    {
+      "id": "tpl_veth_trade",
+      "title": "Collective Trade Consignment",
+      "descriptionTemplate": "Valuable trade goods bound for {destination}. Handle with care.",
+      "factionRequirements": [{ "factionId": "veth_collective", "minReputation": 0 }],
+      "regionType": "core_arm",
+      "cargoWeightRange": [15, 50],
+      "payoffPerDistanceUnit": 14,
+      "reputationRewards": [{ "factionId": "veth_collective", "amount": 6 }]
+    },
+    {
+      "id": "tpl_public_any",
+      "title": "General Cargo",
+      "descriptionTemplate": "Miscellaneous freight needed at {destination}.",
+      "factionRequirements": [],
+      "regionType": "midring",
+      "cargoWeightRange": [8, 35],
+      "payoffPerDistanceUnit": 9,
+      "reputationRewards": []
+    },
+    {
+      "id": "tpl_pirate_smuggle",
+      "title": "Discreet Delivery",
+      "descriptionTemplate": "No manifest. No questions. Get it to {destination}.",
+      "factionRequirements": [{ "factionId": "pirates", "minReputation": 20 }],
+      "regionType": "frontier",
+      "cargoWeightRange": [5, 20],
+      "payoffPerDistanceUnit": 25,
+      "reputationRewards": [{ "factionId": "pirates", "amount": 8 }]
+    },
+    {
+      "id": "tpl_alliance_run",
+      "title": "Inter-Faction Liaison Cargo",
+      "descriptionTemplate": "Diplomatic freight between factions. Requires trust on both sides.",
+      "factionRequirements": [
+        { "factionId": "federation", "minReputation": 40 },
+        { "factionId": "veth_collective", "minReputation": 40 }
+      ],
+      "regionType": "core_arm",
+      "cargoWeightRange": [5, 15],
+      "payoffPerDistanceUnit": 22,
+      "reputationRewards": [
+        { "factionId": "federation", "amount": 10 },
+        { "factionId": "veth_collective", "amount": 10 }
+      ]
+    }
+  ],
   "sectors": [
     {
       "coord": {

@@ -6,7 +6,7 @@ import {
 } from '../../constants';
 import type { WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
-import type { Landable, Vector2 } from '../../types';
+import type { Landable, Mission, Vector2 } from '../../types';
 
 const MIN_LANDABLE_DOT_SIZE = 3;
 const MAX_LANDABLE_DOT_SIZE = 8;
@@ -24,7 +24,8 @@ export class MinimapRenderer {
     worldState: WorldState,
     playerPosition: Vector2,
     landingCandidate: Landable | null,
-    npcShips: ShipEntity[]
+    npcShips: ShipEntity[],
+    activeMissions: Mission[]
   ): void {
     const mapX = this.ctx.canvas.width - MINIMAP_SIZE - PANEL_MARGIN;
     const mapY = this.ctx.canvas.height - MINIMAP_SIZE - PANEL_MARGIN;
@@ -47,6 +48,15 @@ export class MinimapRenderer {
     this.ctx.fillText(`SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`, mapX + 6, mapY + 6);
 
     const currentSector = worldState.getCurrentSector();
+    const missionDestinationIds = new Set(
+      activeMissions
+        .filter(
+          (mission) =>
+            mission.destinationSectorCoord.x === currentSector.coord.x &&
+            mission.destinationSectorCoord.y === currentSector.coord.y
+        )
+        .map((mission) => mission.destinationLandableId)
+    );
     for (const landable of currentSector.landables) {
       const relativeX = (landable.position.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH;
       const relativeY = (landable.position.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT;
@@ -61,6 +71,16 @@ export class MinimapRenderer {
       this.ctx.beginPath();
       this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
       this.ctx.fill();
+      if (missionDestinationIds.has(landable.id)) {
+        const pulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 750)) + 1) * 0.25;
+        this.ctx.save();
+        this.ctx.globalAlpha = pulse;
+        this.ctx.fillStyle = COLOURS.CREDITS;
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, dotRadius + 1.5, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
+      }
 
       if (landingCandidate?.id === landable.id) {
         const pulse = 0.55 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.225;

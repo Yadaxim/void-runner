@@ -2,7 +2,7 @@ import { COLOURS, REP_FLOOR_COMBAT_HIT, REP_FLOOR_COMBAT_KILL } from '../../cons
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
 import type { ReputationTier, WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
-import type { GridCoord, Landable, WeaponFireKey, WeaponSlot } from '../../types';
+import type { GridCoord, Landable, Mission, WeaponFireKey, WeaponSlot } from '../../types';
 import { WeaponStripRenderer } from './weaponStripRenderer';
 
 function normaliseDegrees(angleRad: number): number {
@@ -57,7 +57,9 @@ export class HudRenderer {
     weaponLoadout: WeaponSlot[],
     worldState: WorldState,
     heldFireKeys: Record<WeaponFireKey, boolean>,
-    playerBurnRemainingSeconds: number | null
+    playerBurnRemainingSeconds: number | null,
+    activeMissions: Mission[],
+    missionsPanelExpanded: boolean
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
@@ -85,6 +87,15 @@ export class HudRenderer {
       playerBurnRemainingSeconds
     });
     this.renderSectorReputationIndicator(sectorFaction);
+    this.renderActiveMissions(activeMissions, sectorCoord, missionsPanelExpanded);
+
+    this.ctx.save();
+    this.ctx.font = "11px 'Courier New', monospace";
+    this.ctx.textAlign = 'right';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+    this.ctx.fillText('H: HELP', this.ctx.canvas.width - 12, 34);
+    this.ctx.restore();
 
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
     const sectorText = `SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`;
@@ -187,6 +198,69 @@ export class HudRenderer {
       this.ctx.fillText(promptText, x + paddingX, y + height / 2);
       this.ctx.restore();
     }
+    if (
+      activeMissions.some(
+        (mission) => mission.destinationSectorCoord.x === sectorCoord.x && mission.destinationSectorCoord.y === sectorCoord.y
+      )
+    ) {
+      this.ctx.save();
+      this.ctx.font = "13px 'Courier New', monospace";
+      this.ctx.fillStyle = COLOURS.SAFE;
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'bottom';
+      this.ctx.fillText('★ LAND TO DELIVER', this.ctx.canvas.width / 2, this.ctx.canvas.height - 18);
+      this.ctx.restore();
+    }
+  }
+
+  renderActiveMissions(missions: Mission[], currentSectorCoord: GridCoord, expanded: boolean): void {
+    const tabX = this.ctx.canvas.width - 164;
+    const tabY = 12;
+    this.ctx.save();
+    this.ctx.font = "12px 'Courier New', monospace";
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.82)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.strokeRect(tabX, tabY, 150, 24);
+    this.ctx.fillRect(tabX, tabY, 150, 24);
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.fillText(`[MISSIONS: ${missions.length}]`, tabX + 8, tabY + 6);
+    if (!expanded) {
+      this.ctx.restore();
+      return;
+    }
+    const panelX = this.ctx.canvas.width - 420;
+    const panelY = 42;
+    const panelWidth = 396;
+    const panelHeight = Math.min(280, 54 + missions.length * 58);
+    this.ctx.fillStyle = 'rgba(8, 8, 16, 0.9)';
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+    this.ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    this.ctx.font = "14px 'Courier New', monospace";
+    this.ctx.fillText('ACTIVE MISSIONS', panelX + 10, panelY + 8);
+    let rowY = panelY + 30;
+    for (const mission of missions.slice(0, 4)) {
+      const distance = Math.round(Math.hypot(
+        mission.destinationSectorCoord.x - currentSectorCoord.x,
+        mission.destinationSectorCoord.y - currentSectorCoord.y
+      ));
+      this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+      this.ctx.font = "12px 'Courier New', monospace";
+      this.ctx.fillText(mission.title, panelX + 10, rowY);
+      this.ctx.fillStyle = COLOURS.UI_ACCENT;
+      this.ctx.fillText(
+        `-> ${mission.destinationName} (${mission.destinationSectorCoord.x},${mission.destinationSectorCoord.y})`,
+        panelX + 10,
+        rowY + 16
+      );
+      this.ctx.fillStyle = COLOURS.UI_SECONDARY;
+      this.ctx.fillText(`${mission.payoff} ₢   ${mission.cargoWeight}t   Distance: ~${distance}`, panelX + 10, rowY + 32);
+      rowY += 56;
+    }
+    this.ctx.restore();
   }
 
   private renderShipTelemetryPanel(config: {
