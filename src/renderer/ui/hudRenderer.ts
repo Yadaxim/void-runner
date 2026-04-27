@@ -1,6 +1,6 @@
-import { COLOURS, REP_FLOOR_COMBAT_HIT, REP_FLOOR_COMBAT_KILL } from '../../constants';
+import { COLOURS } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
-import type { ReputationTier, WorldState } from '../../core/worldState';
+import type { WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
 import type { GridCoord, Landable, Mission, WeaponFireKey, WeaponSlot } from '../../types';
 import { WeaponStripRenderer } from './weaponStripRenderer';
@@ -20,14 +20,6 @@ function fitTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
     result = result.slice(0, -1);
   }
   return result.length > 0 ? `${result}${ellipsis}` : ellipsis;
-}
-
-function tierColour(tier: ReputationTier): string {
-  if (tier === 'allied') return COLOURS.SAFE;
-  if (tier === 'friendly') return COLOURS.UI_ACCENT;
-  if (tier === 'neutral') return COLOURS.UI_PRIMARY;
-  if (tier === 'unfriendly') return COLOURS.WARNING;
-  return COLOURS.DANGER;
 }
 
 export class HudRenderer {
@@ -51,7 +43,6 @@ export class HudRenderer {
     destructionMessageAlpha: number,
     shipTarget: { name: string; hpRatio: number; hostility: 'none' | 'toPlayer' | 'toOther' } | null,
     landableTarget: { name: string } | null,
-    sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null,
     npcDebugLines: string[],
     spawnRuleDebugLines: string[],
     weaponLoadout: WeaponSlot[],
@@ -62,7 +53,6 @@ export class HudRenderer {
     missionsPanelExpanded: boolean
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
-    const heading = Math.round(normaliseDegrees(playerShip.state.angle));
     const fuelCurrent = Math.max(0, playerShip.state.fuel);
     const fuelMax = Math.max(0, worldState.getMaxFuel());
     const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
@@ -72,11 +62,13 @@ export class HudRenderer {
     const shieldInstalled = !!worldState.getInstalledShieldItem();
     const reactorMax = worldState.getMaxJoules();
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
-    const headingText = `HDG: ${heading.toString().padStart(3, '0')}°`;
     const creditsText = `CR: ${credits.toString()}`;
+    const sectorText = `SEC ${sectorCoord.x}:${sectorCoord.y}`;
+    // Draw target strips before HUD chrome so expanded HUD remains on top.
+    this.renderTargets(shipTarget, landableTarget);
     this.renderShipTelemetryPanel({
       speed,
-      headingText,
+      sectorText,
       fuelCurrent,
       fuelMax,
       fuelPercent,
@@ -102,22 +94,9 @@ export class HudRenderer {
       radiationIntensity,
       playerBurnRemainingSeconds
     });
-    this.renderSectorReputationIndicator(sectorFaction);
     this.renderActiveMissions(activeMissions, sectorCoord, missionsPanelExpanded);
 
-    this.ctx.save();
-    this.ctx.font = "11px 'Courier New', monospace";
-    this.ctx.textAlign = 'right';
-    this.ctx.textBaseline = 'top';
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    this.ctx.fillText('H: HELP', this.ctx.canvas.width - 12, 34);
-    this.ctx.restore();
-
-    this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    const sectorText = `SECTOR  ${sectorCoord.x} : ${sectorCoord.y}`;
-    const sectorWidth = this.ctx.measureText(sectorText).width;
-    this.ctx.fillText(sectorText, this.ctx.canvas.width - sectorWidth - 12, 12);
-
     if (showBoundaryWarning) {
       const pulse = 0.4 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.3;
       this.ctx.save();
@@ -162,7 +141,6 @@ export class HudRenderer {
 
     this.renderRadiationWarning(radiationIntensity, showBoundaryWarning, arrivalMessage !== null);
     this.renderDestructionMessage(destructionMessageAlpha);
-    this.renderTargets(shipTarget, landableTarget);
     this.renderNPCDebug(npcDebugLines);
     this.renderSpawnRuleDebug(spawnRuleDebugLines);
     this.weaponStripRenderer.render(
@@ -281,7 +259,7 @@ export class HudRenderer {
 
   private renderShipTelemetryPanel(config: {
     speed: number;
-    headingText: string;
+    sectorText: string;
     fuelCurrent: number;
     fuelMax: number;
     fuelPercent: number;
@@ -329,10 +307,10 @@ export class HudRenderer {
     this.ctx.stroke();
 
     this.ctx.font = "11px 'Courier New', monospace";
-    this.ctx.textAlign = 'left';
+    this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'top';
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    this.ctx.fillText(config.headingText, panelX + 8, headerY);
+    this.ctx.fillText(config.sectorText, panelX + panelWidth / 2, headerY);
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.fillText(config.creditsText, panelX + panelWidth - 8, headerY);
@@ -549,17 +527,13 @@ export class HudRenderer {
       return;
     }
     const labelW = 32;
-    const asciiW = 72;
-    const barSegX = x + labelW + asciiW;
-    const barW = width - 176 - asciiW;
+    const barSegX = x + labelW + 6;
+    const barW = width - 110;
     const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.font = "10px 'Courier New', monospace";
     this.ctx.textAlign = 'left';
     this.ctx.fillText(label, x, y + 2);
-    this.ctx.fillStyle = colour;
-    const ascii = this.hudAsciiBar(ratio);
-    this.ctx.fillText(ascii, x + labelW, y + 2);
     this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(barSegX, y + 1, barW, 10);
@@ -584,7 +558,9 @@ export class HudRenderer {
     landableTarget: { name: string } | null
   ): void {
     const leftMargin = 12;
-    const topY = 160;
+    const hudPanelY = 12;
+    const hudPanelHeight = 228;
+    const topY = hudPanelY + hudPanelHeight + 10;
     const boxWidth = 320;
     const boxHeight = 20;
     const gap = 6;
@@ -704,42 +680,6 @@ export class HudRenderer {
         barY - 1
       );
     }
-  }
-
-  private renderSectorReputationIndicator(
-    sectorFaction: { shortName: string; reputation: number; tier: ReputationTier } | null
-  ): void {
-    if (!sectorFaction) {
-      return;
-    }
-    const y = this.ctx.canvas.height - 82;
-    const x = 12;
-    const barWidth = 72;
-    const bars = 6;
-    const value = Math.round(sectorFaction.reputation);
-    const tier = sectorFaction.tier;
-    const colour = tierColour(tier);
-    const fillBars = Math.round((Math.abs(Math.max(-100, Math.min(100, value))) / 100) * bars);
-    const barText = `${'█'.repeat(fillBars)}${'░'.repeat(Math.max(0, bars - fillBars))}`;
-    const warnPrefix = tier === 'unfriendly' || tier === 'hostile' ? '⚠ ' : '';
-    const shouldFlash = tier === 'hostile' && Math.floor(performance.now() / 250) % 2 === 0;
-    const nearFloor =
-      (value > REP_FLOOR_COMBAT_HIT - 10 && value <= REP_FLOOR_COMBAT_HIT) ||
-      (value > REP_FLOOR_COMBAT_KILL - 10 && value <= REP_FLOOR_COMBAT_KILL);
-    this.ctx.save();
-    this.ctx.textAlign = 'left';
-    this.ctx.textBaseline = 'top';
-    this.ctx.font = "13px 'Courier New', monospace";
-    this.ctx.fillStyle = shouldFlash ? COLOURS.DANGER : COLOURS.UI_PRIMARY;
-    this.ctx.fillText(`${warnPrefix}${sectorFaction.shortName.toUpperCase().slice(0, 4)}`, x, y);
-    this.ctx.fillStyle = shouldFlash ? COLOURS.DANGER : colour;
-    this.ctx.fillText(barText, x + barWidth, y);
-    this.ctx.fillText(`${value >= 0 ? '+' : ''}${value}`, x + barWidth + 66, y);
-    if (nearFloor) {
-      this.ctx.fillStyle = COLOURS.WARNING;
-      this.ctx.fillText('⚠ near limit', x + barWidth + 116, y);
-    }
-    this.ctx.restore();
   }
 
   private renderRadiationWarning(

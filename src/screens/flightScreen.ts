@@ -63,9 +63,10 @@ export class FlightScreen implements Screen {
   private destructionPending = false;
   private lastShipValue = 0;
   private isPaused = false;
-  private pauseSelection: 0 | 1 = 0;
+  private pauseSelection: 0 | 1 | 2 = 0;
   private pauseConfirmMainMenu = false;
   private pauseMouseResumeRect: { x: number; y: number; width: number; height: number } | null = null;
+  private pauseMouseHelpRect: { x: number; y: number; width: number; height: number } | null = null;
   private pauseMouseMainRect: { x: number; y: number; width: number; height: number } | null = null;
   private pauseConfirmYesRect: { x: number; y: number; width: number; height: number } | null = null;
   private pauseConfirmNoRect: { x: number; y: number; width: number; height: number } | null = null;
@@ -81,17 +82,16 @@ export class FlightScreen implements Screen {
         this.pauseConfirmMainMenu = false;
       } else {
         this.isPaused = !this.isPaused;
-        if (!this.isPaused) {
+        if (this.isPaused) {
+          this.pauseSelection = 0;
+        } else {
+          this.showControlsOverlay = false;
           this.pauseSelection = 0;
         }
       }
       return;
     }
     if (!this.isPaused) {
-      if (event.code === 'KeyH') {
-        event.preventDefault();
-        this.showControlsOverlay = !this.showControlsOverlay;
-      }
       return;
     }
     if (this.pauseConfirmMainMenu) {
@@ -111,10 +111,10 @@ export class FlightScreen implements Screen {
     }
     if (event.code === 'ArrowUp') {
       event.preventDefault();
-      this.pauseSelection = this.pauseSelection === 0 ? 1 : 0;
+      this.pauseSelection = this.pauseSelection === 0 ? 2 : ((this.pauseSelection - 1) as 0 | 1 | 2);
     } else if (event.code === 'ArrowDown') {
       event.preventDefault();
-      this.pauseSelection = this.pauseSelection === 0 ? 1 : 0;
+      this.pauseSelection = this.pauseSelection === 2 ? 0 : ((this.pauseSelection + 1) as 0 | 1 | 2);
     } else if (event.code === 'Enter') {
       event.preventDefault();
       this.activatePauseSelection();
@@ -142,8 +142,11 @@ export class FlightScreen implements Screen {
     if (this.pauseMouseResumeRect && this.inRect(point.x, point.y, this.pauseMouseResumeRect)) {
       this.pauseSelection = 0;
       this.activatePauseSelection();
-    } else if (this.pauseMouseMainRect && this.inRect(point.x, point.y, this.pauseMouseMainRect)) {
+    } else if (this.pauseMouseHelpRect && this.inRect(point.x, point.y, this.pauseMouseHelpRect)) {
       this.pauseSelection = 1;
+      this.activatePauseSelection();
+    } else if (this.pauseMouseMainRect && this.inRect(point.x, point.y, this.pauseMouseMainRect)) {
+      this.pauseSelection = 2;
       this.activatePauseSelection();
     }
   };
@@ -416,14 +419,14 @@ export class FlightScreen implements Screen {
     if (this.isPaused) {
       this.renderPauseOverlay(this.ctx);
     }
-    if (this.showControlsOverlay) {
+    if (this.showControlsOverlay && this.isPaused) {
       this.renderControlsOverlay(this.ctx);
     }
   }
 
   private renderPauseOverlay(ctx: CanvasRenderingContext2D): void {
     const panelWidth = 420;
-    const panelHeight = this.pauseConfirmMainMenu ? 220 : 260;
+    const panelHeight = this.pauseConfirmMainMenu ? 220 : 318;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
     ctx.save();
@@ -452,13 +455,14 @@ export class FlightScreen implements Screen {
       this.drawPauseButton(ctx, this.pauseConfirmYesRect, '[ YES ]', this.pauseSelection === 1);
       this.drawPauseButton(ctx, this.pauseConfirmNoRect, '[ NO ]', this.pauseSelection === 0);
     } else {
-      const options = ['[ RESUME ]', '[ MAIN MENU ]'];
+      const options = ['[ RESUME ]', this.showControlsOverlay ? '[ HIDE HELP ]' : '[ HELP ]', '[ MAIN MENU ]'];
       const baseY = panelY + 90;
       const buttonWidth = 220;
       const buttonHeight = 40;
       this.pauseMouseResumeRect = { x: panelX + 100, y: baseY, width: buttonWidth, height: buttonHeight };
-      this.pauseMouseMainRect = { x: panelX + 100, y: baseY + 52, width: buttonWidth, height: buttonHeight };
-      const rects = [this.pauseMouseResumeRect, this.pauseMouseMainRect];
+      this.pauseMouseHelpRect = { x: panelX + 100, y: baseY + 52, width: buttonWidth, height: buttonHeight };
+      this.pauseMouseMainRect = { x: panelX + 100, y: baseY + 104, width: buttonWidth, height: buttonHeight };
+      const rects = [this.pauseMouseResumeRect, this.pauseMouseHelpRect, this.pauseMouseMainRect];
       for (let i = 0; i < rects.length; i += 1) {
         this.drawPauseButton(ctx, rects[i], options[i], this.pauseSelection === i);
       }
@@ -490,7 +494,7 @@ export class FlightScreen implements Screen {
       'M: toggle active missions panel',
       'Tab: cycle ship target, G: cycle landable target',
       'Z/X/C/V/B: fire weapon groups',
-      'Esc: pause, H: hide this overlay'
+      'Esc: pause'
     ];
     let y = panelY + 44;
     for (const line of lines) {
@@ -519,9 +523,14 @@ export class FlightScreen implements Screen {
   private activatePauseSelection(): void {
     if (this.pauseSelection === 0) {
       this.isPaused = false;
+      this.showControlsOverlay = false;
       return;
     }
     if (this.pauseSelection === 1) {
+      this.showControlsOverlay = !this.showControlsOverlay;
+      return;
+    }
+    if (this.pauseSelection === 2) {
       this.pauseConfirmMainMenu = true;
       this.pauseSelection = 0;
       return;
@@ -531,6 +540,7 @@ export class FlightScreen implements Screen {
   private returnToMainMenu(): void {
     this.worldState.saveToLocalStorage();
     this.isPaused = false;
+    this.showControlsOverlay = false;
     this.pauseConfirmMainMenu = false;
     this.screenManager.popToRoot();
   }

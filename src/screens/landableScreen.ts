@@ -39,6 +39,7 @@ import type { Screen } from './screenManager';
 
 type TabId =
   | 'overview'
+  | 'reputation'
   | 'missions'
   | 'supplies'
   | 'repair'
@@ -567,6 +568,7 @@ export class LandableScreen implements Screen {
     let x = tabStartX;
     const allTabs: Array<{ label: string; id: TabId; serviceType: ServiceType | null; available: boolean }> = [
       { label: 'OVERVIEW', id: 'overview', serviceType: null, available: true },
+      { label: 'REPUTATION', id: 'reputation', serviceType: null, available: true },
       { label: 'MISSIONS', id: 'missions', serviceType: null, available: true },
       { label: 'SUPPLIES', id: 'supplies', serviceType: 'refuel', available: this.hasService('refuel') },
       { label: 'REPAIR', id: 'repair', serviceType: 'repair', available: this.hasService('repair') },
@@ -631,6 +633,8 @@ export class LandableScreen implements Screen {
 
     if (this.activeTab === 'overview') {
       this.renderOverview(ctx, contentX, contentY, contentWidth, contentHeight);
+    } else if (this.activeTab === 'reputation') {
+      this.renderReputationTab(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'missions') {
       this.renderMissionsTab(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'supplies') {
@@ -743,9 +747,22 @@ export class LandableScreen implements Screen {
     ctx.fillStyle = statusColour;
     ctx.fillText(statusText, barX + barWidth + 62, hullTextY);
 
-    const standingY = tagY + 78;
-    this.renderStanding(ctx, x, standingY, width - 20, y + _height);
     this.drawLandablePreview(ctx, x + width - 120, y + 104, 80);
+  }
+
+  private renderReputationTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('REPUTATION', x, y);
+    this.renderStanding(ctx, x, y + 34, width - 20, y + height);
   }
 
   private renderSupplies(
@@ -1226,6 +1243,7 @@ export class LandableScreen implements Screen {
     ];
     this.clickableTabs = [
       'overview',
+      'reputation',
       'missions',
       ...serviceTabs.filter((entry) => this.hasService(entry.service)).map((entry) => entry.tab)
     ];
@@ -1365,6 +1383,7 @@ export class LandableScreen implements Screen {
   private renderServicePreview(ctx: CanvasRenderingContext2D, x: number, y: number, tabId: TabId): void {
     const labels: Record<TabId, string> = {
       overview: 'Overview',
+      reputation: 'Reputation',
       missions: 'Missions',
       supplies: 'Supplies',
       repair: 'Repair',

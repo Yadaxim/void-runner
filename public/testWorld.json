@@ -378,7 +378,9 @@
         "weapon": 5,
         "armour": 2,
         "autoBrake": 1,
-        "fuelTank": 1
+        "fuelTank": 1,
+        "reactor": 1,
+        "shield": 1
       },
       "equipmentLoadout": [
         {
