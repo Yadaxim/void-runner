@@ -181,6 +181,13 @@ export class FlightScreen implements Screen {
       autoBrakeRotationEnabled: this.playerShip.state.autoBrakeRotationEnabled
     });
     this.ensureDefaultLoadout();
+    // WorldState.updatePlayerShipState replaces its ship object; keep layers in sync with equipment
+    // (same fix as LandableScreen.onEnter — otherwise HUD/sim can show no armour until first land).
+    this.worldState.recalculateArmourLayers();
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      armourLayers: this.worldState.getPlayerShipState().armourLayers
+    };
     this.sectorSimulation = new SectorSimulation(
       currentSector,
       this.playerShip,
@@ -214,11 +221,13 @@ export class FlightScreen implements Screen {
     this.playerShip.state = {
       ...this.playerShip.state,
       equipmentSlots: starter.equipmentSlots,
-      weaponLoadout: starter.weaponLoadout
+      weaponLoadout: starter.weaponLoadout,
+      armourLayers: starter.armourLayers
     };
     this.worldState.updatePlayerShipState({
       equipmentSlots: starter.equipmentSlots,
-      weaponLoadout: starter.weaponLoadout
+      weaponLoadout: starter.weaponLoadout,
+      armourLayers: starter.armourLayers
     });
     this.worldState.saveToLocalStorage();
   }

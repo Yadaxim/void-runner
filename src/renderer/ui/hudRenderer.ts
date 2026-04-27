@@ -57,8 +57,18 @@ export class HudRenderer {
     const fuelMax = Math.max(0, worldState.getMaxFuel());
     const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
     const credits = Math.floor(Math.max(0, playerShip.state.credits));
-    const armourCurrent = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.currentHP), 0);
-    const armourMax = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.maxHP), 0);
+    let armourCurrent = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.currentHP), 0);
+    let armourMax = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.maxHP), 0);
+    if (armourMax <= 0) {
+      for (const slot of playerShip.state.equipmentSlots) {
+        if (slot.slotType !== 'armour' || !slot.itemId) continue;
+        const item = worldState.getEquipmentItem(slot.itemId);
+        if (item?.type === 'armour') {
+          armourMax += item.hpBonus;
+          armourCurrent += item.hpBonus;
+        }
+      }
+    }
     const shieldInstalled = !!worldState.getInstalledShieldItem();
     const reactorMax = worldState.getMaxJoules();
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);

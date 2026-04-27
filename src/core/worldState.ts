@@ -183,6 +183,24 @@ function defaultFactionReputations(worldFile: WorldFile): Record<string, number>
   return rep;
 }
 
+/** Full-HP armour layers for equipment in `slots` (used when creating a fresh ship). */
+function deriveStarterArmourLayers(worldState: WorldState, equipmentSlots: EquipmentSlot[]): ArmourLayerState[] {
+  const armourSlots = equipmentSlots.filter((s) => s.slotType === 'armour' && s.itemId);
+  return armourSlots
+    .map((slot) => {
+      const item = worldState.getEquipmentItem(slot.itemId!);
+      if (!item || item.type !== 'armour') {
+        return null;
+      }
+      return {
+        itemId: slot.itemId!,
+        currentHP: item.hpBonus,
+        maxHP: item.hpBonus
+      };
+    })
+    .filter((layer): layer is ArmourLayerState => layer !== null);
+}
+
 export function buildStarterShipState(worldState: WorldState): ShipState {
   const sc = worldState.getStartingConditions();
   const hullSpec = worldState.getHullSpec(sc.hullSpecId);
@@ -219,7 +237,7 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     angularVelocity: 0,
     currentHullHP: hullSpec.baseHP,
     maxHullHP: hullSpec.baseHP,
-    armourLayers: [],
+    armourLayers: deriveStarterArmourLayers(worldState, baseEquipmentSlots),
     currentShieldHP: maxShieldHP,
     maxShieldHP,
     shieldRebooting: false,
