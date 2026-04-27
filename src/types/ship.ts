@@ -1,5 +1,4 @@
 import type { BrainMode, MemoryCard, NeuralBrain } from './ai';
-import type { EquipType } from './equipment';
 import type { CargoItem, Mission } from './mission';
 import type { Vector2 } from './physics';
 
@@ -17,6 +16,8 @@ export type EquipmentSlotType =
   | 'thruster_rotate'
   | 'weapon'
   | 'armour'
+  | 'reactor'
+  | 'shield'
   | 'autoBrake'
   | 'fuelTank'
   | 'hyperspaceDrive'
@@ -36,6 +37,12 @@ export interface WeaponSlot {
   cooldownRemaining: number;
 }
 
+export interface ArmourLayerState {
+  itemId: string;
+  currentHP: number;
+  maxHP: number;
+}
+
 export interface HullSpec {
   id: string;
   name: string;
@@ -44,7 +51,6 @@ export interface HullSpec {
   hullMass: number;
   cargoCapacity: number;
   equipmentCapacity: number;
-  equipmentWhitelist: EquipType[];
   topSpeed: number;
   topAngularSpeed: number;
   baseHP: number;
@@ -61,10 +67,16 @@ export interface ShipState {
   velocity: Vector2;
   angle: number;
   angularVelocity: number;
-  currentHP: number;
-  maxHP: number;
+  currentHullHP: number;
+  maxHullHP: number;
+  armourLayers: ArmourLayerState[];
+  currentShieldHP: number;
+  maxShieldHP: number;
+  shieldRebooting: boolean;
+  shieldRebootTimer: number;
+  lastHitTime: number;
+  currentJoules: number;
   fuel: number;
-  maxFuel: number;
   credits: number;
   cargo: CargoItem[];
   equipmentSlots: EquipmentSlot[];

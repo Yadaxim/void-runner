@@ -278,7 +278,7 @@ export class SectorSimulation {
           : 'fighter_raider_mk1');
     const hullSpec = this.worldState.getHullSpec(hullSpecId);
     const loadout = this.worldState.getHullLoadout(hullSpec?.hullClass ?? 'fighter');
-    const maxHP = hullSpec?.baseHP ?? 100;
+    const maxHullHP = hullSpec?.baseHP ?? 100;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {
       ...this.playerShip.state,
@@ -289,8 +289,15 @@ export class SectorSimulation {
       velocity,
       angle: this.prng.next() * Math.PI * 2,
       angularVelocity: 0,
-      currentHP: maxHP,
-      maxHP,
+      currentHullHP: maxHullHP,
+      maxHullHP,
+      armourLayers: [],
+      currentShieldHP: 0,
+      maxShieldHP: 0,
+      shieldRebooting: false,
+      shieldRebootTimer: 0,
+      lastHitTime: 0,
+      currentJoules: 0,
       equipmentSlots: loadout.equipmentSlots,
       autoBrakeLinearEnabled: true,
       autoBrakeRotationEnabled: true,

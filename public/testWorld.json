@@ -164,16 +164,6 @@
       "hullMass": 80,
       "cargoCapacity": 80,
       "equipmentCapacity": 160,
-      "equipmentWhitelist": [
-        "thruster",
-        "weapon",
-        "armour",
-        "fuelTank",
-        "autoBrake",
-        "sensorArray",
-        "neuralBrain",
-        "memoryCard"
-      ],
       "topSpeed": 250,
       "topAngularSpeed": 3.5,
       "baseHP": 100,
@@ -183,12 +173,36 @@
         "thruster_rotate": 1,
         "weapon": 1,
         "armour": 1,
-        "autoBrake": 1
+        "autoBrake": 1,
+        "fuelTank": 1,
+        "reactor": 1,
+        "shield": 1
       },
       "equipmentLoadout": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_rotate", "itemId": "rot_thruster_fighter" },
-        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        }
       ]
     },
     {
@@ -199,16 +213,6 @@
       "hullMass": 85,
       "cargoCapacity": 16,
       "equipmentCapacity": 36,
-      "equipmentWhitelist": [
-        "thruster",
-        "weapon",
-        "armour",
-        "fuelTank",
-        "autoBrake",
-        "sensorArray",
-        "neuralBrain",
-        "memoryCard"
-      ],
       "topSpeed": 245,
       "topAngularSpeed": 3.2,
       "baseHP": 110,
@@ -218,12 +222,26 @@
         "thruster_rotate": 1,
         "weapon": 1,
         "armour": 1,
-        "autoBrake": 1
+        "autoBrake": 1,
+        "fuelTank": 1
       },
       "equipmentLoadout": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_rotate", "itemId": "rot_thruster_fighter" },
-        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        }
       ]
     },
     {
@@ -234,17 +252,6 @@
       "hullMass": 140,
       "cargoCapacity": 80,
       "equipmentCapacity": 60,
-      "equipmentWhitelist": [
-        "thruster",
-        "weapon",
-        "armour",
-        "fuelTank",
-        "hyperspaceDrive",
-        "autoBrake",
-        "sensorArray",
-        "neuralBrain",
-        "memoryCard"
-      ],
       "topSpeed": 200,
       "topAngularSpeed": 2.8,
       "baseHP": 160,
@@ -255,13 +262,40 @@
         "thruster_rotate": 1,
         "weapon": 2,
         "armour": 1,
-        "autoBrake": 1
+        "autoBrake": 1,
+        "fuelTank": 1,
+        "reactor": 1,
+        "shield": 1
       },
       "equipmentLoadout": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_reverse", "itemId": "rev_thruster_standard" },
-        { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
-        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        }
       ]
     },
     {
@@ -272,16 +306,6 @@
       "hullMass": 300,
       "cargoCapacity": 300,
       "equipmentCapacity": 80,
-      "equipmentWhitelist": [
-        "thruster",
-        "armour",
-        "fuelTank",
-        "hyperspaceDrive",
-        "autoBrake",
-        "sensorArray",
-        "neuralBrain",
-        "memoryCard"
-      ],
       "topSpeed": 140,
       "topAngularSpeed": 1.8,
       "baseHP": 240,
@@ -292,14 +316,48 @@
         "thruster_rotate": 1,
         "weapon": 1,
         "armour": 2,
-        "autoBrake": 1
+        "autoBrake": 1,
+        "fuelTank": 2,
+        "reactor": 1,
+        "shield": 1
       },
       "equipmentLoadout": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_heavy" },
-        { "slotType": "thruster_reverse", "itemId": "rev_thruster_heavy" },
-        { "slotType": "thruster_rotate", "itemId": "rot_thruster_heavy" },
-        { "slotType": "autoBrake", "itemId": "auto_brake_t1" },
-        { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_heavy"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": null
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        }
       ]
     },
     {
@@ -310,16 +368,6 @@
       "hullMass": 100,
       "cargoCapacity": 60,
       "equipmentCapacity": 320,
-      "equipmentWhitelist": [
-        "thruster",
-        "weapon",
-        "armour",
-        "fuelTank",
-        "autoBrake",
-        "sensorArray",
-        "neuralBrain",
-        "memoryCard"
-      ],
       "topSpeed": 190,
       "topAngularSpeed": 3.0,
       "baseHP": 120,
@@ -329,19 +377,62 @@
         "thruster_rotate": 1,
         "weapon": 5,
         "armour": 2,
-        "autoBrake": 1
+        "autoBrake": 1,
+        "fuelTank": 1
       },
       "equipmentLoadout": [
-        { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-        { "slotType": "thruster_forward", "itemId": null },
-        { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
-        { "slotType": "armour", "itemId": "light_plating_t1" },
-        { "slotType": "armour", "itemId": "heavy_plating_t1" },
-        { "slotType": "weapon", "itemId": "pulse_cannon_t1" },
-        { "slotType": "weapon", "itemId": null },
-        { "slotType": "weapon", "itemId": null },
-        { "slotType": "weapon", "itemId": null },
-        { "slotType": "weapon", "itemId": null }
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
       ]
     }
   ],
@@ -639,38 +730,143 @@
         "darkmatter_plasma": 3,
         "void": 0
       }
+    },
+    {
+      "id": "fuel_tank_standard",
+      "type": "fuelTank",
+      "name": "Standard Fuel Cell",
+      "description": "A reliable mid-capacity fuel cell. Standard fitting on most civilian ships.",
+      "mass": 20,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "fuelCapacity": 100,
+      "fuelType": "standard",
+      "slotType": "fuelTank"
+    },
+    {
+      "id": "fuel_tank_large",
+      "type": "fuelTank",
+      "name": "Extended Fuel Cell",
+      "description": "High-capacity fuel storage for long-range operations.",
+      "mass": 40,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "fuelCapacity": 200,
+      "fuelType": "standard",
+      "slotType": "fuelTank"
+    },
+    {
+      "id": "reactor_standard",
+      "type": "reactor",
+      "name": "Standard Power Reactor",
+      "description": "A compact fusion reactor. Powers shields and energy weapons at moderate fuel cost.",
+      "mass": 25,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "capacityJoules": 500,
+      "chargeRateJoulesPerSecond": 20,
+      "fuelPerJoule": 0.002,
+      "slotType": "reactor"
+    },
+    {
+      "id": "reactor_efficient",
+      "type": "reactor",
+      "name": "Efficient Micro-Reactor",
+      "description": "Smaller capacity but highly fuel-efficient.",
+      "mass": 18,
+      "tier": 1,
+      "factionAffinity": "veth_collective",
+      "capacityJoules": 300,
+      "chargeRateJoulesPerSecond": 15,
+      "fuelPerJoule": 0.001,
+      "slotType": "reactor"
+    },
+    {
+      "id": "shield_standard",
+      "type": "shield",
+      "name": "Standard Deflector Shield",
+      "description": "An energy barrier absorbing damage before it reaches the hull. Regens slowly after hits, takes time to reboot if collapsed.",
+      "mass": 22,
+      "tier": 1,
+      "factionAffinity": "federation",
+      "shieldHP": 80,
+      "regenRateHPPerSecond": 5,
+      "joulesPerHPRegen": 3,
+      "regenDelay": 4.0,
+      "rebootTime": 12.0,
+      "slotType": "shield"
+    },
+    {
+      "id": "shield_heavy",
+      "type": "shield",
+      "name": "Heavy Barrier Shield",
+      "description": "High capacity, slower regen. When it collapses, expect a long wait.",
+      "mass": 40,
+      "tier": 1,
+      "factionAffinity": "frontier_clans",
+      "shieldHP": 160,
+      "regenRateHPPerSecond": 3,
+      "joulesPerHPRegen": 5,
+      "regenDelay": 6.0,
+      "rebootTime": 18.0,
+      "slotType": "shield"
     }
   ],
   "startingConditions": {
-    "sectorCoord": { "x": 5, "y": 5 },
+    "sectorCoord": {
+      "x": 5,
+      "y": 5
+    },
     "credits": 50000,
     "hullSpecId": "dev_store_rig",
-    "equipmentSlots": [
-      { "slotType": "thruster_forward", "itemId": "fwd_thruster_standard" },
-      { "slotType": "thruster_rotate", "itemId": "rot_thruster_standard" },
-      { "slotType": "weapon", "itemId": "pulse_cannon_t1" }
-    ]
+    "equipmentSlots": []
   },
   "missionTemplates": [
     {
       "id": "tpl_fed_standard_cargo",
       "title": "Standard Freight Run",
       "descriptionTemplate": "Deliver {cargo} to {destination}. Reliable pay, no questions.",
-      "factionRequirements": [{ "factionId": "federation", "minReputation": 0 }],
+      "factionRequirements": [
+        {
+          "factionId": "federation",
+          "minReputation": 0
+        }
+      ],
       "regionType": "core_arm",
-      "cargoWeightRange": [10, 40],
+      "cargoWeightRange": [
+        10,
+        40
+      ],
       "payoffPerDistanceUnit": 8,
-      "reputationRewards": [{ "factionId": "federation", "amount": 5 }]
+      "reputationRewards": [
+        {
+          "factionId": "federation",
+          "amount": 5
+        }
+      ]
     },
     {
       "id": "tpl_fed_priority_cargo",
       "title": "Priority Delivery",
       "descriptionTemplate": "Time-sensitive freight to {destination}. Extra pay for speed.",
-      "factionRequirements": [{ "factionId": "federation", "minReputation": 30 }],
+      "factionRequirements": [
+        {
+          "factionId": "federation",
+          "minReputation": 30
+        }
+      ],
       "regionType": "core_arm",
-      "cargoWeightRange": [5, 20],
+      "cargoWeightRange": [
+        5,
+        20
+      ],
       "payoffPerDistanceUnit": 15,
-      "reputationRewards": [{ "factionId": "federation", "amount": 8 }]
+      "reputationRewards": [
+        {
+          "factionId": "federation",
+          "amount": 8
+        }
+      ]
     },
     {
       "id": "tpl_public_frontier",
@@ -678,7 +874,10 @@
       "descriptionTemplate": "Basic supplies needed at {destination}. No faction affiliation required.",
       "factionRequirements": [],
       "regionType": "frontier",
-      "cargoWeightRange": [5, 25],
+      "cargoWeightRange": [
+        5,
+        25
+      ],
       "payoffPerDistanceUnit": 10,
       "reputationRewards": []
     },
@@ -686,31 +885,70 @@
       "id": "tpl_clan_run",
       "title": "Clan Cargo Run",
       "descriptionTemplate": "Move this load to {destination}. Clanners pay fair.",
-      "factionRequirements": [{ "factionId": "frontier_clans", "minReputation": 0 }],
+      "factionRequirements": [
+        {
+          "factionId": "frontier_clans",
+          "minReputation": 0
+        }
+      ],
       "regionType": "midring",
-      "cargoWeightRange": [20, 60],
+      "cargoWeightRange": [
+        20,
+        60
+      ],
       "payoffPerDistanceUnit": 12,
-      "reputationRewards": [{ "factionId": "frontier_clans", "amount": 5 }]
+      "reputationRewards": [
+        {
+          "factionId": "frontier_clans",
+          "amount": 5
+        }
+      ]
     },
     {
       "id": "tpl_clan_priority",
       "title": "Urgent Clan Shipment",
       "descriptionTemplate": "Rush delivery to {destination}. Don't ask what's in the crates.",
-      "factionRequirements": [{ "factionId": "frontier_clans", "minReputation": 25 }],
+      "factionRequirements": [
+        {
+          "factionId": "frontier_clans",
+          "minReputation": 25
+        }
+      ],
       "regionType": "midring",
-      "cargoWeightRange": [10, 30],
+      "cargoWeightRange": [
+        10,
+        30
+      ],
       "payoffPerDistanceUnit": 18,
-      "reputationRewards": [{ "factionId": "frontier_clans", "amount": 10 }]
+      "reputationRewards": [
+        {
+          "factionId": "frontier_clans",
+          "amount": 10
+        }
+      ]
     },
     {
       "id": "tpl_veth_trade",
       "title": "Collective Trade Consignment",
       "descriptionTemplate": "Valuable trade goods bound for {destination}. Handle with care.",
-      "factionRequirements": [{ "factionId": "veth_collective", "minReputation": 0 }],
+      "factionRequirements": [
+        {
+          "factionId": "veth_collective",
+          "minReputation": 0
+        }
+      ],
       "regionType": "core_arm",
-      "cargoWeightRange": [15, 50],
+      "cargoWeightRange": [
+        15,
+        50
+      ],
       "payoffPerDistanceUnit": 14,
-      "reputationRewards": [{ "factionId": "veth_collective", "amount": 6 }]
+      "reputationRewards": [
+        {
+          "factionId": "veth_collective",
+          "amount": 6
+        }
+      ]
     },
     {
       "id": "tpl_public_any",
@@ -718,7 +956,10 @@
       "descriptionTemplate": "Miscellaneous freight needed at {destination}.",
       "factionRequirements": [],
       "regionType": "midring",
-      "cargoWeightRange": [8, 35],
+      "cargoWeightRange": [
+        8,
+        35
+      ],
       "payoffPerDistanceUnit": 9,
       "reputationRewards": []
     },
@@ -726,26 +967,54 @@
       "id": "tpl_pirate_smuggle",
       "title": "Discreet Delivery",
       "descriptionTemplate": "No manifest. No questions. Get it to {destination}.",
-      "factionRequirements": [{ "factionId": "pirates", "minReputation": 20 }],
+      "factionRequirements": [
+        {
+          "factionId": "pirates",
+          "minReputation": 20
+        }
+      ],
       "regionType": "frontier",
-      "cargoWeightRange": [5, 20],
+      "cargoWeightRange": [
+        5,
+        20
+      ],
       "payoffPerDistanceUnit": 25,
-      "reputationRewards": [{ "factionId": "pirates", "amount": 8 }]
+      "reputationRewards": [
+        {
+          "factionId": "pirates",
+          "amount": 8
+        }
+      ]
     },
     {
       "id": "tpl_alliance_run",
       "title": "Inter-Faction Liaison Cargo",
       "descriptionTemplate": "Diplomatic freight between factions. Requires trust on both sides.",
       "factionRequirements": [
-        { "factionId": "federation", "minReputation": 40 },
-        { "factionId": "veth_collective", "minReputation": 40 }
+        {
+          "factionId": "federation",
+          "minReputation": 40
+        },
+        {
+          "factionId": "veth_collective",
+          "minReputation": 40
+        }
       ],
       "regionType": "core_arm",
-      "cargoWeightRange": [5, 15],
+      "cargoWeightRange": [
+        5,
+        15
+      ],
       "payoffPerDistanceUnit": 22,
       "reputationRewards": [
-        { "factionId": "federation", "amount": 10 },
-        { "factionId": "veth_collective", "amount": 10 }
+        {
+          "factionId": "federation",
+          "amount": 10
+        },
+        {
+          "factionId": "veth_collective",
+          "amount": 10
+        }
       ]
     }
   ],

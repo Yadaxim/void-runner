@@ -140,7 +140,7 @@ export class RenderPipeline {
         ? (() => {
             const ship = state.otherShips.find((candidate) => candidate.state.id === state.shipTargetId) ?? null;
             if (!ship) return null;
-            const hpRatio = ship.state.maxHP > 0 ? ship.state.currentHP / ship.state.maxHP : 0;
+            const hpRatio = ship.state.maxHullHP > 0 ? ship.state.currentHullHP / ship.state.maxHullHP : 0;
             return {
               name: ship.state.id.split('_').join(' ').toUpperCase(),
               hpRatio,

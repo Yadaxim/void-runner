@@ -54,12 +54,12 @@ export class ShipLayer {
   }
 
   private drawWorldHpBar(ship: ShipEntity, screenPos: { x: number; y: number }): void {
-    if (ship.state.maxHP <= 0 || ship.state.currentHP >= ship.state.maxHP) {
+    if (ship.state.maxHullHP <= 0 || ship.state.currentHullHP >= ship.state.maxHullHP) {
       return;
     }
     const width = 20;
     const height = 3;
-    const ratio = Math.max(0, Math.min(1, ship.state.currentHP / ship.state.maxHP));
+    const ratio = Math.max(0, Math.min(1, ship.state.currentHullHP / ship.state.maxHullHP));
     const x = screenPos.x - width / 2;
     const y = screenPos.y + 8;
     this.ctx.save();

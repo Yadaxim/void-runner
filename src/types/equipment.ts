@@ -6,6 +6,8 @@ export type EquipType =
   | 'thruster'
   | 'weapon'
   | 'armour'
+  | 'reactor'
+  | 'shield'
   | 'fuelTank'
   | 'hyperspaceDrive'
   | 'autoBrake'
@@ -72,6 +74,24 @@ export interface FuelTankItem extends BaseEquipment {
   fuelType: string;
 }
 
+export interface ReactorItem extends BaseEquipment {
+  type: 'reactor';
+  capacityJoules: number;
+  chargeRateJoulesPerSecond: number;
+  fuelPerJoule: number;
+  slotType: 'reactor';
+}
+
+export interface ShieldItem extends BaseEquipment {
+  type: 'shield';
+  shieldHP: number;
+  regenRateHPPerSecond: number;
+  joulesPerHPRegen: number;
+  regenDelay: number;
+  rebootTime: number;
+  slotType: 'shield';
+}
+
 export interface HyperspaceDriveItem extends BaseEquipment {
   type: 'hyperspaceDrive';
   jumpRange: number;
@@ -118,6 +138,8 @@ export type EquipmentItem =
   | ThrusterItem
   | WeaponItem
   | ArmourItem
+  | ReactorItem
+  | ShieldItem
   | FuelTankItem
   | HyperspaceDriveItem
   | AutoBrakeItem

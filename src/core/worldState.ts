@@ -17,15 +17,19 @@ import type {
   CompletedMission,
   Mission,
   ArmourItem,
+  ArmourLayerState,
   BulletSpec,
   EquipmentItem,
   EquipmentSlot,
   FactionDefinition,
+  FuelTankItem,
   FactionVisual,
   GridCoord,
   HullSpec,
   Landable,
+  ReactorItem,
   SectorMetadata,
+  ShieldItem,
   ShipState,
   StartingConditions,
   WeaponSlot,
@@ -129,8 +133,20 @@ function normaliseWorldFile(worldFile: WorldFile): WorldFile {
 }
 
 function normaliseShipState(shipState: ShipState): ShipState {
+  const legacy = shipState as unknown as { currentHP?: number; maxHP?: number };
+  const maxHullHP = shipState.maxHullHP ?? legacy.maxHP ?? 100;
+  const currentHullHP = shipState.currentHullHP ?? legacy.currentHP ?? maxHullHP;
   return {
     ...shipState,
+    currentHullHP,
+    maxHullHP,
+    armourLayers: shipState.armourLayers ?? [],
+    currentShieldHP: shipState.currentShieldHP ?? 0,
+    maxShieldHP: shipState.maxShieldHP ?? 0,
+    shieldRebooting: shipState.shieldRebooting ?? false,
+    shieldRebootTimer: shipState.shieldRebootTimer ?? 0,
+    lastHitTime: shipState.lastHitTime ?? 0,
+    currentJoules: shipState.currentJoules ?? 0,
     autoBrakeLinearEnabled: shipState.autoBrakeLinearEnabled ?? false,
     autoBrakeRotationEnabled: shipState.autoBrakeRotationEnabled ?? false,
     position: toVector2(shipState.position),
@@ -187,18 +203,11 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     }
   }
   const baseWeaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(baseEquipmentSlots, hullSpec.weaponSlots);
-  const armourBonus = baseEquipmentSlots.reduce((total, slot) => {
-    if (!slot.itemId) {
-      return total;
-    }
-    const item = worldState.getEquipmentItem(slot.itemId);
-    if (!item || item.type !== 'armour') {
-      return total;
-    }
-    return total + (item as ArmourItem).hpBonus;
-  }, 0);
-
-  const maxHP = hullSpec.baseHP + armourBonus;
+  const fuelMax = worldState.getMaxFuelForSlots(baseEquipmentSlots);
+  const shieldSlot = baseEquipmentSlots.find((slot) => slot.slotType === 'shield' && slot.itemId);
+  const shieldItem = shieldSlot?.itemId ? worldState.getEquipmentItem(shieldSlot.itemId) : null;
+  const maxShieldHP = shieldItem?.type === 'shield' ? shieldItem.shieldHP : 0;
+  const jouleMax = worldState.getMaxJoulesForSlots(baseEquipmentSlots);
 
   return {
     id: 'player',
@@ -208,10 +217,16 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     velocity: { x: 0, y: 0 },
     angle: 0,
     angularVelocity: 0,
-    currentHP: maxHP,
-    maxHP,
-    fuel: 100,
-    maxFuel: 100,
+    currentHullHP: hullSpec.baseHP,
+    maxHullHP: hullSpec.baseHP,
+    armourLayers: [],
+    currentShieldHP: maxShieldHP,
+    maxShieldHP,
+    shieldRebooting: false,
+    shieldRebootTimer: 0,
+    lastHitTime: 0,
+    currentJoules: jouleMax,
+    fuel: fuelMax,
     credits: sc.credits,
     cargo: [],
     equipmentSlots: baseEquipmentSlots,
@@ -549,27 +564,96 @@ export class WorldState {
     }, 0);
   }
 
+  getMaxFuelForSlots(slots: EquipmentSlot[]): number {
+    const tankSlot = slots.find((slot) => slot.slotType === 'fuelTank' && slot.itemId);
+    if (!tankSlot?.itemId) return 0;
+    const item = this.getEquipmentItem(tankSlot.itemId);
+    if (!item || item.type !== 'fuelTank') return 0;
+    return (item as FuelTankItem).fuelCapacity;
+  }
+
+  getMaxFuel(): number {
+    return this.getMaxFuelForSlots(this.getPlayerShipState().equipmentSlots);
+  }
+
+  getInstalledShieldItem(): ShieldItem | null {
+    const slot = this.getPlayerShipState().equipmentSlots.find((s) => s.slotType === 'shield');
+    if (!slot?.itemId) return null;
+    const item = this.getEquipmentItem(slot.itemId);
+    return item?.type === 'shield' ? (item as ShieldItem) : null;
+  }
+
+  getInstalledReactorItem(): ReactorItem | null {
+    const slot = this.getPlayerShipState().equipmentSlots.find((s) => s.slotType === 'reactor');
+    if (!slot?.itemId) return null;
+    const item = this.getEquipmentItem(slot.itemId);
+    return item?.type === 'reactor' ? (item as ReactorItem) : null;
+  }
+
+  getMaxJoulesForSlots(slots: EquipmentSlot[]): number {
+    const slot = slots.find((s) => s.slotType === 'reactor');
+    if (!slot?.itemId) return 0;
+    const item = this.getEquipmentItem(slot.itemId);
+    return item?.type === 'reactor' ? (item as ReactorItem).capacityJoules : 0;
+  }
+
+  getMaxJoules(): number {
+    return this.getMaxJoulesForSlots(this.getPlayerShipState().equipmentSlots);
+  }
+
+  isReactorOnline(): boolean {
+    return this.getMaxJoules() > 0;
+  }
+
+  isShieldOnline(): boolean {
+    const ship = this.getPlayerShipState();
+    if (!this.getInstalledShieldItem()) return false;
+    if (!this.isReactorOnline()) return false;
+    if (ship.shieldRebooting) return false;
+    return true;
+  }
+
+  getOutermostDamageLayer(): 'shield' | 'armour' | 'hull' {
+    const ship = this.getPlayerShipState();
+    if (this.isShieldOnline() && ship.currentShieldHP > 0) return 'shield';
+    for (const layer of ship.armourLayers) {
+      if (layer.currentHP > 0) return 'armour';
+    }
+    return 'hull';
+  }
+
   recalculateMaxHP(): void {
     const ship = this.getPlayerShipState();
     const hullSpec = this.getHullSpec(ship.hullSpecId);
     if (!hullSpec) {
       return;
     }
-    const armourBonus = ship.equipmentSlots.reduce((total, slot) => {
-      if (!slot.itemId) {
-        return total;
-      }
-      const item = this.getEquipmentItem(slot.itemId);
-      if (!item || item.type !== 'armour') {
-        return total;
-      }
-      return total + item.hpBonus;
-    }, 0);
-    const maxHP = hullSpec.baseHP + armourBonus;
+    const maxHullHP = hullSpec.baseHP;
     this.updatePlayerShipState({
-      maxHP,
-      currentHP: Math.min(ship.currentHP, maxHP)
+      maxHullHP,
+      currentHullHP: Math.min(ship.currentHullHP, maxHullHP),
+      fuel: Math.min(ship.fuel, this.getMaxFuel())
     });
+  }
+
+  recalculateArmourLayers(): void {
+    const ship = this.getPlayerShipState();
+    const armourSlots = ship.equipmentSlots.filter((s) => s.slotType === 'armour' && s.itemId);
+    const newLayers: ArmourLayerState[] = armourSlots
+      .map((slot) => {
+        const item = this.getEquipmentItem(slot.itemId!);
+        if (!item || item.type !== 'armour') {
+          return null;
+        }
+        const existing = ship.armourLayers.find((layer) => layer.itemId === slot.itemId);
+        return {
+          itemId: slot.itemId!,
+          currentHP: existing ? Math.min(existing.currentHP, item.hpBonus) : item.hpBonus,
+          maxHP: item.hpBonus
+        };
+      })
+      .filter((layer): layer is ArmourLayerState => layer !== null);
+    this.updatePlayerShipState({ armourLayers: newLayers });
   }
 
   purchaseAndInstall(
@@ -635,6 +719,17 @@ export class WorldState {
       credits: ship.credits - netCost
     });
     this.recalculateMaxHP();
+    this.recalculateArmourLayers();
+    const shieldItem = this.getInstalledShieldItem();
+    const nextShieldMax = shieldItem?.shieldHP ?? 0;
+    const nextJouleMax = this.getMaxJoules();
+    this.updatePlayerShipState({
+      maxShieldHP: nextShieldMax,
+      currentShieldHP: Math.min(this.getPlayerShipState().currentShieldHP, nextShieldMax),
+      currentJoules: Math.min(this.getPlayerShipState().currentJoules, nextJouleMax),
+      shieldRebooting: nextShieldMax > 0 ? this.getPlayerShipState().shieldRebooting : false,
+      shieldRebootTimer: nextShieldMax > 0 ? this.getPlayerShipState().shieldRebootTimer : 0
+    });
     this.saveToLocalStorage();
     return { success: true, netCost };
   }
@@ -673,6 +768,17 @@ export class WorldState {
       credits: ship.credits + sellValue
     });
     this.recalculateMaxHP();
+    this.recalculateArmourLayers();
+    const shieldItem = this.getInstalledShieldItem();
+    const nextShieldMax = shieldItem?.shieldHP ?? 0;
+    const nextJouleMax = this.getMaxJoules();
+    this.updatePlayerShipState({
+      maxShieldHP: nextShieldMax,
+      currentShieldHP: Math.min(this.getPlayerShipState().currentShieldHP, nextShieldMax),
+      currentJoules: Math.min(this.getPlayerShipState().currentJoules, nextJouleMax),
+      shieldRebooting: nextShieldMax > 0 ? this.getPlayerShipState().shieldRebooting : false,
+      shieldRebootTimer: nextShieldMax > 0 ? this.getPlayerShipState().shieldRebootTimer : 0
+    });
     this.saveToLocalStorage();
     return { success: true, creditsEarned: sellValue };
   }

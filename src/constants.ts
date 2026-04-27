@@ -29,8 +29,10 @@ export const FUEL_USE_LINEAR_THRUSTER_PER_SECOND = 1.0;
 export const FUEL_USE_ROTATION_THRUSTER_PER_SECOND = 0.5;
 export const REFUEL_PRICE_PER_UNIT = 1;
 export const REFUEL_RATE = 20;
-export const REPAIR_RATE = 10;
+export const REPAIR_RATE_HULL = 10;
+export const REPAIR_RATE_ARMOUR = 6;
 export const REPAIR_PRICE_DEFAULT = 3;
+export const REPAIR_PRICE_ARMOUR_MULTIPLIER = 1.5;
 export const INSURANCE_REPAIR_COST_FRACTION = 0.1;
 export const INSURANCE_PAYOUT_FRACTION = 0.9;
 export const MISSION_BOARD_COUNT = 6;
@@ -42,7 +44,7 @@ export const EQUIPMENT_STORE_COUNT = 12;
 export const EQUIPMENT_SELL_FRACTION = 0.6;
 export const EQUIPMENT_TIER_MULTIPLIERS = [1.0, 2.5, 6.0, 15.0, 35.0] as const;
 export const EQUIPMENT_BASE_PRICE_PER_MASS = 20;
-export const REQUIRED_SLOT_TYPES: EquipmentSlot['slotType'][] = ['thruster_forward', 'thruster_rotate'];
+export const REQUIRED_SLOT_TYPES: EquipmentSlot['slotType'][] = ['thruster_forward', 'thruster_rotate', 'fuelTank'];
 
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;

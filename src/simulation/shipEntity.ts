@@ -4,7 +4,7 @@ import {
   NPC_FADE_DURATION,
   NPC_LEAVING_OPACITY
 } from '../constants';
-import type { ArmourItem, AutoBrakeItem, ShipState, ThrusterItem } from '../types';
+import type { AutoBrakeItem, ShipState, ThrusterItem } from '../types';
 import {
   applyForce,
   clampVelocity,
@@ -114,7 +114,7 @@ export class ShipEntity {
   }
 
   isDestroyed(): boolean {
-    return this.destroyed || this.state.currentHP <= 0;
+    return this.destroyed || this.state.currentHullHP <= 0;
   }
 
   recalculateMaxHP(worldState: WorldState): void {
@@ -122,22 +122,13 @@ export class ShipEntity {
     if (!hullSpec) {
       return;
     }
-    const armourBonus = this.state.equipmentSlots
-      .filter((slot) => slot.itemId !== null)
-      .reduce((total, slot) => {
-        const item = worldState.getEquipmentItem(slot.itemId!);
-        if (item?.type === 'armour') {
-          return total + (item as ArmourItem).hpBonus;
-        }
-        return total;
-      }, 0);
-    const newMaxHP = hullSpec.baseHP + armourBonus;
-    const delta = newMaxHP - this.state.maxHP;
-    this.state.maxHP = newMaxHP;
+    const newMaxHP = hullSpec.baseHP;
+    const delta = newMaxHP - this.state.maxHullHP;
+    this.state.maxHullHP = newMaxHP;
     if (delta > 0) {
-      this.state.currentHP = Math.min(this.state.currentHP + delta, newMaxHP);
+      this.state.currentHullHP = Math.min(this.state.currentHullHP + delta, newMaxHP);
     }
-    this.state.currentHP = Math.min(this.state.currentHP, newMaxHP);
+    this.state.currentHullHP = Math.min(this.state.currentHullHP, newMaxHP);
   }
 
   getTotalArmourMass(worldState: WorldState): number {

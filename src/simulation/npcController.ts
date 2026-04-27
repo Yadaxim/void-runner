@@ -217,7 +217,7 @@ export class NPCController {
       }
     }
 
-    if (this.state === 'hostile' && self.state.maxHP > 0 && self.state.currentHP / self.state.maxHP < this.fleeHPThreshold) {
+    if (this.state === 'hostile' && self.state.maxHullHP > 0 && self.state.currentHullHP / self.state.maxHullHP < this.fleeHPThreshold) {
       this.state = 'flee';
     }
 

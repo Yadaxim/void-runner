@@ -27,6 +27,7 @@ import {
 import { LandableScreen } from './landableScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
 import { ScreenManager, type Screen } from './screenManager';
+import type { ReactorItem, ShieldItem } from '../types';
 
 type SectorEdge = 'north' | 'south' | 'east' | 'west';
 
@@ -169,8 +170,8 @@ export class FlightScreen implements Screen {
     this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
     this.playerShip.recalculateMaxHP(this.worldState);
     this.worldState.updatePlayerShipState({
-      currentHP: this.playerShip.state.currentHP,
-      maxHP: this.playerShip.state.maxHP
+      currentHullHP: this.playerShip.state.currentHullHP,
+      maxHullHP: this.playerShip.state.maxHullHP
     });
     this.playerController = new PlayerController({
       autoBrakeLinearEnabled: this.playerShip.state.autoBrakeLinearEnabled,
@@ -302,7 +303,7 @@ export class FlightScreen implements Screen {
     if (inputs.devRefuelPressed) {
       this.playerShip.state = {
         ...this.playerShip.state,
-        fuel: this.playerShip.state.maxFuel
+        fuel: this.worldState.getMaxFuel()
       };
     }
     const npcShips = this.sectorSimulation?.getNPCShips() ?? [];
@@ -336,14 +337,15 @@ export class FlightScreen implements Screen {
       return;
     }
     this.applyRadiationDamage(dt);
+    this.updateEnergyAndShield(dt);
     this.worldState.addPlayTime(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
       velocity: this.playerShip.state.velocity,
       angle: this.playerShip.state.angle,
       angularVelocity: this.playerShip.state.angularVelocity,
-      currentHP: this.playerShip.state.currentHP,
-      maxHP: this.playerShip.state.maxHP,
+      currentHullHP: this.playerShip.state.currentHullHP,
+      maxHullHP: this.playerShip.state.maxHullHP,
       fuel: this.playerShip.state.fuel,
       credits: this.playerShip.state.credits,
       autoBrakeLinearEnabled: this.playerShip.isLinearAutoBrakeEnabled(),
@@ -649,15 +651,86 @@ export class FlightScreen implements Screen {
     }
 
     const damage = MAX_RADIATION_DAMAGE_PER_SECOND * intensity * dt;
-    const newHP = Math.max(0, this.playerShip.state.currentHP - damage);
+    const newHP = Math.max(0, this.playerShip.state.currentHullHP - damage);
     this.playerShip.state = {
       ...this.playerShip.state,
-      currentHP: newHP
+      currentHullHP: newHP
     };
-    this.worldState.updatePlayerShipState({ currentHP: newHP });
+    this.worldState.updatePlayerShipState({ currentHullHP: newHP });
 
     if (newHP <= 0) {
       this.handleShipDestruction();
+    }
+  }
+
+  private updateEnergyAndShield(dt: number): void {
+    if (!this.playerShip) {
+      return;
+    }
+    const ship = this.playerShip.state;
+    let updated = false;
+
+    const reactorSlot = ship.equipmentSlots.find((s) => s.slotType === 'reactor');
+    if (reactorSlot?.itemId) {
+      const reactorItem = this.worldState.getEquipmentItem(reactorSlot.itemId);
+      if (reactorItem?.type === 'reactor') {
+        const reactor = reactorItem as ReactorItem;
+        const maxJoules = reactor.capacityJoules;
+        if (ship.currentJoules < maxJoules && ship.fuel > 0) {
+          const needed = maxJoules - ship.currentJoules;
+          const generated = Math.min(reactor.chargeRateJoulesPerSecond * dt, needed);
+          const fuelCost = generated * reactor.fuelPerJoule;
+          if (ship.fuel >= fuelCost) {
+            ship.currentJoules = Math.min(maxJoules, ship.currentJoules + generated);
+            ship.fuel = Math.max(0, ship.fuel - fuelCost);
+            updated = true;
+          }
+        }
+      }
+    } else if (ship.currentJoules > 0) {
+      ship.currentJoules = 0;
+      updated = true;
+    }
+
+    if (ship.shieldRebooting) {
+      ship.shieldRebootTimer = Math.max(0, ship.shieldRebootTimer - dt);
+      if (ship.shieldRebootTimer <= 0) {
+        ship.shieldRebooting = false;
+      }
+      updated = true;
+    }
+
+    const shieldSlot = ship.equipmentSlots.find((s) => s.slotType === 'shield');
+    if (shieldSlot?.itemId && this.worldState.isShieldOnline()) {
+      const shieldItem = this.worldState.getEquipmentItem(shieldSlot.itemId);
+      if (shieldItem?.type === 'shield') {
+        const shield = shieldItem as ShieldItem;
+        ship.maxShieldHP = shield.shieldHP;
+        const timeSinceHit = (Date.now() - ship.lastHitTime) / 1000;
+        if (
+          !ship.shieldRebooting &&
+          timeSinceHit >= shield.regenDelay &&
+          ship.currentShieldHP < shield.shieldHP &&
+          ship.currentJoules > 0
+        ) {
+          const hpNeeded = shield.shieldHP - ship.currentShieldHP;
+          const hpToRegen = Math.min(shield.regenRateHPPerSecond * dt, hpNeeded);
+          const jouleCost = hpToRegen * shield.joulesPerHPRegen;
+          if (ship.currentJoules >= jouleCost) {
+            ship.currentShieldHP = Math.min(shield.shieldHP, ship.currentShieldHP + hpToRegen);
+            ship.currentJoules = Math.max(0, ship.currentJoules - jouleCost);
+            updated = true;
+          }
+        }
+      }
+    } else if (ship.currentShieldHP > ship.maxShieldHP) {
+      ship.currentShieldHP = ship.maxShieldHP;
+      updated = true;
+    }
+
+    if (updated) {
+      this.playerShip.state = ship;
+      this.worldState.updatePlayerShipState(ship);
     }
   }
 
@@ -723,7 +796,7 @@ export class FlightScreen implements Screen {
       this.worldState.setCurrentSector(respawnSector);
       const respawnPosition = respawnLandable ? new Vector2(respawnLandable.position.x, respawnLandable.position.y) : Vector2.zero();
       this.worldState.updatePlayerShipState({
-        currentHP: ship.maxHP,
+        currentHullHP: ship.maxHullHP,
         credits: ship.credits - cost,
         position: respawnPosition,
         velocity: Vector2.zero(),
@@ -764,12 +837,11 @@ export class FlightScreen implements Screen {
   private buildStarterShipState() {
     const current = this.worldState.getPlayerShipState();
     const starter = buildStarterShipState(this.worldState);
-    const maxFuel = current.maxFuel;
+    const maxFuel = this.worldState.getMaxFuel();
     return {
       ...current,
       ...starter,
       fuel: maxFuel,
-      maxFuel,
       position: Vector2.zero(),
       velocity: Vector2.zero(),
       angle: 0,

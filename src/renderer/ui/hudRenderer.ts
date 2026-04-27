@@ -64,9 +64,13 @@ export class HudRenderer {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const heading = Math.round(normaliseDegrees(playerShip.state.angle));
     const fuelCurrent = Math.max(0, playerShip.state.fuel);
-    const fuelMax = Math.max(0, playerShip.state.maxFuel);
+    const fuelMax = Math.max(0, worldState.getMaxFuel());
     const fuelPercent = fuelMax > 0 ? Math.round((fuelCurrent / fuelMax) * 100) : 0;
     const credits = Math.floor(Math.max(0, playerShip.state.credits));
+    const armourCurrent = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.currentHP), 0);
+    const armourMax = playerShip.state.armourLayers.reduce((sum, layer) => sum + Math.max(0, layer.maxHP), 0);
+    const shieldInstalled = !!worldState.getInstalledShieldItem();
+    const reactorMax = worldState.getMaxJoules();
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
     const headingText = `HDG: ${heading.toString().padStart(3, '0')}°`;
     const creditsText = `CR: ${credits.toString()}`;
@@ -80,9 +84,21 @@ export class HudRenderer {
       linearBrakeEnabled: autoBrakeInstalled && playerShip.isLinearAutoBrakeEnabled(),
       rotationBrakeEnabled: autoBrakeInstalled && playerShip.isRotationAutoBrakeEnabled(),
       autoBrakeInstalled,
-      hpCurrent: Math.max(0, playerShip.state.currentHP),
-      hpMax: Math.max(1, playerShip.state.maxHP),
-      hullBaseHP: worldState.getHullSpec(playerShip.state.hullSpecId)?.baseHP ?? Math.max(1, playerShip.state.maxHP),
+      hullCurrent: Math.max(0, playerShip.state.currentHullHP),
+      hullMax: Math.max(1, playerShip.state.maxHullHP),
+      armourCurrent,
+      armourMax,
+      shieldCurrent: Math.max(0, playerShip.state.currentShieldHP),
+      shieldMax: Math.max(0, playerShip.state.maxShieldHP),
+      shieldInstalled,
+      shieldRebooting: playerShip.state.shieldRebooting,
+      shieldRebootTimer: playerShip.state.shieldRebootTimer,
+      shieldOnline: worldState.isShieldOnline(),
+      lastHitTime: playerShip.state.lastHitTime,
+      shieldRegenDelay: worldState.getInstalledShieldItem()?.regenDelay ?? 0,
+      currentJoules: Math.max(0, playerShip.state.currentJoules),
+      maxJoules: Math.max(0, reactorMax),
+      hullBaseHP: worldState.getHullSpec(playerShip.state.hullSpecId)?.baseHP ?? Math.max(1, playerShip.state.maxHullHP),
       radiationIntensity,
       playerBurnRemainingSeconds
     });
@@ -273,8 +289,20 @@ export class HudRenderer {
     linearBrakeEnabled: boolean;
     rotationBrakeEnabled: boolean;
     autoBrakeInstalled: boolean;
-    hpCurrent: number;
-    hpMax: number;
+    hullCurrent: number;
+    hullMax: number;
+    armourCurrent: number;
+    armourMax: number;
+    shieldCurrent: number;
+    shieldMax: number;
+    shieldInstalled: boolean;
+    shieldRebooting: boolean;
+    shieldRebootTimer: number;
+    shieldOnline: boolean;
+    lastHitTime: number;
+    shieldRegenDelay: number;
+    currentJoules: number;
+    maxJoules: number;
     hullBaseHP: number;
     radiationIntensity: number;
     playerBurnRemainingSeconds: number | null;
@@ -282,7 +310,7 @@ export class HudRenderer {
     const panelX = 12;
     const panelY = 12;
     const panelWidth = 330;
-    const panelHeight = 134;
+    const panelHeight = 228;
     const headerY = panelY + 8;
     const speedGaugeMax = Math.max(LANDING_SPEED_THRESHOLD * 4, 400);
     const speedRatio = Math.max(0, Math.min(1, config.speed / speedGaugeMax));
@@ -342,11 +370,11 @@ export class HudRenderer {
       'R-BRK',
       config.autoBrakeInstalled ? config.rotationBrakeEnabled : null
     );
-    this.renderPanelHpBar(panelX + 8, panelY + 106, panelWidth - 16, config);
+    this.renderLayerBars(panelX + 8, panelY + 100, panelWidth - 16, config);
     this.ctx.font = "10px 'Courier New', monospace";
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    this.ctx.fillText('[R] DEV REFUEL', panelX + panelWidth - 8, panelY + 120);
+    this.ctx.fillText('[R] DEV REFUEL', panelX + panelWidth - 8, panelY + panelHeight - 10);
     this.ctx.restore();
   }
 
@@ -423,64 +451,132 @@ export class HudRenderer {
     this.ctx.fillText(status, x + width - 5, y + height / 2);
   }
 
-  private renderPanelHpBar(
+  private renderLayerBars(
     barX: number,
     barY: number,
     barWidth: number,
     config: {
-      hpCurrent: number;
-      hpMax: number;
+      hullCurrent: number;
+      hullMax: number;
+      armourCurrent: number;
+      armourMax: number;
+      shieldCurrent: number;
+      shieldMax: number;
+      shieldInstalled: boolean;
+      shieldRebooting: boolean;
+      shieldRebootTimer: number;
+      shieldOnline: boolean;
+      lastHitTime: number;
+      shieldRegenDelay: number;
+      currentJoules: number;
+      maxJoules: number;
       hullBaseHP: number;
       radiationIntensity: number;
       playerBurnRemainingSeconds: number | null;
     }
   ): void {
-    const barHeight = 10;
-    const hpRatio = Math.max(0, Math.min(1, config.hpCurrent / config.hpMax));
-    const fillWidth = Math.max(0, Math.floor((barWidth - 2) * hpRatio));
+    const rowH = 22;
+    let y = barY;
+    if (config.shieldInstalled) {
+      this.drawHudLayerRow('SHD', barX, y, barWidth, config.shieldCurrent, config.shieldMax, '#4aa3ff', true);
+      const timeSinceHitSec = (Date.now() - config.lastHitTime) / 1000;
+      const inRegenDelay =
+        !config.shieldRebooting &&
+        config.shieldMax > 0 &&
+        config.lastHitTime > 0 &&
+        timeSinceHitSec < config.shieldRegenDelay;
+      const regenDelayRemain = inRegenDelay ? Math.max(0, config.shieldRegenDelay - timeSinceHitSec) : 0;
+      const activelyRegen =
+        config.shieldOnline &&
+        config.shieldCurrent < config.shieldMax &&
+        timeSinceHitSec >= config.shieldRegenDelay &&
+        config.currentJoules > 0;
 
-    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
-    this.ctx.fillStyle = COLOURS.SAFE;
-    this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
+      this.ctx.font = "9px 'Courier New', monospace";
+      this.ctx.textAlign = 'left';
+      const statusY = y + 14;
+      if (config.shieldRebooting) {
+        const pulse = 0.65 + (Math.sin(performance.now() * 0.008) + 1) * 0.175;
+        this.ctx.save();
+        this.ctx.globalAlpha = pulse;
+        this.ctx.fillStyle = COLOURS.DANGER;
+        this.ctx.fillText(`     ⏸ rebooting ${config.shieldRebootTimer.toFixed(1)}s`, barX, statusY);
+        this.ctx.restore();
+      } else if (inRegenDelay) {
+        this.ctx.fillStyle = COLOURS.WARNING;
+        this.ctx.fillText(`     ⏸ ${regenDelayRemain.toFixed(1)}s`, barX, statusY);
+      } else if (activelyRegen) {
+        const pulse = 0.65 + (Math.sin(performance.now() * 0.012) + 1) * 0.175;
+        this.ctx.save();
+        this.ctx.globalAlpha = pulse;
+        this.ctx.fillStyle = COLOURS.SAFE;
+        this.ctx.fillText('     ↑ regen', barX, statusY);
+        this.ctx.restore();
+      }
+      y += rowH + 12;
+    }
+    if (config.armourMax > 0) {
+      this.drawHudLayerRow('ARM', barX, y, barWidth, config.armourCurrent, config.armourMax, '#ff9a3d', true);
+      y += rowH;
+    }
+    const hullRatio = config.hullMax > 0 ? config.hullCurrent / config.hullMax : 0;
+    const hullColour = hullRatio > 0.6 ? COLOURS.SAFE : hullRatio > 0.3 ? COLOURS.WARNING : COLOURS.DANGER;
+    this.drawHudLayerRow('HUL', barX, y, barWidth, config.hullCurrent, config.hullMax, hullColour, true, '', config.radiationIntensity);
+    y += rowH;
+    if (config.maxJoules > 0) {
+      this.drawHudLayerRow('PWR', barX, y, barWidth, config.currentJoules, config.maxJoules, '#ffd700', true, ' J');
+    }
+  }
 
-    if (config.radiationIntensity > 0) {
-      const flicker = 0.65 + (Math.sin(performance.now() * 0.02) + 1) * 0.175;
-      this.ctx.save();
-      this.ctx.globalAlpha = config.radiationIntensity * 0.6 * flicker;
-      this.ctx.fillStyle = COLOURS.DANGER;
-      this.ctx.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2);
-      this.ctx.restore();
+  private hudAsciiBar(ratio: number, segments = 10): string {
+    const filled = Math.round(Math.max(0, Math.min(1, ratio)) * segments);
+    return `${'█'.repeat(filled)}${'░'.repeat(Math.max(0, segments - filled))}`;
+  }
+
+  private drawHudLayerRow(
+    label: string,
+    x: number,
+    y: number,
+    width: number,
+    current: number,
+    max: number,
+    colour: string,
+    visible: boolean,
+    suffix = '',
+    radiationIntensity = 0
+  ): void {
+    if (!visible) {
+      return;
     }
-    if (config.hullBaseHP < config.hpMax) {
-      const baseRatio = Math.max(0, Math.min(1, config.hullBaseHP / config.hpMax));
-      const tickX = barX + 1 + (barWidth - 2) * baseRatio;
-      this.ctx.save();
-      this.ctx.strokeStyle = COLOURS.UI_ACCENT;
-      this.ctx.globalAlpha = 0.7;
-      this.ctx.beginPath();
-      this.ctx.moveTo(tickX, barY - 2);
-      this.ctx.lineTo(tickX, barY + barHeight + 2);
-      this.ctx.stroke();
-      this.ctx.restore();
-    }
+    const labelW = 32;
+    const asciiW = 72;
+    const barSegX = x + labelW + asciiW;
+    const barW = width - 176 - asciiW;
+    const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.font = "10px 'Courier New', monospace";
     this.ctx.textAlign = 'left';
-    this.ctx.textBaseline = 'top';
-    this.ctx.fillText(
-      `HP ${Math.round(config.hpCurrent).toString()} / ${Math.round(config.hpMax).toString()}`,
-      barX,
-      barY + 12
-    );
-    if (config.playerBurnRemainingSeconds !== null && config.playerBurnRemainingSeconds > 0) {
-      const hpTextWidth = this.ctx.measureText(
-        `HP ${Math.round(config.hpCurrent).toString()} / ${Math.round(config.hpMax).toString()}`
-      ).width;
-      this.ctx.fillStyle = '#80ff40';
-      this.ctx.fillText(`⬡ ${config.playerBurnRemainingSeconds.toFixed(1)}s`, barX + hpTextWidth + 10, barY + 12);
+    this.ctx.fillText(label, x, y + 2);
+    this.ctx.fillStyle = colour;
+    const ascii = this.hudAsciiBar(ratio);
+    this.ctx.fillText(ascii, x + labelW, y + 2);
+    this.ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(barSegX, y + 1, barW, 10);
+    this.ctx.fillStyle = colour;
+    const fillW = Math.max(0, (barW - 2) * ratio);
+    this.ctx.fillRect(barSegX + 1, y + 2, fillW, 8);
+    if (radiationIntensity > 0 && fillW > 0) {
+      const flicker = 0.65 + (Math.sin(performance.now() * 0.02) + 1) * 0.175;
+      this.ctx.save();
+      this.ctx.globalAlpha = radiationIntensity * 0.6 * flicker;
+      this.ctx.fillStyle = COLOURS.DANGER;
+      this.ctx.fillRect(barSegX + 1, y + 2, fillW, 8);
+      this.ctx.restore();
     }
+    this.ctx.fillStyle = COLOURS.UI_PRIMARY;
+    const numX = barSegX + barW + 8;
+    this.ctx.fillText(`${Math.round(current)} / ${Math.round(max)}${suffix}`, numX, y + 2);
   }
 
   private renderTargets(
@@ -557,8 +653,8 @@ export class HudRenderer {
     const barY = 112;
     const barWidth = 210;
     const barHeight = 10;
-    const hpCurrent = Math.max(0, playerShip.state.currentHP);
-    const hpMax = Math.max(1, playerShip.state.maxHP);
+    const hpCurrent = Math.max(0, playerShip.state.currentHullHP);
+    const hpMax = Math.max(1, playerShip.state.maxHullHP);
     const hpRatio = Math.max(0, Math.min(1, hpCurrent / hpMax));
     const fillWidth = Math.max(0, Math.floor((barWidth - 2) * hpRatio));
 
