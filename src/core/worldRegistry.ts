@@ -1,4 +1,7 @@
 import type { WorldFile } from '../types';
+import type { ValidationResult } from '../world/validation';
+import { throwIfWorldFileInvalidForGame } from '../world/validation';
+import { parseAndValidateWorldFileForImport } from '../world/worldImport';
 
 const IMPORTED_WORLD_KEY_PREFIX = 'voidrunner_world_';
 
@@ -55,19 +58,44 @@ export function getWorldBySeed(seed: number): WorldEntry | null {
 }
 
 export async function loadWorldForEntry(entry: WorldEntry): Promise<WorldFile> {
+  let world: WorldFile;
   if (entry.imported || !entry.filePath) {
     const raw = localStorage.getItem(`${IMPORTED_WORLD_KEY_PREFIX}${entry.seed}`);
     if (!raw) {
       throw new Error(`Imported world not found for seed ${entry.seed}`);
     }
-    return JSON.parse(raw) as WorldFile;
+    world = JSON.parse(raw) as WorldFile;
+  } else {
+    const response = await fetch(new URL(entry.filePath, window.location.href));
+    if (!response.ok) {
+      throw new Error(`Failed to load world file (${response.status})`);
+    }
+    world = (await response.json()) as WorldFile;
   }
 
-  const response = await fetch(new URL(entry.filePath, window.location.href));
-  if (!response.ok) {
-    throw new Error(`Failed to load world file (${response.status})`);
+  throwIfWorldFileInvalidForGame(world, { bundledTestEntry: entry });
+  return world;
+}
+
+export type TryCommitImportedWorldResult =
+  | { ok: true; entry: WorldEntry }
+  | { ok: false; kind: 'invalid_json' }
+  | { ok: false; kind: 'validation'; result: ValidationResult }
+  | { ok: false; kind: 'shape'; message: string };
+
+/**
+ * Parse, validate, and persist an uploaded world JSON (New Game import path).
+ */
+export function tryCommitImportedWorldFromJson(raw: string): TryCommitImportedWorldResult {
+  const parsed = parseAndValidateWorldFileForImport(raw);
+  if (!parsed.ok) {
+    return parsed.kind === 'invalid_json' ? { ok: false, kind: 'invalid_json' } : { ok: false, kind: 'validation', result: parsed.result };
   }
-  return response.json() as Promise<WorldFile>;
+  const world = parsed.world;
+  if (!world?.metadata?.seed || !world?.sectors || !world?.factions) {
+    return { ok: false, kind: 'shape', message: 'Invalid world file format.' };
+  }
+  return { ok: true, entry: saveImportedWorld(world) };
 }
 
 export function saveImportedWorld(worldFile: WorldFile): WorldEntry {

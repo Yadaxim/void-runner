@@ -16,6 +16,17 @@ export interface ValidationResult {
   errors: string[];
 }
 
+/** Thrown when a `WorldFile` fails {@link validateWorldFile} at a game boundary (load, registry fetch, etc.). */
+export class WorldFileValidationError extends Error {
+  readonly result: ValidationResult;
+
+  constructor(result: ValidationResult) {
+    super(`WorldFileValidationError: ${result.errors.length} validation error(s)`);
+    this.name = 'WorldFileValidationError';
+    this.result = result;
+  }
+}
+
 const DAMAGE_KEYS = Object.keys(emptyReductionProfile()) as DamageTypeKey[];
 
 const SPAWN_BEHAVIOURS = new Set(['patrol', 'transit', 'trade', 'hostile', 'flee']);
@@ -282,4 +293,30 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+function isBundledTestWorldEntry(entry: { id: string; filePath: string }): boolean {
+  return entry.filePath.endsWith('testWorld.json') || entry.id === 'test_world';
+}
+
+/**
+ * Use after reading a `WorldFile` from disk or localStorage and before `WorldState` or gameplay consumes it.
+ * In development, a failing bundled `testWorld.json` throws a plain `Error` for build-time diagnosis.
+ */
+export function throwIfWorldFileInvalidForGame(
+  world: WorldFile,
+  opts?: { bundledTestEntry?: { id: string; filePath: string } }
+): void {
+  // VALIDATION BOUNDARY (load): world file must pass before WorldState or save resume
+  const result = validateWorldFile(world);
+  if (result.ok) {
+    return;
+  }
+  if (import.meta.env.DEV && opts?.bundledTestEntry && isBundledTestWorldEntry(opts.bundledTestEntry)) {
+    const lines = result.errors.map((e) => `  • ${e}`).join('\n');
+    throw new Error(
+      `Bundled testWorld.json failed validation (development/build error). Fix the JSON or validation rules.\n${lines}`
+    );
+  }
+  throw new WorldFileValidationError(result);
 }

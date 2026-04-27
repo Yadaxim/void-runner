@@ -36,6 +36,7 @@ import type {
   WeaponFireKey,
   WorldFile
 } from '../types';
+import { throwIfWorldFileInvalidForGame, WorldFileValidationError } from '../world/validation';
 
 export type { RepActionType };
 
@@ -1014,6 +1015,8 @@ export class WorldState {
   }
 
   static loadFromLocalStorage(worldFile: WorldFile): WorldState | null {
+    throwIfWorldFileInvalidForGame(worldFile);
+
     const raw = localStorage.getItem(`voidrunner_save_${worldFile.metadata.seed}`);
     if (!raw) {
       return null;
@@ -1029,7 +1032,10 @@ export class WorldState {
       state.pilotName = typeof parsed.pilotName === 'string' ? parsed.pilotName : 'Pilot';
       state.playTimeSeconds = Number.isFinite(parsed.playTimeSeconds) ? Math.max(0, parsed.playTimeSeconds) : 0;
       return state;
-    } catch {
+    } catch (e) {
+      if (e instanceof WorldFileValidationError) {
+        throw e;
+      }
       return null;
     }
   }

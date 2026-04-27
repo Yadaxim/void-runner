@@ -4,12 +4,19 @@ import { buildStarterShipState, WorldState } from '../core/worldState';
 import { Vector2 } from '../physics/vector2';
 import { makeShipState } from '../test/fixtures';
 import type { GridCoord, ShipState, WorldFile } from '../types';
+import { validateWorldFile } from '../world/validation';
 import { SectorSimulation } from '../simulation/sector';
 import { ShipEntity } from '../simulation/shipEntity';
 
 export function loadTestWorldFile(): WorldFile {
   const path = join(process.cwd(), 'public/testWorld.json');
-  return JSON.parse(readFileSync(path, 'utf-8')) as WorldFile;
+  const wf = JSON.parse(readFileSync(path, 'utf-8')) as WorldFile;
+  const r = validateWorldFile(wf);
+  if (!r.ok) {
+    const lines = r.errors.map((e) => `  • ${e}`).join('\n');
+    throw new Error(`testWorld.json failed validation (fix JSON or validation rules):\n${lines}`);
+  }
+  return wf;
 }
 
 export interface HeadlessSimOptions {

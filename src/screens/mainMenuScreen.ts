@@ -198,7 +198,7 @@ export class MainMenuScreen implements Screen {
         label: '[ WORLD GENERATOR ]',
         onClick: () => {
           this.onExit();
-          this.screenManager.push(new WorldGenScreen());
+          this.screenManager.push(new WorldGenScreen(this.canvas, this.ctx, this.screenManager));
         }
       },
       {

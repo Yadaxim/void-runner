@@ -4,10 +4,11 @@ import { buildStarterShipState, WorldState } from '../core/worldState';
 import {
   getAvailableWorlds,
   loadWorldForEntry,
-  saveImportedWorld,
+  tryCommitImportedWorldFromJson,
   type WorldEntry
 } from '../core/worldRegistry';
-import type { WorldFile } from '../types';
+import { mountValidationErrorPanel } from '../world/validation-ui';
+import { WorldFileValidationError } from '../world/validation';
 import { launchFlightScreen } from './flightScreenFactory';
 import type { Screen, ScreenManager } from './screenManager';
 
@@ -31,6 +32,8 @@ export class NewGameScreen implements Screen {
   private hoveredImport = false;
   private isStarting = false;
   private errorMessage = '';
+  /** Shown when JSON.parse fails on import (distinct from validation errors). */
+  private importJsonError = '';
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Escape') {
@@ -124,6 +127,7 @@ export class NewGameScreen implements Screen {
     this.worlds = getAvailableWorlds();
     this.selectedWorldIndex = 0;
     this.errorMessage = '';
+    this.importJsonError = '';
     this.inputFocused = true;
     window.addEventListener('keydown', this.onKeyDown);
     this.canvas.addEventListener('mousemove', this.onMouseMove);
@@ -251,6 +255,11 @@ export class NewGameScreen implements Screen {
         );
       }
     }
+    if (this.importJsonError) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.fillText(this.importJsonError, contentX, panelY + panelHeight - 56);
+    }
     if (this.errorMessage) {
       ctx.textAlign = 'left';
       ctx.fillStyle = COLOURS.DANGER;
@@ -325,7 +334,15 @@ export class NewGameScreen implements Screen {
       this.screenManager.pop();
       launchFlightScreen(this.canvas, this.ctx, this.screenManager, worldState);
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Failed to start game.';
+      if (error instanceof WorldFileValidationError) {
+        mountValidationErrorPanel({
+          title: 'World file failed validation',
+          result: error.result,
+          onDismiss: () => {}
+        });
+      } else {
+        this.errorMessage = error instanceof Error ? error.message : 'Failed to start game.';
+      }
       this.isStarting = false;
     }
   }
@@ -339,13 +356,33 @@ export class NewGameScreen implements Screen {
       if (!file) {
         return;
       }
+      this.importJsonError = '';
+      this.errorMessage = '';
       try {
         const raw = await file.text();
-        const worldFile = JSON.parse(raw) as WorldFile;
-        if (!worldFile?.metadata?.seed || !worldFile?.sectors || !worldFile?.factions) {
-          throw new Error('Invalid world file format.');
+        const outcome = tryCommitImportedWorldFromJson(raw);
+        console.log(
+          '[world file import]',
+          outcome.ok ? 'validation passed' : outcome.kind === 'invalid_json' ? 'invalid JSON' : outcome.kind,
+          outcome
+        );
+        if (!outcome.ok) {
+          if (outcome.kind === 'invalid_json') {
+            this.importJsonError = 'Invalid JSON file';
+            return;
+          }
+          if (outcome.kind === 'shape') {
+            this.errorMessage = outcome.message;
+            return;
+          }
+          mountValidationErrorPanel({
+            title: 'World file failed validation',
+            result: outcome.result,
+            onDismiss: () => {}
+          });
+          return;
         }
-        const imported = saveImportedWorld(worldFile);
+        const imported = outcome.entry;
         this.worlds = getAvailableWorlds();
         this.selectedWorldIndex = this.worlds.findIndex((entry) => entry.seed === imported.seed);
         if (this.selectedWorldIndex < 0) {

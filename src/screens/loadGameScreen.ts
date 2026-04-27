@@ -3,6 +3,8 @@ import { GameLoop } from '../core/gameLoop';
 import type { SaveMetadata } from '../core/worldState';
 import { WorldState } from '../core/worldState';
 import { getWorldBySeed, loadWorldForEntry } from '../core/worldRegistry';
+import { WorldFileValidationError } from '../world/validation';
+import { mountValidationErrorPanel } from '../world/validation-ui';
 import { launchFlightScreen } from './flightScreenFactory';
 import type { Screen, ScreenManager } from './screenManager';
 
@@ -271,6 +273,15 @@ export class LoadGameScreen implements Screen {
       this.screenManager.pop();
       launchFlightScreen(this.canvas, this.ctx, this.screenManager, worldState);
     } catch (error) {
+      if (error instanceof WorldFileValidationError) {
+        mountValidationErrorPanel({
+          title: 'World file failed validation',
+          result: error.result,
+          onDismiss: () => {},
+          extraButtons: [{ label: 'Back to Main Menu', onClick: () => this.goBack() }]
+        });
+        return;
+      }
       this.errorMessage = error instanceof Error ? error.message : 'Failed to load save.';
     }
   }
