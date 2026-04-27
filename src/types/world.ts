@@ -14,7 +14,7 @@ export interface GridCoord {
 
 export interface NPCSpawnRule {
   factionId: string;
-  behaviourType: 'patrol' | 'transit' | 'trade' | 'hostile' | 'escort';
+  behaviourType: 'patrol' | 'transit' | 'trade' | 'hostile' | 'flee';
   hullSpecId: HullSpec['id'];
   countRange: [number, number];
   minPresent: number;
@@ -47,6 +47,13 @@ export interface StartingConditions {
   credits: number;
   hullSpecId: string;
   equipmentSlots: EquipmentSlot[];
+  /** Optional starting rep overrides (validated when present). */
+  factionReputations?: Record<string, number>;
+}
+
+export interface DefaultLoadoutEntry {
+  hullSpecId: string;
+  equipmentSlots: EquipmentSlot[];
 }
 
 export interface WorldFile {
@@ -59,7 +66,7 @@ export interface WorldFile {
   galaxy: {
     gridWidth: number;
     gridHeight: number;
-    sectors: SectorMetadata[][];
+    sectors?: SectorMetadata[][];
   };
   sectors: SectorMetadata[];
   factions: FactionDefinition[];
@@ -68,4 +75,6 @@ export interface WorldFile {
   bulletSpecs: BulletSpec[];
   missionTemplates: MissionTemplate[];
   startingConditions: StartingConditions;
+  /** Optional named loadouts; every referenced item must exist in the catalog. */
+  defaultLoadouts?: Record<string, DefaultLoadoutEntry>;
 }

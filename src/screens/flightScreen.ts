@@ -26,10 +26,9 @@ import {
 } from '../constants';
 import { LandableScreen } from './landableScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
+import { tickPlayerEnergyAndShield } from '../sim/playerEnergyShield';
+import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from '../sim/sectorNav';
 import { ScreenManager, type Screen } from './screenManager';
-import type { ReactorItem, ShieldItem } from '../types';
-
-type SectorEdge = 'north' | 'south' | 'east' | 'west';
 
 export class FlightScreen implements Screen {
   private static readonly TAKEOFF_LANDING_COOLDOWN_SECONDS = 0.35;
@@ -378,7 +377,7 @@ export class FlightScreen implements Screen {
     const crossedEdge = this.checkSectorEdge();
     if (crossedEdge) {
       const current = this.worldState.getCurrentSectorCoord();
-      const adjacent = this.getAdjacentCoord(current, crossedEdge);
+      const adjacent = getAdjacentSectorCoord(current, crossedEdge);
       if (!this.isWithinGalaxyBounds(adjacent)) {
         this.applyBoundaryClamp(crossedEdge);
         this.boundaryWarningUntilMs = performance.now() + 2000;
@@ -635,19 +634,6 @@ export class FlightScreen implements Screen {
     return null;
   }
 
-  private getAdjacentCoord(coord: { x: number; y: number }, edge: SectorEdge): { x: number; y: number } {
-    if (edge === 'north') {
-      return { x: coord.x, y: coord.y + 1 };
-    }
-    if (edge === 'south') {
-      return { x: coord.x, y: coord.y - 1 };
-    }
-    if (edge === 'east') {
-      return { x: coord.x + 1, y: coord.y };
-    }
-    return { x: coord.x - 1, y: coord.y };
-  }
-
   private isWithinGalaxyBounds(coord: { x: number; y: number }): boolean {
     const gridHalfWidth = this.worldState.getGridWidth() / 2;
     const gridHalfHeight = this.worldState.getGridHeight() / 2;
@@ -687,66 +673,7 @@ export class FlightScreen implements Screen {
       return;
     }
     const ship = this.playerShip.state;
-    let updated = false;
-
-    const reactorSlot = ship.equipmentSlots.find((s) => s.slotType === 'reactor');
-    if (reactorSlot?.itemId) {
-      const reactorItem = this.worldState.getEquipmentItem(reactorSlot.itemId);
-      if (reactorItem?.type === 'reactor') {
-        const reactor = reactorItem as ReactorItem;
-        const maxJoules = reactor.capacityJoules;
-        if (ship.currentJoules < maxJoules && ship.fuel > 0) {
-          const needed = maxJoules - ship.currentJoules;
-          const generated = Math.min(reactor.chargeRateJoulesPerSecond * dt, needed);
-          const fuelCost = generated * reactor.fuelPerJoule;
-          if (ship.fuel >= fuelCost) {
-            ship.currentJoules = Math.min(maxJoules, ship.currentJoules + generated);
-            ship.fuel = Math.max(0, ship.fuel - fuelCost);
-            updated = true;
-          }
-        }
-      }
-    } else if (ship.currentJoules > 0) {
-      ship.currentJoules = 0;
-      updated = true;
-    }
-
-    if (ship.shieldRebooting) {
-      ship.shieldRebootTimer = Math.max(0, ship.shieldRebootTimer - dt);
-      if (ship.shieldRebootTimer <= 0) {
-        ship.shieldRebooting = false;
-      }
-      updated = true;
-    }
-
-    const shieldSlot = ship.equipmentSlots.find((s) => s.slotType === 'shield');
-    if (shieldSlot?.itemId && this.worldState.isShieldOnline()) {
-      const shieldItem = this.worldState.getEquipmentItem(shieldSlot.itemId);
-      if (shieldItem?.type === 'shield') {
-        const shield = shieldItem as ShieldItem;
-        ship.maxShieldHP = shield.shieldHP;
-        const timeSinceHit = (Date.now() - ship.lastHitTime) / 1000;
-        if (
-          !ship.shieldRebooting &&
-          timeSinceHit >= shield.regenDelay &&
-          ship.currentShieldHP < shield.shieldHP &&
-          ship.currentJoules > 0
-        ) {
-          const hpNeeded = shield.shieldHP - ship.currentShieldHP;
-          const hpToRegen = Math.min(shield.regenRateHPPerSecond * dt, hpNeeded);
-          const jouleCost = hpToRegen * shield.joulesPerHPRegen;
-          if (ship.currentJoules >= jouleCost) {
-            ship.currentShieldHP = Math.min(shield.shieldHP, ship.currentShieldHP + hpToRegen);
-            ship.currentJoules = Math.max(0, ship.currentJoules - jouleCost);
-            updated = true;
-          }
-        }
-      }
-    } else if (ship.currentShieldHP > ship.maxShieldHP) {
-      ship.currentShieldHP = ship.maxShieldHP;
-      updated = true;
-    }
-
+    const updated = tickPlayerEnergyAndShield(ship, this.worldState, dt, Date.now());
     if (updated) {
       this.playerShip.state = ship;
       this.worldState.updatePlayerShipState(ship);
@@ -952,22 +879,12 @@ export class FlightScreen implements Screen {
     try {
       await this.pipeline.playTransitionOut(this.ctx, 300);
       const currentCoord = this.worldState.getCurrentSectorCoord();
-      const nextCoord = this.getAdjacentCoord(currentCoord, edge);
+      const nextCoord = getAdjacentSectorCoord(currentCoord, edge);
       this.worldState.setCurrentSector(nextCoord);
       this.worldState.markVisited(nextCoord);
 
       const previousPosition = this.playerShip.state.position as Vector2;
-      const spawnInset = SECTOR_EDGE_THRESHOLD * 2;
-      let nextPosition = previousPosition;
-      if (edge === 'east') {
-        nextPosition = new Vector2(-(SECTOR_WIDTH / 2) + spawnInset, previousPosition.y);
-      } else if (edge === 'west') {
-        nextPosition = new Vector2(SECTOR_WIDTH / 2 - spawnInset, previousPosition.y);
-      } else if (edge === 'north') {
-        nextPosition = new Vector2(previousPosition.x, SECTOR_HEIGHT / 2 - spawnInset);
-      } else {
-        nextPosition = new Vector2(previousPosition.x, -(SECTOR_HEIGHT / 2) + spawnInset);
-      }
+      const nextPosition = playerSpawnPositionAfterCrossing(edge, previousPosition);
       this.playerShip.state = {
         ...this.playerShip.state,
         position: nextPosition

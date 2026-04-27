@@ -1,14 +1,14 @@
 import {
   DEFAULT_FACTION_VISUAL,
-  REP_CEILING_MISSION_COMPLETE,
-  REP_CEILING_MISSION_SPECIAL,
-  REP_FLOOR_COMBAT_HIT,
-  REP_FLOOR_COMBAT_KILL,
-  REP_FLOOR_MISSION_FAIL,
   RADIATION_INNER_RADIUS,
   RADIATION_OUTER_RADIUS,
   REQUIRED_SLOT_TYPES
 } from '../constants';
+import {
+  applyReputationDelta,
+  computePirateReputation,
+  type RepActionType
+} from '../combat/reputation';
 import { childPRNG } from '../core/prng';
 import { EquipmentStore } from '../simulation/equipmentStore';
 import { Vector2 } from '../physics/vector2';
@@ -37,6 +37,8 @@ import type {
   WorldFile
 } from '../types';
 
+export type { RepActionType };
+
 interface PersistedWorldState {
   currentSectorCoord: GridCoord;
   visitedSectors: string[];
@@ -63,14 +65,6 @@ export type EquipmentInstallSlotType = EquipmentSlot['slotType'] | `weapon_${Wea
 export type PurchaseResult =
   | { success: true; netCost: number }
   | { success: false; reason: string };
-export type RepActionType =
-  | 'combat_hit'
-  | 'combat_kill'
-  | 'mission_fail'
-  | 'mission_complete'
-  | 'mission_special'
-  | 'manual';
-
 export interface RepEvent {
   factionId: string;
   factionName: string;
@@ -94,7 +88,7 @@ function clamp(value: number, min: number, max: number): number {
 function toSectorGrid(worldFile: WorldFile): SectorMetadata[][] {
   const predefinedGrid = worldFile.galaxy.sectors;
   if (Array.isArray(predefinedGrid) && predefinedGrid.length > 0) {
-    return worldFile.galaxy.sectors;
+    return predefinedGrid;
   }
 
   const halfWidth = Math.floor(worldFile.galaxy.gridWidth / 2);
@@ -500,31 +494,16 @@ export class WorldState {
 
   changeReputation(factionId: string, delta: number, actionType: RepActionType): void {
     const current = this.getReputation(factionId);
-    const { floor, ceiling } = this.getRepLimits(actionType);
-    if (delta < 0 && current <= floor) {
+    const { newRep, actualDelta } = applyReputationDelta(current, delta, actionType);
+    if (actualDelta === 0) {
       return;
     }
-    if (delta > 0 && current >= ceiling) {
-      return;
-    }
-    const newRep = Math.max(floor, Math.min(ceiling, clamp(current + delta, -100, 100)));
-    const actualDelta = newRep - current;
     this.factionReputations[factionId] = newRep;
     this.logRepEvent(factionId, actualDelta, this.getActionLabel(actionType));
   }
 
   getPirateReputation(): number {
-    const nonPirateFactions = this.worldFile.factions.filter((faction) => !faction.isPirate);
-    if (nonPirateFactions.length === 0) {
-      return 0;
-    }
-
-    let sum = 0;
-    for (const faction of nonPirateFactions) {
-      sum += this.getReputation(faction.id);
-    }
-    const average = sum / nonPirateFactions.length;
-    return -clamp(average, -100, 100);
+    return computePirateReputation(this.factionReputations, this.worldFile.factions);
   }
 
   getReputationForFaction(factionId: string): number {
@@ -1084,23 +1063,6 @@ export class WorldState {
   private getEquipmentValue(item: EquipmentItem): number {
     const tierValues = [200, 500, 1200, 3000, 7000];
     return tierValues[Math.min(item.tier - 1, 4)];
-  }
-
-  private getRepLimits(actionType: RepActionType): { floor: number; ceiling: number } {
-    switch (actionType) {
-      case 'combat_hit':
-        return { floor: REP_FLOOR_COMBAT_HIT, ceiling: 100 };
-      case 'combat_kill':
-        return { floor: REP_FLOOR_COMBAT_KILL, ceiling: 100 };
-      case 'mission_fail':
-        return { floor: REP_FLOOR_MISSION_FAIL, ceiling: 100 };
-      case 'mission_complete':
-        return { floor: -100, ceiling: REP_CEILING_MISSION_COMPLETE };
-      case 'mission_special':
-        return { floor: -100, ceiling: REP_CEILING_MISSION_SPECIAL };
-      case 'manual':
-        return { floor: -100, ceiling: 100 };
-    }
   }
 
   private getActionLabel(actionType: RepActionType): string {

@@ -19,6 +19,9 @@ function toNPCState(input: string): NPCState {
   if (input === 'transit' || input === 'trade' || input === 'hostile' || input === 'flee') {
     return input;
   }
+  if (input === 'escort') {
+    return 'patrol';
+  }
   return 'patrol';
 }
 

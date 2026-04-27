@@ -10,16 +10,9 @@ import {
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
-import type {
-  ArmourItem,
-  BulletSpec,
-  Landable,
-  ShieldItem,
-  ShipState,
-  WeaponFireKey,
-  WeaponItem
-} from '../types';
+import type { ArmourItem, BulletSpec, Landable, ShipState, WeaponFireKey, WeaponItem } from '../types';
 import { getDamageTypeKey } from '../types';
+import { applyPlasmaDotToPlayer, resolvePlayerBulletDamage } from '../combat/damage';
 import { BulletEntity } from './bulletEntity';
 import { ParticleSystem } from './particleSystem';
 import type { ShipEntity } from './shipEntity';
@@ -212,53 +205,19 @@ export class WeaponSystem {
       return { effectiveDamage, totalReduction };
     }
 
-    const typeKey = getDamageTypeKey(bulletSpec.damageCategory, bulletSpec.matterType);
-    const damage = bulletSpec.damage;
     const ship = target.state;
-
-    if (worldState.isShieldOnline() && ship.currentShieldHP > 0) {
-      const absorbed = Math.min(damage, ship.currentShieldHP);
-      ship.currentShieldHP -= absorbed;
-      ship.lastHitTime = Date.now();
-      if (ship.currentShieldHP <= 0) {
-        const shieldItem = worldState.getInstalledShieldItem();
-        ship.shieldRebooting = true;
-        ship.shieldRebootTimer = shieldItem?.rebootTime ?? 12;
-      }
-      worldState.updatePlayerShipState(ship);
-      return { effectiveDamage: absorbed, totalReduction: 0 };
-    }
-
-    for (const layer of ship.armourLayers) {
-      if (layer.currentHP <= 0) continue;
-      const armourItem = worldState.getEquipmentItem(layer.itemId);
-      const reduction = armourItem?.type === 'armour' ? armourItem.reductions[typeKey] ?? 0 : 0;
-      const effectiveDamage = Math.max(0, damage - reduction);
-      const absorbed = Math.min(effectiveDamage, layer.currentHP);
-      layer.currentHP -= absorbed;
-      ship.lastHitTime = Date.now();
-      worldState.updatePlayerShipState(ship);
-      return { effectiveDamage: absorbed, totalReduction: reduction };
-    }
-
-    ship.currentHullHP = Math.max(0, ship.currentHullHP - damage);
-    ship.lastHitTime = Date.now();
+    const view = {
+      isShieldOnline: (s: ShipState) => worldState.isShieldOnline(),
+      getEquipmentItem: (id: string) => worldState.getEquipmentItem(id)
+    };
+    const result = resolvePlayerBulletDamage(bulletSpec, ship, view);
     worldState.updatePlayerShipState(ship);
-    return { effectiveDamage: damage, totalReduction: 0 };
+    return result;
   }
 
   private applyBurnDamage(targetState: ShipState, damagePerSecond: number, dt: number, worldState: WorldState): void {
     const damage = damagePerSecond * dt;
-    for (const layer of targetState.armourLayers) {
-      if (layer.currentHP <= 0) continue;
-      const armourItem = worldState.getEquipmentItem(layer.itemId);
-      const reduction = armourItem?.type === 'armour' ? armourItem.reductions.plasma ?? 0 : 0;
-      const effectiveDamage = Math.max(0, damage - reduction);
-      const absorbed = Math.min(effectiveDamage, layer.currentHP);
-      layer.currentHP -= absorbed;
-      return;
-    }
-    targetState.currentHullHP = Math.max(0, targetState.currentHullHP - damage);
+    applyPlasmaDotToPlayer(targetState, damage, (id) => worldState.getEquipmentItem(id));
   }
 
   private tryApplyPlasmaBurn(bulletSpec: BulletSpec, target: ShipEntity): void {
