@@ -857,6 +857,20 @@ export class WorldState {
     return true;
   }
 
+  cancelMission(missionId: string): boolean {
+    const ship = this.getPlayerShipState();
+    const hasMission = ship.activeMissions.some((mission) => mission.id === missionId);
+    if (!hasMission) {
+      return false;
+    }
+    this.updatePlayerShipState({
+      activeMissions: ship.activeMissions.filter((mission) => mission.id !== missionId),
+      cargo: ship.cargo.filter((cargo) => cargo.missionId !== missionId)
+    });
+    this.saveToLocalStorage();
+    return true;
+  }
+
   checkMissionDelivery(landableId: string): CompletedMission[] {
     const ship = this.getPlayerShipState();
     const completed: CompletedMission[] = [];

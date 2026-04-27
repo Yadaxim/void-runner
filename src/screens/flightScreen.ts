@@ -224,11 +224,11 @@ export class FlightScreen implements Screen {
   }
 
   onExit(): void {
-    if (this.insuranceScreen) {
+    if (this.insuranceScreen && this.screenManager.top() === this.insuranceScreen) {
       this.screenManager.pop();
       this.insuranceScreen = null;
     }
-    if (this.landableScreen) {
+    if (this.landableScreen && this.screenManager.top() === this.landableScreen) {
       this.screenManager.pop();
       this.landableScreen = null;
     }
