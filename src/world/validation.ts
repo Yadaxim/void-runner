@@ -158,6 +158,9 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       push(`Duplicate equipment id: ${item.id}`);
     }
     equipIds.add(item.id);
+    if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price <= 0) {
+      push(`Equipment "${item.id}" must have a finite numeric price > 0`);
+    }
   }
 
   const shipyardListings = world.shipyardListings ?? [];

@@ -24,6 +24,8 @@ export interface BaseEquipment {
   description: string;
   mass: number;
   tier: number;
+  /** New buy price in credits (data-driven; set in world `equipmentCatalog`). */
+  price: number;
   factionAffinity: string;
   slotType?: EquipmentSlotType;
 }

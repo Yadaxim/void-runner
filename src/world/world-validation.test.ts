@@ -86,6 +86,14 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('Duplicate equipment id'))).toBe(true);
   });
 
+  it('flags equipment missing valid price', () => {
+    const w = structuredClone(loadWorld());
+    const first = w.equipmentCatalog[0] as { price?: number };
+    delete first.price;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('price') && e.includes(first.id))).toBe(true);
+  });
+
   it('flags duplicate hull id', () => {
     const w = structuredClone(loadWorld());
     w.hullSpecs.push({ ...w.hullSpecs[0] });

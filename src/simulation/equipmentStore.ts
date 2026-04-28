@@ -1,9 +1,4 @@
-import {
-  EQUIPMENT_BASE_PRICE_PER_MASS,
-  EQUIPMENT_SELL_FRACTION,
-  EQUIPMENT_STORE_COUNT,
-  EQUIPMENT_TIER_MULTIPLIERS
-} from '../constants';
+import { EQUIPMENT_SELL_FRACTION, EQUIPMENT_STORE_COUNT } from '../constants';
 import { childPRNG } from '../core/prng';
 import type { WorldState } from '../core/worldState';
 import type { EquipmentItem, Landable } from '../types';
@@ -29,8 +24,7 @@ export class EquipmentStore {
   }
 
   static getBuyPrice(item: EquipmentItem, worldState: WorldState, factionId: string | null): number {
-    const tierMultiplier = EQUIPMENT_TIER_MULTIPLIERS[item.tier - 1] ?? 1.0;
-    const basePrice = item.mass * EQUIPMENT_BASE_PRICE_PER_MASS * tierMultiplier;
+    const basePrice = item.price;
     if (factionId && item.factionAffinity === factionId) {
       const rep = worldState.getReputationForFaction(factionId);
       const discount = rep >= 80 ? 0.85 : rep >= 40 ? 0.92 : 1.0;
@@ -40,8 +34,6 @@ export class EquipmentStore {
   }
 
   static getSellPrice(item: EquipmentItem): number {
-    const tierMultiplier = EQUIPMENT_TIER_MULTIPLIERS[item.tier - 1] ?? 1.0;
-    const basePrice = item.mass * EQUIPMENT_BASE_PRICE_PER_MASS * tierMultiplier;
-    return Math.round(basePrice * EQUIPMENT_SELL_FRACTION);
+    return Math.round(item.price * EQUIPMENT_SELL_FRACTION);
   }
 }

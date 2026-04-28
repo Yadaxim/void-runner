@@ -1,5 +1,5 @@
-import { EQUIPMENT_BASE_PRICE_PER_MASS, EQUIPMENT_SELL_FRACTION, EQUIPMENT_TIER_MULTIPLIERS, REQUIRED_SLOT_TYPES } from '../constants';
-import type { EquipmentItem, EquipmentSlot, HullSpec } from '../types';
+import { REQUIRED_SLOT_TYPES } from '../constants';
+import type { EquipmentSlot, HullSpec } from '../types';
 import { expandSlotsToFullHull, getHullSlotCount } from './slotLayout';
 
 export type ShipyardItemOrigin = 'new' | 'old';
@@ -19,18 +19,6 @@ export interface ShipyardCostBreakdown {
 
 export function slotOriginKey(slotType: EquipmentSlot['slotType'], slotIndex: number): string {
   return `${slotType}:${slotIndex}`;
-}
-
-/** Catalog buy price without reputation discount (for static listing totals). */
-export function neutralEquipmentBuyPrice(item: EquipmentItem): number {
-  const tierMultiplier = EQUIPMENT_TIER_MULTIPLIERS[item.tier - 1] ?? 1.0;
-  return Math.round(item.mass * EQUIPMENT_BASE_PRICE_PER_MASS * tierMultiplier);
-}
-
-export function neutralEquipmentSellPrice(item: EquipmentItem): number {
-  const tierMultiplier = EQUIPMENT_TIER_MULTIPLIERS[item.tier - 1] ?? 1.0;
-  const basePrice = item.mass * EQUIPMENT_BASE_PRICE_PER_MASS * tierMultiplier;
-  return Math.round(basePrice * EQUIPMENT_SELL_FRACTION);
 }
 
 export function computeShipyardNetCost(input: {
