@@ -11,6 +11,11 @@ export interface LandableService {
   repairPricePerHP?: number;
 }
 
+export interface LandableShipyard {
+  /** Ids into `WorldFile.shipyardListings`. */
+  listingIds: string[];
+}
+
 export interface Landable {
   id: string;
   name: string;
@@ -22,6 +27,8 @@ export interface Landable {
   radius: number;
   position: Vector2;
   services: LandableService[];
+  /** When set, this landable offers the shipyard UI for these listings (independent of `services`). */
+  shipyard?: LandableShipyard;
   rotationSpeed: number;
   seed: number;
 }

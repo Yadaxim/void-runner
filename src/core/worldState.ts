@@ -25,17 +25,26 @@ import type {
   FuelTankItem,
   FactionVisual,
   GridCoord,
+  HullLoadoutVariantKey,
   HullSpec,
   Landable,
   ReactorItem,
   SectorMetadata,
   ShieldItem,
   ShipState,
+  ShipyardListing,
   StartingConditions,
   WeaponSlot,
   WeaponFireKey,
   WorldFile
 } from '../types';
+import {
+  computeShipyardNetCost,
+  customizeCargoFitsNewHull,
+  customizeRequiredSlotsFilled,
+  type ShipyardStoreEntry
+} from '../shipyard/customize';
+import { expandSlotsToFullHull } from '../shipyard/slotLayout';
 import { throwIfWorldFileInvalidForGame, WorldFileValidationError } from '../world/validation';
 
 export type { RepActionType };
@@ -117,6 +126,7 @@ function toSectorGrid(worldFile: WorldFile): SectorMetadata[][] {
 function normaliseWorldFile(worldFile: WorldFile): WorldFile {
   return {
     ...worldFile,
+    shipyardListings: worldFile.shipyardListings ?? [],
     sectors: worldFile.sectors.map((sector) => ({
       ...sector,
       landables: sector.landables.map((landable) => ({
@@ -204,9 +214,11 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     throw new Error(`Starting hull spec not found: ${sc.hullSpecId}`);
   }
 
-  const baseEquipmentSlots = (
-    sc.equipmentSlots.length > 0 ? sc.equipmentSlots : (hullSpec.equipmentLoadout ?? [])
-  ).map((slot) => ({ ...slot }));
+  const fallbackSlots =
+    sc.equipmentSlots.length > 0
+      ? sc.equipmentSlots
+      : hullSpec.defaultLoadouts?.basic ?? hullSpec.equipmentLoadout ?? [];
+  const baseEquipmentSlots = fallbackSlots.map((slot) => ({ ...slot }));
   const desired = worldState.getDesiredEquipmentSlotCounts(hullSpec);
   for (const [slotType, countRaw] of Object.entries(desired)) {
     const count = Math.max(0, Number(countRaw ?? 0));
@@ -448,19 +460,173 @@ export class WorldState {
     return this.worldFile.equipmentCatalog.find((item) => item.id === id) ?? null;
   }
 
+  getShipyardListing(id: string): ShipyardListing | null {
+    return this.worldFile.shipyardListings?.find((l) => l.id === id) ?? null;
+  }
+
+  /**
+   * Equipment slots for an NPC from hull `defaultLoadouts` (expanded to all hardpoints).
+   */
+  getNpcSpawnEquipmentSlots(hullSpecId: string, variant: HullLoadoutVariantKey = 'basic'): EquipmentSlot[] {
+    const hull = this.getHullSpec(hullSpecId);
+    if (!hull?.defaultLoadouts) {
+      return [];
+    }
+    const preset = hull.defaultLoadouts[variant] ?? hull.defaultLoadouts.basic;
+    return expandSlotsToFullHull(hull, preset.map((s) => ({ ...s })));
+  }
+
   getHullLoadout(
     hullClass: HullSpec['hullClass']
   ): { equipmentSlots: EquipmentSlot[]; weaponLoadout: WeaponSlot[] } {
-    const hull = this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass) ?? null;
-    const equipmentSlots = hull?.equipmentLoadout?.map((slot) => ({ ...slot })) ?? [];
-    const weaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(
-      equipmentSlots,
-      hull?.weaponSlots ?? 0
-    );
+    const hull =
+      this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass && candidate.defaultLoadouts) ??
+      this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass) ??
+      null;
+    if (!hull) {
+      return { equipmentSlots: [], weaponLoadout: [] };
+    }
+    const preset = hull.defaultLoadouts?.basic ?? hull.equipmentLoadout ?? [];
+    const equipmentSlots = expandSlotsToFullHull(hull, preset.map((slot) => ({ ...slot })));
+    const weaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(equipmentSlots, hull.weaponSlots);
     return {
       equipmentSlots,
       weaponLoadout
     };
+  }
+
+  getNpcSpawnPack(
+    hullSpecId: string,
+    variant: HullLoadoutVariantKey = 'basic'
+  ): { equipmentSlots: EquipmentSlot[]; weaponLoadout: WeaponSlot[] } {
+    const hull = this.getHullSpec(hullSpecId);
+    if (!hull) {
+      return { equipmentSlots: [], weaponLoadout: [] };
+    }
+    const equipmentSlots = this.getNpcSpawnEquipmentSlots(hullSpecId, variant);
+    return {
+      equipmentSlots,
+      weaponLoadout: deriveWeaponLoadoutFromEquipmentSlots(equipmentSlots, hull.weaponSlots)
+    };
+  }
+
+  getHullSlotCountForHull(hullSpecId: string, slotType: EquipmentSlot['slotType']): number {
+    const hull = this.getHullSpec(hullSpecId);
+    if (!hull) {
+      return 0;
+    }
+    const desired = this.getDesiredEquipmentSlotCounts(hull);
+    const raw = desired[slotType];
+    if (raw === undefined) {
+      return 0;
+    }
+    const count = Math.max(0, Math.floor(Number(raw)));
+    return slotType === 'weapon' ? Math.min(5, count) : count;
+  }
+
+  /**
+   * Atomically completes a shipyard purchase after customize flow validations.
+   */
+  confirmShipyardPurchase(input: {
+    landable: Landable;
+    listing: ShipyardListing;
+    /** Slots for the new hull (same shape as expandSlotsToFullHull output). */
+    finalEquipmentSlots: EquipmentSlot[];
+    slotOrigins: Map<string, 'new' | 'old'>;
+    storeEntries: ShipyardStoreEntry[];
+  }): PurchaseResult {
+    const { landable, listing, finalEquipmentSlots, slotOrigins, storeEntries } = input;
+    const newHull = this.getHullSpec(listing.hullSpecId);
+    if (!newHull) {
+      return { success: false, reason: 'Unknown hull' };
+    }
+    const ship = this.getPlayerShipState();
+    const oldHull = this.getHullSpec(ship.hullSpecId);
+    if (!oldHull) {
+      return { success: false, reason: 'Unknown current hull' };
+    }
+
+    if (listing.minReputation !== undefined && landable.factionId) {
+      if (this.getReputationForFaction(landable.factionId) < listing.minReputation) {
+        return { success: false, reason: 'Insufficient reputation for this listing' };
+      }
+    }
+
+    const expanded = expandSlotsToFullHull(newHull, finalEquipmentSlots.map((s) => ({ ...s })));
+    if (!customizeRequiredSlotsFilled(newHull, expanded)) {
+      return { success: false, reason: 'Required equipment slots must be filled' };
+    }
+
+    const hostile = landable.factionId ? this.getReputationTier(landable.factionId) === 'hostile' : false;
+    const breakdown = computeShipyardNetCost({
+      newHullPrice: newHull.price,
+      oldHullSellValue: oldHull.sellValue,
+      hostile,
+      newHull,
+      customizeShipSlots: expanded,
+      slotOrigins,
+      storeEntries,
+      getBuyPrice: (itemId) => {
+        const item = this.getEquipmentItem(itemId);
+        return item ? EquipmentStore.getBuyPrice(item, this, landable.factionId) : 0;
+      },
+      getSellPrice: (itemId) => {
+        const item = this.getEquipmentItem(itemId);
+        return item ? EquipmentStore.getSellPrice(item) : 0;
+      }
+    });
+
+    if (ship.credits < breakdown.netCost) {
+      return { success: false, reason: `Need ${Math.ceil(breakdown.netCost)}₢ (have ${Math.floor(ship.credits)}₢)` };
+    }
+
+    const cargoMass = ship.cargo.reduce((t, c) => t + c.weight, 0);
+    const cargoCheck = customizeCargoFitsNewHull(newHull, cargoMass);
+    if (!cargoCheck.ok) {
+      return {
+        success: false,
+        reason: `Cargo (${cargoCheck.cargoMass}t) exceeds new ship capacity (${cargoCheck.capacity}t). Sell or jettison cargo first.`
+      };
+    }
+
+    let installedMass = 0;
+    for (const slot of expanded) {
+      if (!slot.itemId) {
+        continue;
+      }
+      const item = this.getEquipmentItem(slot.itemId);
+      if (item) {
+        installedMass += item.mass;
+      }
+    }
+    if (installedMass > newHull.equipmentCapacity) {
+      return { success: false, reason: 'Installed equipment exceeds new hull capacity' };
+    }
+
+    const weaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(expanded, newHull.weaponSlots);
+    const fuelMax = this.getMaxFuelForSlots(expanded);
+    const shieldSlot = expanded.find((slot) => slot.slotType === 'shield' && slot.itemId);
+    const shieldItem = shieldSlot?.itemId ? this.getEquipmentItem(shieldSlot.itemId) : null;
+    const maxShieldHP = shieldItem?.type === 'shield' ? shieldItem.shieldHP : 0;
+    const jouleMax = this.getMaxJoulesForSlots(expanded);
+
+    this.updatePlayerShipState({
+      hullSpecId: newHull.id,
+      credits: ship.credits - breakdown.netCost,
+      equipmentSlots: expanded,
+      weaponLoadout,
+      currentHullHP: newHull.baseHP,
+      maxHullHP: newHull.baseHP,
+      armourLayers: deriveStarterArmourLayers(this, expanded),
+      currentShieldHP: maxShieldHP,
+      maxShieldHP,
+      shieldRebooting: false,
+      shieldRebootTimer: 0,
+      currentJoules: jouleMax,
+      fuel: fuelMax
+    });
+    this.saveToLocalStorage();
+    return { success: true, netCost: breakdown.netCost };
   }
 
   calculateShipValue(shipState: ShipState): number {

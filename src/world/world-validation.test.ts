@@ -214,4 +214,74 @@ describe('validateWorldFile', () => {
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('Fuel tank') && e.includes('positive'))).toBe(true);
   });
+
+  it('flags hull missing defaultLoadouts.raw', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs[0];
+    const { raw: _r, ...rest } = hull.defaultLoadouts;
+    hull.defaultLoadouts = rest as typeof hull.defaultLoadouts;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('missing defaultLoadouts.raw'))).toBe(true);
+  });
+
+  it('flags raw loadout with optional slot equipped', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs.find((h) => h.id === 'fighter_mk1')!;
+    hull.defaultLoadouts.raw = structuredClone(hull.defaultLoadouts.basic);
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('raw loadout must not equip optional'))).toBe(true);
+  });
+
+  it('flags basic loadout exceeding slot counts', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs.find((h) => h.id === 'fighter_mk1')!;
+    const wpn = w.equipmentCatalog.find((i) => i.type === 'weapon')!;
+    hull.defaultLoadouts.basic = [
+      ...hull.defaultLoadouts.basic,
+      { slotType: 'weapon' as const, itemId: wpn.id },
+      { slotType: 'weapon' as const, itemId: wpn.id },
+      { slotType: 'weapon' as const, itemId: wpn.id }
+    ];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('exceeds slotCounts'))).toBe(true);
+  });
+
+  it('flags shipyard listing referencing missing hull', () => {
+    const w = structuredClone(loadWorld());
+    w.shipyardListings[0].hullSpecId = 'no_such_hull';
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('Shipyard listing') && e.includes('unknown hullSpecId'))).toBe(true);
+  });
+
+  it('flags shipyard listing with empty required slot', () => {
+    const w = structuredClone(loadWorld());
+    const listing = w.shipyardListings.find((l) => l.hullSpecId === 'fighter_mk1')!;
+    listing.equipmentSlots = listing.equipmentSlots.map((s) =>
+      s.slotType === 'fuelTank' ? { ...s, itemId: null } : s
+    );
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('required slot') && e.includes('not filled'))).toBe(true);
+  });
+
+  it('flags shipyard listing with non-positive price', () => {
+    const w = structuredClone(loadWorld());
+    w.shipyardListings[0].price = 0;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('Shipyard listing') && e.includes('price > 0'))).toBe(true);
+  });
+
+  it('flags landable shipyard referencing missing listing id', () => {
+    const w = structuredClone(loadWorld());
+    const port = w.sectors.flatMap((s) => s.landables).find((l) => l.id === 'port_kaelen')!;
+    port.shipyard!.listingIds = ['no_such_listing'];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('unknown listing id'))).toBe(true);
+  });
+
+  it('flags spawn rule with invalid loadoutVariant', () => {
+    const w = structuredClone(loadWorld());
+    w.sectors[0].npcSpawnRules[0].loadoutVariant = 'elite' as 'basic';
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('Invalid loadoutVariant'))).toBe(true);
+  });
 });

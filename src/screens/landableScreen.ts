@@ -15,13 +15,22 @@ import {
   REPAIR_RATE_HULL
 } from '../constants';
 import type { ReputationTier, WorldState } from '../core/worldState';
+import {
+  computeShipyardNetCost,
+  customizeCargoFitsNewHull,
+  customizeRequiredSlotsFilled,
+  slotOriginKey,
+  type ShipyardItemOrigin,
+  type ShipyardStoreEntry
+} from '../shipyard/customize';
+import { expandSlotsToFullHull, findSlotIndex, getHullSlotCount, getSlotFromLayout } from '../shipyard/slotLayout';
 import type { EquipmentInstallSlotType } from '../core/worldState';
 import type { CompletedMission } from '../types';
 import type { Mission } from '../types';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
 import { drawStation } from '../renderer/landables/stationRenderer';
-import type { Landable } from '../types';
+import type { HullSpec, Landable, ShipyardListing } from '../types';
 import { emptyReductionProfile } from '../types';
 import type {
   ArmourItem,
@@ -119,6 +128,7 @@ export class LandableScreen implements Screen {
       | 'cancelSell'
       | 'clearStoreFilter';
     itemId?: string;
+    storeIndex?: number;
     slotType?: EquipmentInstallSlotType;
     slotIndex?: number;
     x: number;
@@ -138,6 +148,38 @@ export class LandableScreen implements Screen {
   private shipSlotsScrollPx = 0;
   private shipSlotsScrollMax = 0;
   private shipSlotsViewport: { x: number; y: number; width: number; height: number } | null = null;
+
+  private shipyardView: 'list' | 'customize' = 'list';
+  private shipyardCustomize: {
+    listing: ShipyardListing;
+    hull: HullSpec;
+    slots: EquipmentSlot[];
+    origins: Map<string, ShipyardItemOrigin>;
+    store: ShipyardStoreEntry[];
+  } | null = null;
+  private selectedCustomizeSlot: { slotType: EquipmentSlot['slotType']; slotIndex: number } | null = null;
+  private pendingCustomizePurchase: {
+    itemId: string;
+    storeIndex: number;
+    slotType: EquipmentSlot['slotType'];
+    slotIndex: number;
+  } | null = null;
+  private customizeSellPendingKey: string | null = null;
+  private shipyardListingRects: Array<{
+    listingId: string;
+    customize: { x: number; y: number; width: number; height: number };
+  }> = [];
+  private shipyardFooterRects: Array<{
+    action: 'confirmShipyard' | 'cancelShipyardCustomize';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> = [];
+  private static readonly SHIPYARD_LIST_ROW_STRIDE = 104;
+  private shipyardListScrollPx = 0;
+  private shipyardListScrollMax = 0;
+  private shipyardListViewport: { x: number; y: number; width: number; height: number } | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (this.pendingDeliveries.length > 0) {
@@ -162,7 +204,43 @@ export class LandableScreen implements Screen {
         return;
       }
     }
-    if (this.activeTab === 'equipmentStore' && this.canAccessService('equipmentStore')) {
+    if (
+      this.activeTab === 'shipyard' &&
+      this.shipyardView === 'list' &&
+      this.canAccessService('shipyard') &&
+      this.shipyardListScrollMax > 0
+    ) {
+      const step = 72;
+      const max = this.shipyardListScrollMax;
+      if (event.code === 'ArrowDown' || event.code === 'PageDown') {
+        event.preventDefault();
+        const delta = event.code === 'PageDown' ? step * 4 : step;
+        this.shipyardListScrollPx = Math.min(max, this.shipyardListScrollPx + delta);
+        return;
+      }
+      if (event.code === 'ArrowUp' || event.code === 'PageUp') {
+        event.preventDefault();
+        const delta = event.code === 'PageUp' ? step * 4 : step;
+        this.shipyardListScrollPx = Math.max(0, this.shipyardListScrollPx - delta);
+        return;
+      }
+      if (event.code === 'Home') {
+        event.preventDefault();
+        this.shipyardListScrollPx = 0;
+        return;
+      }
+      if (event.code === 'End') {
+        event.preventDefault();
+        this.shipyardListScrollPx = max;
+        return;
+      }
+    }
+    const customizeScroll =
+      this.activeTab === 'shipyard' &&
+      this.shipyardView === 'customize' &&
+      this.shipyardCustomize &&
+      this.canAccessService('shipyard');
+    if ((this.activeTab === 'equipmentStore' && this.canAccessService('equipmentStore')) || customizeScroll) {
       const step = 72;
       const storeMax = this.equipmentStoreScrollMax;
       const shipMax = this.shipSlotsScrollMax;
@@ -235,6 +313,10 @@ export class LandableScreen implements Screen {
         if (tab.id === 'equipmentStore') {
           this.equipmentStoreScrollPx = 0;
           this.shipSlotsScrollPx = 0;
+        }
+        if (tab.id === 'shipyard') {
+          this.shipyardView = 'list';
+          this.resetShipyardCustomize();
         }
         this.activeTab = tab.id;
         return;
@@ -321,6 +403,43 @@ export class LandableScreen implements Screen {
         return;
       }
     }
+    if (this.activeTab === 'shipyard' && this.canAccessService('shipyard')) {
+      for (const fr of this.shipyardFooterRects) {
+        if (!this.inRect(hit.x, hit.y, fr)) {
+          continue;
+        }
+        if (fr.action === 'cancelShipyardCustomize') {
+          this.resetShipyardCustomize();
+          return;
+        }
+        if (fr.action === 'confirmShipyard') {
+          this.applyShipyardPurchase();
+          return;
+        }
+      }
+      if (this.shipyardView === 'customize' && this.shipyardCustomize) {
+        for (const action of this.equipmentActionRects) {
+          if (!this.inRect(hit.x, hit.y, action)) {
+            continue;
+          }
+          this.handleCustomizeEquipmentAction(action);
+          return;
+        }
+      }
+      for (const row of this.shipyardListingRects) {
+        if (!this.inRect(hit.x, hit.y, row.customize)) {
+          continue;
+        }
+        if (this.shipyardListViewport && !this.inRect(hit.x, hit.y, this.shipyardListViewport)) {
+          continue;
+        }
+        const listing = this.worldState.getShipyardListing(row.listingId);
+        if (listing) {
+          this.openShipyardCustomize(listing);
+        }
+        return;
+      }
+    }
   };
 
   private readonly onMouseUp = (): void => {
@@ -339,7 +458,26 @@ export class LandableScreen implements Screen {
       }
       return;
     }
-    if (this.activeTab === 'equipmentStore' && this.canAccessService('equipmentStore')) {
+    if (
+      this.activeTab === 'shipyard' &&
+      this.shipyardView === 'list' &&
+      this.canAccessService('shipyard')
+    ) {
+      const pt = this.getCanvasPoint(event);
+      const vp = this.shipyardListViewport;
+      if (pt && vp && this.inRect(pt.x, pt.y, vp) && this.shipyardListScrollMax > 0) {
+        event.preventDefault();
+        const next = this.shipyardListScrollPx + event.deltaY;
+        this.shipyardListScrollPx = Math.max(0, Math.min(this.shipyardListScrollMax, next));
+        return;
+      }
+    }
+    const shipyardCustomizeScroll =
+      this.activeTab === 'shipyard' &&
+      this.shipyardView === 'customize' &&
+      this.shipyardCustomize &&
+      this.canAccessService('shipyard');
+    if ((this.activeTab === 'equipmentStore' && this.canAccessService('equipmentStore')) || shipyardCustomizeScroll) {
       const pt = this.getCanvasPoint(event);
       const shipVp = this.shipSlotsViewport;
       const storeVp = this.equipmentStoreViewport;
@@ -403,6 +541,7 @@ export class LandableScreen implements Screen {
     this.isSuppliesFuelHeld = false;
     this.isSuppliesChargeHeld = false;
     this.repairHold = 'none';
+    this.resetShipyardCustomize();
   }
 
   update(dt: number): void {
@@ -626,13 +765,19 @@ export class LandableScreen implements Screen {
       } else {
         this.renderRepair(ctx, contentX, contentY, contentWidth, contentHeight);
       }
+    } else if (this.activeTab === 'shipyard') {
+      if (!this.canAccessService('shipyard')) {
+        this.renderAccessDenied(ctx, contentX, contentY);
+      } else {
+        this.renderShipyardContent(ctx, contentX, contentY, contentWidth, contentHeight);
+      }
     } else if (this.activeTab === 'equipmentStore') {
       if (!this.canAccessService('equipmentStore')) {
         this.renderAccessDenied(ctx, contentX, contentY);
       } else {
         this.renderEquipmentStore(ctx, contentX, contentY, contentWidth, contentHeight);
       }
-    } else if (this.activeTab === 'shipyard' || this.activeTab === 'trainingSimulator') {
+    } else if (this.activeTab === 'trainingSimulator') {
       if (!this.canAccessService(this.activeTab)) {
         this.renderAccessDenied(ctx, contentX, contentY);
       } else {
@@ -1311,7 +1456,11 @@ export class LandableScreen implements Screen {
   }
 
   private hasService(serviceType: ServiceType): boolean {
-
+    if (serviceType === 'shipyard') {
+      const listingCount = this.landable.shipyard?.listingIds?.length ?? 0;
+      const hasShipyardService = this.landable.services.some((service) => service.type === 'shipyard');
+      return listingCount > 0 || hasShipyardService;
+    }
     return this.landable.services.some((service) => service.type === serviceType);
   }
 
@@ -1331,6 +1480,7 @@ export class LandableScreen implements Screen {
       case 'equipmentStore':
         return tier !== 'hostile';
       case 'shipyard':
+        return tier !== 'hostile';
       case 'trainingSimulator':
         return tier !== 'hostile' && tier !== 'unfriendly';
       default:
@@ -1370,7 +1520,11 @@ export class LandableScreen implements Screen {
     ctx.fillText(labels[tabId].toUpperCase(), x, y);
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    ctx.fillText('Service terminal linked. Full interaction arrives in a later session.', x, y + 34);
+    ctx.fillText(
+      'Training scenarios and scoring are not wired yet — this tab is only a stub for now.',
+      x,
+      y + 34
+    );
   }
 
   private renderDeliveryNotifications(ctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
@@ -2281,6 +2435,818 @@ export class LandableScreen implements Screen {
     }
     if (line) {
       ctx.fillText(line, x, lineY);
+    }
+  }
+
+  private resetShipyardCustomize(): void {
+    this.shipyardCustomize = null;
+    this.shipyardView = 'list';
+    this.selectedCustomizeSlot = null;
+    this.pendingCustomizePurchase = null;
+    this.customizeSellPendingKey = null;
+    this.equipmentActionRects = [];
+    this.shipyardFooterRects = [];
+    this.equipmentStoreScrollPx = 0;
+    this.shipSlotsScrollPx = 0;
+    this.shipyardListScrollPx = 0;
+  }
+
+  private openShipyardCustomize(listing: ShipyardListing): void {
+    const hull = this.worldState.getHullSpec(listing.hullSpecId);
+    if (!hull) {
+      return;
+    }
+    const slots = expandSlotsToFullHull(hull, listing.equipmentSlots.map((s) => ({ ...s })));
+    const origins = new Map<string, ShipyardItemOrigin>();
+    for (const st of Object.keys(hull.slotCounts ?? {}) as EquipmentSlot['slotType'][]) {
+      const n = getHullSlotCount(hull, st);
+      for (let i = 0; i < n; i += 1) {
+        const sl = getSlotFromLayout(slots, hull, st, i);
+        if (sl?.itemId) {
+          origins.set(slotOriginKey(st, i), 'new');
+        }
+      }
+    }
+    const store: ShipyardStoreEntry[] = [];
+    const ship = this.worldState.getPlayerShipState();
+    for (const s of ship.equipmentSlots) {
+      if (s.itemId) {
+        store.push({ itemId: s.itemId, origin: 'old' });
+      }
+    }
+    this.shipyardCustomize = { listing, hull, slots, origins, store };
+    this.shipyardView = 'customize';
+    this.selectedCustomizeSlot = null;
+    this.pendingCustomizePurchase = null;
+    this.customizeSellPendingKey = null;
+    this.equipmentStoreScrollPx = 0;
+    this.shipSlotsScrollPx = 0;
+  }
+
+  private customizeHullSlotExists(slotType: EquipmentSlot['slotType'], slotIndex: number): boolean {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return false;
+    }
+    return slotIndex >= 0 && slotIndex < getHullSlotCount(c.hull, slotType);
+  }
+
+  private getCustomizeSlot(slotType: EquipmentSlot['slotType'], slotIndex: number): EquipmentSlot | null {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return null;
+    }
+    return getSlotFromLayout(c.slots, c.hull, slotType, slotIndex);
+  }
+
+  private customizeInstalledMass(): number {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return 0;
+    }
+    return c.slots.reduce((total, slot) => {
+      if (!slot.itemId) {
+        return total;
+      }
+      return total + (this.worldState.getEquipmentItem(slot.itemId)?.mass ?? 0);
+    }, 0);
+  }
+
+  private customizeCanSellSlot(slotType: EquipmentSlot['slotType'], slotIndex: number): boolean {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return false;
+    }
+    if (!this.isRequiredSlotType(slotType)) {
+      return true;
+    }
+    const filled = c.slots.filter((s) => s.slotType === slotType && s.itemId !== null).length;
+    return filled > 1;
+  }
+
+  private customizeStorePurchasePassesResources(item: EquipmentItem, occupying: EquipmentItem | null): boolean {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return false;
+    }
+    const massDelta = item.mass - (occupying?.mass ?? 0);
+    return this.customizeInstalledMass() + massDelta <= (c.hull.equipmentCapacity ?? 0);
+  }
+
+  private getCustomizeCostBreakdown() {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return null;
+    }
+    const hostile = this.isHostileAtLandable();
+    const oldHull = this.worldState.getHullSpec(this.worldState.getPlayerShipState().hullSpecId);
+    return computeShipyardNetCost({
+      newHullPrice: c.hull.price,
+      oldHullSellValue: oldHull?.sellValue ?? 0,
+      hostile,
+      newHull: c.hull,
+      customizeShipSlots: c.slots,
+      slotOrigins: c.origins,
+      storeEntries: c.store,
+      getBuyPrice: (itemId) => {
+        const it = this.worldState.getEquipmentItem(itemId);
+        return it ? EquipmentStore.getBuyPrice(it, this.worldState, this.landable.factionId) : 0;
+      },
+      getSellPrice: (itemId) => {
+        const it = this.worldState.getEquipmentItem(itemId);
+        return it ? EquipmentStore.getSellPrice(it) : 0;
+      }
+    });
+  }
+
+  private applyShipyardPurchase(): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    const ship = this.worldState.getPlayerShipState();
+    const cargoMass = ship.cargo.reduce((t, x) => t + x.weight, 0);
+    const cargoOk = customizeCargoFitsNewHull(c.hull, cargoMass);
+    if (!cargoOk.ok) {
+      this.setEquipmentFlash(
+        `Cargo (${cargoOk.cargoMass}t) exceeds new ship capacity (${cargoOk.capacity}t). Sell or jettison cargo first.`,
+        null
+      );
+      return;
+    }
+    if (!customizeRequiredSlotsFilled(c.hull, c.slots)) {
+      this.setEquipmentFlash('Required equipment slots must be filled', null);
+      return;
+    }
+    const bd = this.getCustomizeCostBreakdown();
+    if (!bd || ship.credits < bd.netCost) {
+      this.setEquipmentFlash(`Need ${Math.ceil(bd?.netCost ?? 0)}₢ (have ${Math.floor(ship.credits)}₢)`, null);
+      return;
+    }
+    const result = this.worldState.confirmShipyardPurchase({
+      landable: this.landable,
+      listing: c.listing,
+      finalEquipmentSlots: c.slots,
+      slotOrigins: c.origins,
+      storeEntries: c.store
+    });
+    if (!result.success) {
+      this.setEquipmentFlash(result.reason, null);
+      return;
+    }
+    const hullName = c.hull.name;
+    this.resetShipyardCustomize();
+    this.setEquipmentFlash(`Purchased ${hullName}`, null);
+  }
+
+  private listingDisplayPrice(listing: ShipyardListing): number {
+    return this.isHostileAtLandable() ? listing.price * 2 : listing.price;
+  }
+
+  private formatListingEquipmentSummary(listing: ShipyardListing): string {
+    const hull = this.worldState.getHullSpec(listing.hullSpecId);
+    if (!hull) {
+      return '';
+    }
+    const counts = new Map<string, number>();
+    for (const s of listing.equipmentSlots) {
+      if (!s.itemId) {
+        continue;
+      }
+      const it = this.worldState.getEquipmentItem(s.itemId);
+      if (!it) {
+        continue;
+      }
+      counts.set(it.name, (counts.get(it.name) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([name, n]) => (n > 1 ? `${n}× ${name}` : name))
+      .slice(0, 6)
+      .join(', ');
+  }
+
+  private renderShipyardContent(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    if (this.shipyardView === 'customize' && this.shipyardCustomize) {
+      this.renderShipyardCustomize(ctx, x, y, width, height);
+      return;
+    }
+    this.renderShipyardList(ctx, x, y, width, height);
+  }
+
+  private renderShipyardList(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    this.shipyardListingRects = [];
+    this.shipyardListViewport = null;
+    this.shipyardListScrollMax = 0;
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('SHIPYARD', x, y);
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillText('Hulls for sale — pick a package, then customize hardpoints before purchase.', x, y + 22);
+    ctx.fillStyle = COLOURS.CREDITS;
+    ctx.font = "14px 'Courier New', monospace";
+    const ship = this.worldState.getPlayerShipState();
+    ctx.fillText(`Credits: ${Math.round(ship.credits).toLocaleString()} ₢`, x + width - 220, y + 2);
+    if (this.isHostileAtLandable()) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText('Hostile pricing: listing prices doubled.', x, y + 44);
+    }
+    const headerEnd = y + (this.isHostileAtLandable() ? 68 : 52);
+    const ids = this.landable.shipyard?.listingIds ?? [];
+    if (ids.length === 0) {
+      ctx.fillStyle = COLOURS.WARNING;
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillText(
+        'This station has no hull listings. Add a `shipyard` block with `listingIds` on this landable in the world JSON.',
+        x,
+        headerEnd
+      );
+      return;
+    }
+    const validListings = ids
+      .map((lid) => this.worldState.getShipyardListing(lid))
+      .filter((l): l is ShipyardListing => l !== null);
+    if (validListings.length === 0) {
+      ctx.fillStyle = COLOURS.WARNING;
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillText(
+        'Listing ids are set on this station, but none match `shipyardListings` in the loaded world file.',
+        x,
+        headerEnd
+      );
+      return;
+    }
+
+    const listTop = headerEnd;
+    const listHeight = Math.max(0, y + height - listTop);
+    const rowStride = LandableScreen.SHIPYARD_LIST_ROW_STRIDE;
+    const contentHeight = validListings.length * rowStride;
+    this.shipyardListScrollMax = Math.max(0, contentHeight - listHeight);
+    this.shipyardListScrollPx = Math.min(this.shipyardListScrollPx, this.shipyardListScrollMax);
+    this.shipyardListViewport = { x, y: listTop, width, height: listHeight };
+
+    const gutter = this.shipyardListScrollMax > 0 ? 12 : 0;
+    const rowW = width - gutter;
+    const vpTop = listTop;
+    const vpBottom = listTop + listHeight;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, listTop, width, listHeight);
+    ctx.clip();
+
+    for (let i = 0; i < validListings.length; i += 1) {
+      const listing = validListings[i]!;
+      const rowY = listTop + i * rowStride - this.shipyardListScrollPx;
+      const hull = this.worldState.getHullSpec(listing.hullSpecId);
+      const title = listing.name ?? hull?.name ?? listing.hullSpecId;
+      const price = this.listingDisplayPrice(listing);
+      const factionId = this.landable.factionId;
+      const repOk =
+        listing.minReputation === undefined ||
+        !factionId ||
+        this.worldState.getReputationForFaction(factionId) >= listing.minReputation;
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(x, rowY, rowW, 96);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "15px 'Courier New', monospace";
+      ctx.fillText(title, x + 10, rowY + 8);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(this.formatListingEquipmentSummary(listing), x + 10, rowY + 32);
+      ctx.fillStyle = COLOURS.CREDITS;
+      ctx.fillText(`Price: ${Math.round(price).toLocaleString()} ₢`, x + 10, rowY + 56);
+      if (!repOk) {
+        ctx.fillStyle = COLOURS.WARNING;
+        ctx.font = "11px 'Courier New', monospace";
+        const fname = this.worldState.getFaction(factionId ?? '')?.name ?? 'faction';
+        ctx.fillText(`Locked: requires rep ${listing.minReputation}+ with ${fname}`, x + 200, rowY + 58);
+      }
+      const btn = { x: x + rowW - 168, y: rowY + 52, width: 150, height: 28 };
+      this.drawButton(ctx, btn, '[ Customize & Buy ]', repOk);
+      if (repOk) {
+        const cardTop = rowY;
+        const cardBottom = rowY + 96;
+        if (cardBottom > vpTop && cardTop < vpBottom) {
+          this.shipyardListingRects.push({ listingId: listing.id, customize: btn });
+        }
+      }
+    }
+
+    ctx.restore();
+
+    if (this.shipyardListScrollMax > 0) {
+      const sbX = x + width - 10;
+      const sbW = 6;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(sbX, listTop, sbW, listHeight);
+      const thumbH = Math.max(24, (listHeight / contentHeight) * listHeight);
+      const travel = Math.max(1, listHeight - thumbH);
+      const t =
+        this.shipyardListScrollMax > 0 ? this.shipyardListScrollPx / this.shipyardListScrollMax : 0;
+      const thumbY = listTop + t * travel;
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillRect(sbX + 1, thumbY + 1, sbW - 2, thumbH - 2);
+    }
+  }
+
+  private renderShipyardCustomize(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    this.equipmentActionRects = [];
+    this.shipyardFooterRects = [];
+    const ship = this.worldState.getPlayerShipState();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText(`CUSTOMIZE — ${c.hull.name}`, x, y);
+    ctx.fillStyle = COLOURS.CREDITS;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText(`Credits: ${Math.round(ship.credits).toLocaleString()} ₢`, x + width - 240, y + 2);
+    const bd = this.getCustomizeCostBreakdown();
+    if (bd) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "11px 'Courier New', monospace";
+      const lines = [
+        `New hull: ${bd.newHullCredits.toLocaleString()} ₢`,
+        `Kept new equipment: ${bd.keptNewEquipmentCredits.toLocaleString()} ₢`,
+        `Old hull trade-in: −${bd.oldHullTradeInCredits.toLocaleString()} ₢`,
+        `Old equipment trade-in: −${bd.oldEquipmentTradeInCredits.toLocaleString()} ₢`
+      ];
+      let ly = y + 26;
+      for (const line of lines) {
+        ctx.fillText(line, x, ly);
+        ly += 14;
+      }
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillText(`Net cost: ${Math.round(bd.netCost).toLocaleString()} ₢`, x, ly + 4);
+    }
+    const cargoMass = ship.cargo.reduce((t, it) => t + it.weight, 0);
+    const cargoChk = customizeCargoFitsNewHull(c.hull, cargoMass);
+    if (!cargoChk.ok) {
+      ctx.fillStyle = COLOURS.DANGER;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(
+        `Cargo (${cargoChk.cargoMass}t) exceeds new ship capacity (${cargoChk.capacity}t). Sell or jettison cargo first.`,
+        x + 320,
+        y + 26
+      );
+    }
+    const topY = y + (bd ? 110 : 86);
+    this.renderEquipmentCapacityBarForCustomize(ctx, x, topY, width - 8);
+    const leftW = Math.floor((width - 24) * 0.48);
+    const rightX = x + leftW + 24;
+    const rightW = width - leftW - 24;
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillText('NEW SHIP', x, topY + 38);
+    ctx.fillText('STORE (trade-ins / removed)', rightX, topY + 38);
+    const statusH = this.renderShipPowerStatusForCustomize(ctx, x, topY + 60, leftW);
+    const shipPanelTop = topY + 60 + statusH + 6;
+    const shipPanelH = Math.max(80, y + height - 52 - shipPanelTop);
+    this.renderCustomizeShipSlotsPanel(ctx, x, shipPanelTop, leftW, shipPanelH);
+    this.renderCustomizeStorePanel(ctx, rightX, shipPanelTop, rightW, shipPanelH);
+    const reqOk = customizeRequiredSlotsFilled(c.hull, c.slots);
+    const creditsOk = bd ? ship.credits >= bd.netCost : false;
+    const cargoOk = cargoChk.ok;
+    const canConfirm = reqOk && creditsOk && cargoOk;
+    const cancelBtn = { x: x + width - 300, y: y + height - 40, width: 130, height: 30 };
+    const okBtn = { x: x + width - 160, y: y + height - 40, width: 140, height: 30 };
+    this.drawButton(ctx, cancelBtn, '[ CANCEL ]', true);
+    this.drawButton(ctx, okBtn, '[ CONFIRM ]', canConfirm);
+    this.shipyardFooterRects.push({ action: 'cancelShipyardCustomize', ...cancelBtn });
+    this.shipyardFooterRects.push({ action: 'confirmShipyard', ...okBtn });
+  }
+
+  private renderEquipmentCapacityBarForCustomize(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number
+  ): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    const used = this.customizeInstalledMass();
+    const cap = c.hull.equipmentCapacity ?? 0;
+    const ratio = cap > 0 ? Math.min(1, used / cap) : 0;
+    const colour = ratio >= 0.9 ? COLOURS.DANGER : ratio >= 0.75 ? COLOURS.WARNING : COLOURS.SAFE;
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.strokeRect(x, y, width, 14);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x + 1, y + 1, (width - 2) * ratio, 12);
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillText(`Equip capacity  ${Math.round(used)} / ${Math.round(cap)} mass`, x, y + 18);
+  }
+
+  private renderShipPowerStatusForCustomize(
+    ctx: CanvasRenderingContext2D,
+    bx: number,
+    by: number,
+    panelW: number
+  ): number {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return 0;
+    }
+    const reactorSlot = c.slots.find((s) => s.slotType === 'reactor' && s.itemId);
+    const shieldSlot = c.slots.find((s) => s.slotType === 'shield' && s.itemId);
+    const reactor = reactorSlot?.itemId ? this.worldState.getEquipmentItem(reactorSlot.itemId) : null;
+    const shield = shieldSlot?.itemId ? this.worldState.getEquipmentItem(shieldSlot.itemId) : null;
+    const lineH = 15;
+    let line = 0;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.font = "11px 'Courier New', monospace";
+    if (!reactor || reactor.type !== 'reactor') {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText('REACTOR  ○ OFFLINE', bx, by + line * lineH);
+    } else {
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillText(`REACTOR  ●  ${reactor.name}`, bx, by + line * lineH);
+    }
+    line += 1;
+    if (!shield || shield.type !== 'shield') {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText('SHIELD  ○ OFFLINE', bx, by + line * lineH);
+    } else {
+      ctx.fillStyle = COLOURS.SAFE;
+      ctx.fillText(`SHIELD  ●  ${shield.name}`, bx, by + line * lineH);
+    }
+    line += 1;
+    return line * lineH + 6;
+  }
+
+  private getCustomizeShipSlotsPanelContentHeight(): number {
+    let h = 0;
+    for (const group of LandableScreen.EQUIPMENT_SHIP_SLOT_GROUPS) {
+      const c = this.shipyardCustomize;
+      if (!c) {
+        return 0;
+      }
+      const count = getHullSlotCount(c.hull, group.slotType);
+      h += count === 0 ? 88 : count * 88;
+    }
+    return h;
+  }
+
+  private renderCustomizeShipSlotsPanel(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    this.shipSlotsViewport = { x, y, width, height };
+    const contentHeight = this.getCustomizeShipSlotsPanelContentHeight();
+    this.shipSlotsScrollMax = Math.max(0, contentHeight - height);
+    this.shipSlotsScrollPx = Math.min(this.shipSlotsScrollPx, this.shipSlotsScrollMax);
+    const gutter = this.shipSlotsScrollMax > 0 ? 12 : 0;
+    const panelW = width - gutter;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.clip();
+    let off = 0;
+    for (const group of LandableScreen.EQUIPMENT_SHIP_SLOT_GROUPS) {
+      const count = getHullSlotCount(c.hull, group.slotType);
+      if (count === 0) {
+        off += 88;
+        continue;
+      }
+      for (let idx = 0; idx < count; idx += 1) {
+        const lineY = y + off - this.shipSlotsScrollPx;
+        const cardY = y + off + 14 - this.shipSlotsScrollPx;
+        const cardH = 66;
+        const slot = this.getCustomizeSlot(group.slotType, idx);
+        const item = slot?.itemId ? this.worldState.getEquipmentItem(slot.itemId) : null;
+        const sel = this.selectedCustomizeSlot;
+        const isSelectedSlot =
+          !!sel && group.slotType === sel.slotType && idx === sel.slotIndex && this.customizeHullSlotExists(sel.slotType, sel.slotIndex);
+        ctx.fillStyle = COLOURS.UI_SECONDARY;
+        ctx.font = "12px 'Courier New', monospace";
+        ctx.fillText(`${group.label.toUpperCase()}${group.slotType === 'weapon' ? ` ${idx + 1}` : ''}`, x, lineY);
+        ctx.strokeStyle = COLOURS.STAR_DIM;
+        ctx.strokeRect(x, cardY, panelW, cardH);
+        const okey = slotOriginKey(group.slotType, idx);
+        const origin = c.origins.get(okey);
+        if (item) {
+          ctx.fillStyle = COLOURS.UI_PRIMARY;
+          ctx.font = "12px 'Courier New', monospace";
+          ctx.fillText(`${item.name} (T${item.tier})`, x + 8, cardY + 8);
+          ctx.fillStyle = origin === 'new' ? COLOURS.SAFE : COLOURS.WARNING;
+          ctx.font = "10px 'Courier New', monospace";
+          ctx.fillText(origin === 'new' ? '[NEW]' : '[OLD]', x + panelW - 44, cardY + 10);
+          ctx.fillStyle = COLOURS.UI_SECONDARY;
+          ctx.font = "12px 'Courier New', monospace";
+          ctx.fillText(this.formatEquipmentStats(item).join('  '), x + 8, cardY + 26);
+          const canSell = this.customizeCanSellSlot(group.slotType, idx);
+          if (canSell) {
+            const sell = EquipmentStore.getSellPrice(item);
+            ctx.fillStyle = COLOURS.CREDITS;
+            ctx.fillText(`Sell: ${sell} ₢`, x + 8, cardY + 44);
+            const pendingKey = `${group.slotType}:${idx}`;
+            if (this.customizeSellPendingKey === pendingKey) {
+              const yes = { x: x + panelW - 196, y: cardY + 34, width: 90, height: 24 };
+              const no = { x: x + panelW - 98, y: cardY + 34, width: 90, height: 24 };
+              this.drawButton(ctx, yes, '[ YES ]', true);
+              this.drawButton(ctx, no, '[ NO ]', true);
+              this.equipmentActionRects.push({ action: 'confirmSell', slotType: group.slotType, slotIndex: idx, ...yes });
+              this.equipmentActionRects.push({ action: 'cancelSell', slotType: group.slotType, slotIndex: idx, ...no });
+            } else {
+              const browseBtn = { x: x + panelW - 168, y: cardY + 34, width: 80, height: 22 };
+              const sellBtn = { x: x + panelW - 84, y: cardY + 34, width: 80, height: 22 };
+              this.drawButton(ctx, browseBtn, '[ BROWSE ]', true);
+              this.drawButton(ctx, sellBtn, '[ SELL ]', true);
+              this.equipmentActionRects.push({ action: 'selectSlot', slotType: group.slotType, slotIndex: idx, ...browseBtn });
+              this.equipmentActionRects.push({ action: 'sell', slotType: group.slotType, slotIndex: idx, ...sellBtn });
+            }
+          } else {
+            const browseBtn = { x: x + panelW - 102, y: cardY + 34, width: 96, height: 24 };
+            this.drawButton(ctx, browseBtn, '[ BROWSE ]', true);
+            this.equipmentActionRects.push({ action: 'selectSlot', slotType: group.slotType, slotIndex: idx, ...browseBtn });
+          }
+        } else {
+          ctx.fillStyle = COLOURS.STAR_MID;
+          ctx.fillText('— empty —', x + 8, cardY + 22);
+          const browseBtn = { x: x + panelW - 102, y: cardY + 34, width: 96, height: 24 };
+          this.drawButton(ctx, browseBtn, '[ BROWSE ]', true);
+          this.equipmentActionRects.push({ action: 'selectSlot', slotType: group.slotType, slotIndex: idx, ...browseBtn });
+        }
+        if (isSelectedSlot) {
+          ctx.save();
+          ctx.strokeStyle = COLOURS.WARNING;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 1, cardY + 1, panelW - 2, cardH - 2);
+          ctx.restore();
+        }
+        off += 88;
+      }
+    }
+    ctx.restore();
+    if (this.shipSlotsScrollMax > 0) {
+      const sbX = x + width - 10;
+      const sbW = 6;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(sbX, y, sbW, height);
+      const thumbH = Math.max(24, (height / contentHeight) * height);
+      const travel = Math.max(1, height - thumbH);
+      const t = this.shipSlotsScrollMax > 0 ? this.shipSlotsScrollPx / this.shipSlotsScrollMax : 0;
+      const thumbY = y + t * travel;
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillRect(sbX + 1, thumbY + 1, sbW - 2, thumbH - 2);
+    }
+  }
+
+  private renderCustomizeStorePanel(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    const ship = this.worldState.getPlayerShipState();
+    this.equipmentStoreViewport = { x, y, width, height };
+    const selection = this.selectedCustomizeSlot;
+    const selectionValid =
+      !!selection && this.customizeHullSlotExists(selection.slotType, selection.slotIndex);
+    const hostile = this.isHostileAtLandable();
+    const rows = c.store
+      .map((entry, storeIndex) => ({ entry, storeIndex, item: this.worldState.getEquipmentItem(entry.itemId) }))
+      .filter((r): r is { entry: ShipyardStoreEntry; storeIndex: number; item: EquipmentItem } => !!r.item)
+      .filter((r) => !selectionValid || this.matchesSlotSelection(r.item, selection!.slotType));
+    const cardH = 88;
+    const rowGap = 8;
+    const rowStride = cardH + rowGap;
+    const contentHeight = rows.length > 0 ? (rows.length - 1) * rowStride + cardH : 0;
+    this.equipmentStoreScrollMax = Math.max(0, contentHeight - height);
+    this.equipmentStoreScrollPx = Math.min(this.equipmentStoreScrollPx, this.equipmentStoreScrollMax);
+    const gutter = this.equipmentStoreScrollMax > 0 ? 12 : 0;
+    const storeW = width - gutter;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.clip();
+    for (let i = 0; i < rows.length; i += 1) {
+      const { item, entry, storeIndex } = rows[i]!;
+      const cardY = y + i * rowStride - this.equipmentStoreScrollPx;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(x, cardY, storeW, cardH);
+      ctx.fillStyle = COLOURS.UI_PRIMARY;
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillText(`${item.name}  Tier ${item.tier}`, x + 8, cardY + 8);
+      ctx.fillStyle = entry.origin === 'new' ? COLOURS.SAFE : COLOURS.WARNING;
+      ctx.font = "10px 'Courier New', monospace";
+      ctx.fillText(entry.origin === 'new' ? '[NEW]' : '[OLD]', x + storeW - 52, cardY + 10);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(this.formatEquipmentStats(item).join('  '), x + 8, cardY + 28);
+      if (!selectionValid) {
+        ctx.fillStyle = COLOURS.UI_SECONDARY;
+        ctx.font = "10px 'Courier New', monospace";
+        ctx.fillText('Browse a ship slot to install or swap.', x + 8, cardY + 52, storeW - 16);
+        continue;
+      }
+      const existing = this.getCustomizeSlot(selection!.slotType, selection!.slotIndex)?.itemId
+        ? this.worldState.getEquipmentItem(this.getCustomizeSlot(selection!.slotType, selection!.slotIndex)!.itemId!)
+        : null;
+      const buyBase = EquipmentStore.getBuyPrice(item, this.worldState, this.landable.factionId);
+      const buy = entry.origin === 'new' ? (hostile ? buyBase * 2 : buyBase) : 0;
+      const sellOldBase = existing ? EquipmentStore.getSellPrice(existing) : 0;
+      const sellOld = hostile ? sellOldBase * 0.5 : sellOldBase;
+      const net = buy - sellOld;
+      const creditsOkForRow = net <= 0 || ship.credits >= net;
+      ctx.fillStyle = COLOURS.CREDITS;
+      ctx.font = "12px 'Courier New', monospace";
+      if (entry.origin === 'new') {
+        ctx.fillText(`Buy: ${buyBase} ₢${hostile ? ' ×2' : ''}  Trade-in: ${sellOldBase} ₢`, x + 8, cardY + 46);
+      } else {
+        ctx.fillText(`Transfer  Trade-in slot value: ${sellOldBase} ₢`, x + 8, cardY + 46);
+      }
+      ctx.fillStyle = net <= 0 ? COLOURS.SAFE : COLOURS.UI_PRIMARY;
+      ctx.fillText(`Net: ${Math.round(net)} ₢`, x + 8, cardY + 62);
+      const resourcesOk = this.customizeStorePurchasePassesResources(item, existing);
+      const canPurchase = existing?.id !== item.id && resourcesOk && creditsOkForRow;
+      const action = this.getStoreActionLabel(item, existing);
+      const btn = { x: x + storeW - 118, y: cardY + 54, width: 108, height: 26 };
+      const isPending =
+        selectionValid &&
+        this.pendingCustomizePurchase?.storeIndex === storeIndex &&
+        this.pendingCustomizePurchase.slotType === selection?.slotType &&
+        this.pendingCustomizePurchase.slotIndex === selection?.slotIndex;
+      if (isPending) {
+        const yes = { x: x + storeW - 226, y: cardY + 54, width: 100, height: 26 };
+        const no = { x: x + storeW - 118, y: cardY + 54, width: 100, height: 26 };
+        this.drawButton(ctx, yes, '[ CONFIRM ]', true);
+        this.drawButton(ctx, no, '[ CANCEL ]', true);
+        this.equipmentActionRects.push({
+          action: 'confirmPurchase',
+          itemId: item.id,
+          storeIndex,
+          slotType: selection!.slotType,
+          slotIndex: selection!.slotIndex,
+          ...yes
+        });
+        this.equipmentActionRects.push({
+          action: 'cancelPurchase',
+          itemId: item.id,
+          storeIndex,
+          ...no
+        });
+      } else {
+        this.drawButton(ctx, btn, action, canPurchase);
+        if (canPurchase && selection) {
+          this.equipmentActionRects.push({
+            action: 'purchase',
+            itemId: item.id,
+            storeIndex,
+            slotType: selection.slotType,
+            slotIndex: selection.slotIndex,
+            ...btn
+          });
+        }
+      }
+    }
+    ctx.restore();
+    if (this.equipmentStoreScrollMax > 0) {
+      const sbX = x + width - 10;
+      const sbW = 6;
+      ctx.strokeStyle = COLOURS.STAR_DIM;
+      ctx.strokeRect(sbX, y, sbW, height);
+      const thumbH = Math.max(24, (height / contentHeight) * height);
+      const travel = Math.max(1, height - thumbH);
+      const t = this.equipmentStoreScrollMax > 0 ? this.equipmentStoreScrollPx / this.equipmentStoreScrollMax : 0;
+      const thumbY = y + t * travel;
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillRect(sbX + 1, thumbY + 1, sbW - 2, thumbH - 2);
+    }
+  }
+
+  private handleCustomizeEquipmentAction(action: {
+    action: string;
+    itemId?: string;
+    storeIndex?: number;
+    slotType?: EquipmentInstallSlotType;
+    slotIndex?: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }): void {
+    const c = this.shipyardCustomize;
+    if (!c) {
+      return;
+    }
+    if (action.action === 'selectSlot' && action.slotType && action.slotIndex !== undefined) {
+      const st = action.slotType as EquipmentSlot['slotType'];
+      if (!this.customizeHullSlotExists(st, action.slotIndex)) {
+        return;
+      }
+      this.selectedCustomizeSlot = { slotType: st, slotIndex: action.slotIndex };
+      this.pendingCustomizePurchase = null;
+      this.equipmentStoreScrollPx = 0;
+      return;
+    }
+    if (action.action === 'purchase' && action.itemId && action.storeIndex !== undefined && action.slotType && action.slotIndex !== undefined) {
+      const st = action.slotType as EquipmentSlot['slotType'];
+      if (!this.customizeHullSlotExists(st, action.slotIndex)) {
+        return;
+      }
+      this.pendingCustomizePurchase = {
+        itemId: action.itemId,
+        storeIndex: action.storeIndex,
+        slotType: st,
+        slotIndex: action.slotIndex
+      };
+      return;
+    }
+    if (action.action === 'confirmPurchase' && this.pendingCustomizePurchase) {
+      const p = this.pendingCustomizePurchase;
+      const storeRow = c.store[p.storeIndex];
+      if (!storeRow || storeRow.itemId !== p.itemId) {
+        this.pendingCustomizePurchase = null;
+        return;
+      }
+      const item = this.worldState.getEquipmentItem(p.itemId);
+      if (!item) {
+        this.pendingCustomizePurchase = null;
+        return;
+      }
+      if (!this.matchesSlotSelection(item, p.slotType)) {
+        this.pendingCustomizePurchase = null;
+        return;
+      }
+      const arrIdx = findSlotIndex(c.slots, p.slotType, p.slotIndex);
+      if (arrIdx < 0) {
+        this.pendingCustomizePurchase = null;
+        return;
+      }
+      const okey = slotOriginKey(p.slotType, p.slotIndex);
+      const prevId = c.slots[arrIdx].itemId;
+      const prevOrigin = prevId ? (c.origins.get(okey) ?? 'old') : undefined;
+      c.slots[arrIdx] = { slotType: p.slotType, itemId: p.itemId };
+      c.origins.set(okey, storeRow.origin);
+      c.store.splice(p.storeIndex, 1);
+      if (prevId && prevOrigin) {
+        c.store.push({ itemId: prevId, origin: prevOrigin });
+      }
+      this.pendingCustomizePurchase = null;
+      return;
+    }
+    if (action.action === 'cancelPurchase') {
+      this.pendingCustomizePurchase = null;
+      return;
+    }
+    if (action.action === 'sell' && action.slotType && action.slotIndex !== undefined) {
+      this.customizeSellPendingKey = `${action.slotType}:${action.slotIndex}`;
+      return;
+    }
+    if (action.action === 'confirmSell' && action.slotType && action.slotIndex !== undefined) {
+      const st = action.slotType as EquipmentSlot['slotType'];
+      const idx = action.slotIndex;
+      const arrIdx = findSlotIndex(c.slots, st, idx);
+      if (arrIdx < 0) {
+        this.customizeSellPendingKey = null;
+        return;
+      }
+      const prevId = c.slots[arrIdx].itemId;
+      if (!prevId) {
+        this.customizeSellPendingKey = null;
+        return;
+      }
+      const origin = c.origins.get(slotOriginKey(st, idx)) ?? 'old';
+      c.slots[arrIdx] = { slotType: st, itemId: null };
+      c.origins.delete(slotOriginKey(st, idx));
+      c.store.push({ itemId: prevId, origin });
+      this.customizeSellPendingKey = null;
+      return;
+    }
+    if (action.action === 'cancelSell') {
+      this.customizeSellPendingKey = null;
     }
   }
 

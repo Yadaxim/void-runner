@@ -3,7 +3,7 @@ import type { EquipmentItem } from './equipment';
 import type { FactionDefinition } from './faction';
 import type { Landable } from './landable';
 import type { MissionTemplate } from './mission';
-import type { EquipmentSlot, HullSpec } from './ship';
+import type { EquipmentSlot, HullLoadoutVariantKey, HullSpec, SlotMap } from './ship';
 
 export type RegionType = 'void' | 'frontier' | 'midring' | 'core_arm' | 'contested' | 'radiation_fringe';
 
@@ -16,6 +16,8 @@ export interface NPCSpawnRule {
   factionId: string;
   behaviourType: 'patrol' | 'transit' | 'trade' | 'hostile' | 'flee';
   hullSpecId: HullSpec['id'];
+  /** Which hull `defaultLoadouts` preset NPCs use; default `basic`. */
+  loadoutVariant?: HullLoadoutVariantKey;
   countRange: [number, number];
   minPresent: number;
   maxPresent: number;
@@ -56,6 +58,18 @@ export interface DefaultLoadoutEntry {
   equipmentSlots: EquipmentSlot[];
 }
 
+export interface ShipyardListing {
+  id: string;
+  hullSpecId: string;
+  equipmentSlots: SlotMap;
+  /** Total credits for this configured ship (typically hull + equipment at list prices). */
+  price: number;
+  name?: string;
+  description?: string;
+  /** Minimum reputation with landable faction to purchase (same semantics as equipment store gating). */
+  minReputation?: number;
+}
+
 export interface WorldFile {
   metadata: {
     name: string;
@@ -71,6 +85,8 @@ export interface WorldFile {
   sectors: SectorMetadata[];
   factions: FactionDefinition[];
   hullSpecs: HullSpec[];
+  /** Global shipyard SKU list; landables reference by id. */
+  shipyardListings: ShipyardListing[];
   equipmentCatalog: EquipmentItem[];
   bulletSpecs: BulletSpec[];
   missionTemplates: MissionTemplate[];

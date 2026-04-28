@@ -163,7 +163,7 @@
       "hullClass": "fighter",
       "hullMass": 80,
       "cargoCapacity": 80,
-      "equipmentCapacity": 160,
+      "equipmentCapacity": 200,
       "topSpeed": 250,
       "topAngularSpeed": 3.5,
       "baseHP": 100,
@@ -203,7 +203,113 @@
           "slotType": "shield",
           "itemId": "shield_standard"
         }
-      ]
+      ],
+      "price": 18000,
+      "sellValue": 10800,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "armour",
+            "itemId": "light_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "seeker_launcher_t1"
+          }
+        ]
+      }
     },
     {
       "id": "fighter_raider_mk1",
@@ -212,7 +318,7 @@
       "hullClass": "fighter",
       "hullMass": 85,
       "cargoCapacity": 16,
-      "equipmentCapacity": 36,
+      "equipmentCapacity": 125,
       "topSpeed": 245,
       "topAngularSpeed": 3.2,
       "baseHP": 110,
@@ -242,7 +348,89 @@
           "slotType": "fuelTank",
           "itemId": "fuel_tank_standard"
         }
-      ]
+      ],
+      "price": 14000,
+      "sellValue": 8400,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "armour",
+            "itemId": "light_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_fighter"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "slug_thrower_t1"
+          }
+        ]
+      }
     },
     {
       "id": "courier_mk1",
@@ -251,7 +439,7 @@
       "hullClass": "courier",
       "hullMass": 140,
       "cargoCapacity": 80,
-      "equipmentCapacity": 60,
+      "equipmentCapacity": 200,
       "topSpeed": 200,
       "topAngularSpeed": 2.8,
       "baseHP": 160,
@@ -296,7 +484,137 @@
           "slotType": "shield",
           "itemId": "shield_standard"
         }
-      ]
+      ],
+      "price": 32000,
+      "sellValue": 19200,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_standard"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "armour",
+            "itemId": "light_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": "rev_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_standard"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "armour",
+            "itemId": "ablative_shield_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_efficient"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": "rev_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_standard"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "plasma_launcher_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "slug_thrower_t1"
+          }
+        ]
+      }
     },
     {
       "id": "freighter_mk1",
@@ -305,7 +623,7 @@
       "hullClass": "freighter",
       "hullMass": 300,
       "cargoCapacity": 300,
-      "equipmentCapacity": 80,
+      "equipmentCapacity": 310,
       "topSpeed": 140,
       "topAngularSpeed": 1.8,
       "baseHP": 240,
@@ -358,7 +676,149 @@
           "slotType": "shield",
           "itemId": "shield_standard"
         }
-      ]
+      ],
+      "price": 52000,
+      "sellValue": 28000,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": null
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_heavy"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "armour",
+            "itemId": "light_plating_t1"
+          },
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": null
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": "rev_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_heavy"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "armour",
+            "itemId": "ablative_shield_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_efficient"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_reverse",
+            "itemId": "rev_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_heavy"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "seeker_launcher_t1"
+          }
+        ]
+      }
     },
     {
       "id": "dev_store_rig",
@@ -367,9 +827,9 @@
       "hullClass": "fighter",
       "hullMass": 100,
       "cargoCapacity": 60,
-      "equipmentCapacity": 320,
+      "equipmentCapacity": 300,
       "topSpeed": 190,
-      "topAngularSpeed": 3.0,
+      "topAngularSpeed": 3,
       "baseHP": 120,
       "weaponSlots": 5,
       "slotCounts": {
@@ -435,7 +895,185 @@
           "slotType": "weapon",
           "itemId": null
         }
-      ]
+      ],
+      "price": 24000,
+      "sellValue": 14400,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "armour",
+            "itemId": null
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_standard"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "armour",
+            "itemId": "light_plating_t1"
+          },
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_standard"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_standard"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "armour",
+            "itemId": "ablative_shield_t1"
+          },
+          {
+            "slotType": "armour",
+            "itemId": "heavy_plating_t1"
+          },
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_large"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_efficient"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_standard"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_heavy"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "seeker_launcher_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "plasma_launcher_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "slug_thrower_t1"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ]
+      }
     }
   ],
   "bulletSpecs": [
@@ -451,7 +1089,7 @@
       "attractedByGravity": false,
       "seeking": false,
       "infinite": false,
-      "lifespan": 2.0,
+      "lifespan": 2,
       "visualType": "bolt",
       "colour": "#40c0ff"
     },
@@ -467,7 +1105,7 @@
       "attractedByGravity": true,
       "seeking": false,
       "infinite": false,
-      "lifespan": 3.0,
+      "lifespan": 3,
       "visualType": "bolt",
       "colour": "#ffaa00"
     },
@@ -484,7 +1122,7 @@
       "seeking": true,
       "turnRatio": 2.5,
       "infinite": false,
-      "lifespan": 5.0,
+      "lifespan": 5,
       "visualType": "missile",
       "colour": "#ff4040"
     },
@@ -497,12 +1135,12 @@
       "damage": 8,
       "damageCategory": "plasma",
       "matterType": "normal",
-      "dotDuration": 3.0,
+      "dotDuration": 3,
       "dotDamagePerSecond": 4,
       "attractedByGravity": false,
       "seeking": false,
       "infinite": false,
-      "lifespan": 4.0,
+      "lifespan": 4,
       "visualType": "orb",
       "colour": "#80ff40"
     }
@@ -607,8 +1245,8 @@
       "mass": 12,
       "tier": 1,
       "factionAffinity": "federation",
-      "dampingFactor": 4.0,
-      "angularDampingFactor": 3.0
+      "dampingFactor": 4,
+      "angularDampingFactor": 3
     },
     {
       "id": "pulse_cannon_t1",
@@ -619,7 +1257,7 @@
       "tier": 1,
       "factionAffinity": "federation",
       "bulletSpecId": "pulse_bolt",
-      "fireRate": 3.0,
+      "fireRate": 3,
       "energyCost": 5
     },
     {
@@ -631,7 +1269,7 @@
       "tier": 1,
       "factionAffinity": "frontier_clans",
       "bulletSpecId": "heavy_slug",
-      "fireRate": 1.0,
+      "fireRate": 1,
       "energyCost": 8
     },
     {
@@ -794,8 +1432,8 @@
       "shieldHP": 80,
       "regenRateHPPerSecond": 5,
       "joulesPerHPRegen": 3,
-      "regenDelay": 4.0,
-      "rebootTime": 12.0,
+      "regenDelay": 4,
+      "rebootTime": 12,
       "slotType": "shield"
     },
     {
@@ -809,8 +1447,8 @@
       "shieldHP": 160,
       "regenRateHPPerSecond": 3,
       "joulesPerHPRegen": 5,
-      "regenDelay": 6.0,
-      "rebootTime": 18.0,
+      "regenDelay": 6,
+      "rebootTime": 18,
       "slotType": "shield"
     }
   ],
@@ -1112,7 +1750,7 @@
         "hasNebula": true,
         "nebulaHue": 210,
         "nebulaIntensity": 0.08,
-        "starDensityMultiplier": 1.0
+        "starDensityMultiplier": 1
       },
       "seed": 1001,
       "landables": [
@@ -1201,10 +1839,32 @@
             },
             {
               "type": "equipmentStore"
+            },
+            {
+              "type": "shipyard"
             }
           ],
           "rotationSpeed": 0.003,
-          "seed": 2003
+          "seed": 2003,
+          "shipyard": {
+            "listingIds": [
+              "sy_fighter_mk1_raw",
+              "sy_fighter_mk1_basic",
+              "sy_fighter_mk1_advanced",
+              "sy_fighter_raider_mk1_raw",
+              "sy_fighter_raider_mk1_basic",
+              "sy_fighter_raider_mk1_advanced",
+              "sy_courier_mk1_raw",
+              "sy_courier_mk1_basic",
+              "sy_courier_mk1_advanced",
+              "sy_freighter_mk1_raw",
+              "sy_freighter_mk1_basic",
+              "sy_freighter_mk1_advanced",
+              "sy_dev_store_rig_raw",
+              "sy_dev_store_rig_basic",
+              "sy_dev_store_rig_advanced"
+            ]
+          }
         }
       ]
     },
@@ -1408,7 +2068,7 @@
           "id": "derelict_platform",
           "name": "Derelict Platform",
           "type": "station",
-          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line \u2014 it works, barely.",
+          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line — it works, barely.",
           "atmosphere": "eerie and abandoned",
           "factionId": null,
           "mass": 0,
@@ -1608,7 +2268,7 @@
           "id": "clan_home",
           "name": "Rig Tharkan",
           "type": "planet",
-          "description": "The Frontier Clans' de facto capital \u2014 a rugged, storm-swept world where self-reliance is the only law.",
+          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
           "factionId": "frontier_clans",
           "mass": 120000,
@@ -1902,7 +2562,7 @@
           "id": "outpost_sigma",
           "name": "Outpost Sigma",
           "type": "station",
-          "description": "Nobody built this station with intention. It just accumulated over decades \u2014 modules bolted on as needed, never taken off.",
+          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
           "atmosphere": "improvised and weathered",
           "factionId": null,
           "mass": 0,
@@ -2117,15 +2777,740 @@
       "landableDensity": 0,
       "npcSpawnRules": [],
       "inRadiationZone": true,
-      "radiationFringeIntensity": 1.0,
+      "radiationFringeIntensity": 1,
       "ambientVisuals": {
         "hasNebula": true,
         "nebulaHue": 0,
         "nebulaIntensity": 0.25,
-        "starDensityMultiplier": 2.0
+        "starDensityMultiplier": 2
       },
       "seed": 1022,
       "landables": []
+    }
+  ],
+  "shipyardListings": [
+    {
+      "id": "sy_fighter_mk1_raw",
+      "hullSpecId": "fighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 18740,
+      "name": "Fighter — Raw",
+      "description": "raw factory fit for Fighter Mk I."
+    },
+    {
+      "id": "sy_fighter_mk1_basic",
+      "hullSpecId": "fighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        }
+      ],
+      "price": 20380,
+      "name": "Fighter — Basic",
+      "description": "basic factory fit for Fighter Mk I."
+    },
+    {
+      "id": "sy_fighter_mk1_advanced",
+      "hullSpecId": "fighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "seeker_launcher_t1"
+        }
+      ],
+      "price": 21740,
+      "name": "Fighter — Advanced",
+      "description": "advanced factory fit for Fighter Mk I."
+    },
+    {
+      "id": "sy_fighter_raider_mk1_raw",
+      "hullSpecId": "fighter_raider_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 14740,
+      "name": "Raider — Raw",
+      "description": "raw factory fit for Raider Mk I."
+    },
+    {
+      "id": "sy_fighter_raider_mk1_basic",
+      "hullSpecId": "fighter_raider_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        }
+      ],
+      "price": 15440,
+      "name": "Raider — Basic",
+      "description": "basic factory fit for Raider Mk I."
+    },
+    {
+      "id": "sy_fighter_raider_mk1_advanced",
+      "hullSpecId": "fighter_raider_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_fighter"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "slug_thrower_t1"
+        }
+      ],
+      "price": 16360,
+      "name": "Raider — Advanced",
+      "description": "advanced factory fit for Raider Mk I."
+    },
+    {
+      "id": "sy_courier_mk1_raw",
+      "hullSpecId": "courier_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 32800,
+      "name": "Courier — Raw",
+      "description": "raw factory fit for Courier Mk I."
+    },
+    {
+      "id": "sy_courier_mk1_basic",
+      "hullSpecId": "courier_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        }
+      ],
+      "price": 34760,
+      "name": "Courier — Basic",
+      "description": "basic factory fit for Courier Mk I."
+    },
+    {
+      "id": "sy_courier_mk1_advanced",
+      "hullSpecId": "courier_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "ablative_shield_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_efficient"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "plasma_launcher_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "slug_thrower_t1"
+        }
+      ],
+      "price": 35640,
+      "name": "Courier — Advanced",
+      "description": "advanced factory fit for Courier Mk I."
+    },
+    {
+      "id": "sy_freighter_mk1_raw",
+      "hullSpecId": "freighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": null
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_heavy"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 53460,
+      "name": "Freighter — Raw",
+      "description": "raw factory fit for Freighter Mk I."
+    },
+    {
+      "id": "sy_freighter_mk1_basic",
+      "hullSpecId": "freighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": null
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_heavy"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        }
+      ],
+      "price": 56200,
+      "name": "Freighter — Basic",
+      "description": "basic factory fit for Freighter Mk I."
+    },
+    {
+      "id": "sy_freighter_mk1_advanced",
+      "hullSpecId": "freighter_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "ablative_shield_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_efficient"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_reverse",
+          "itemId": "rev_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_heavy"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "seeker_launcher_t1"
+        }
+      ],
+      "price": 57920,
+      "name": "Freighter — Advanced",
+      "description": "advanced factory fit for Freighter Mk I."
+    },
+    {
+      "id": "sy_dev_store_rig_raw",
+      "hullSpecId": "dev_store_rig",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "armour",
+          "itemId": null
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 24800,
+      "name": "Store — Raw",
+      "description": "raw factory fit for Store Test Rig."
+    },
+    {
+      "id": "sy_dev_store_rig_basic",
+      "hullSpecId": "dev_store_rig",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "light_plating_t1"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_standard"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_standard"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 27140,
+      "name": "Store — Basic",
+      "description": "basic factory fit for Store Test Rig."
+    },
+    {
+      "id": "sy_dev_store_rig_advanced",
+      "hullSpecId": "dev_store_rig",
+      "equipmentSlots": [
+        {
+          "slotType": "armour",
+          "itemId": "ablative_shield_t1"
+        },
+        {
+          "slotType": "armour",
+          "itemId": "heavy_plating_t1"
+        },
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_large"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_efficient"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_standard"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_heavy"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "seeker_launcher_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "plasma_launcher_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "slug_thrower_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 29440,
+      "name": "Store — Advanced",
+      "description": "advanced factory fit for Store Test Rig."
     }
   ]
 }

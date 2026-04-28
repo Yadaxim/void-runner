@@ -43,6 +43,20 @@ export interface ArmourLayerState {
   maxHP: number;
 }
 
+/** Equipment slot list for a hull (one entry per physical hardpoint, in ship UI order). */
+export type SlotMap = EquipmentSlot[];
+
+export type HullLoadoutVariantKey = 'raw' | 'basic' | 'advanced';
+
+export interface HullDefaultLoadouts {
+  /** Only required slot types filled; cheapest viable items; no optional equipment. */
+  raw: SlotMap;
+  /** Required slots plus sensible essentials for the hull class. */
+  basic: SlotMap;
+  /** Premium fit for the hull. */
+  advanced: SlotMap;
+}
+
 export interface HullSpec {
   id: string;
   name: string;
@@ -55,8 +69,14 @@ export interface HullSpec {
   topAngularSpeed: number;
   baseHP: number;
   weaponSlots: number;
+  /** New hull sticker price (credits), before hostile multiplier. */
+  price: number;
+  /** Base trade-in value when selling the bare hull at a shipyard (before hostile halving). */
+  sellValue: number;
   slotCounts?: Partial<Record<EquipmentSlot['slotType'], number>>;
+  /** @deprecated Prefer {@link HullSpec.defaultLoadouts}. Kept for tooling; should match `basic` when both exist. */
   equipmentLoadout?: EquipmentSlot[];
+  defaultLoadouts: HullDefaultLoadouts;
 }
 
 export interface ShipState {

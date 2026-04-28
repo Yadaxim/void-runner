@@ -280,7 +280,8 @@ export class SectorSimulation {
           ? 'courier_mk1'
           : 'fighter_raider_mk1');
     const hullSpec = this.worldState.getHullSpec(hullSpecId);
-    const loadout = this.worldState.getHullLoadout(hullSpec?.hullClass ?? 'fighter');
+    const variant = rule.loadoutVariant ?? 'basic';
+    const loadout = this.worldState.getNpcSpawnPack(hullSpecId, variant);
     const maxHullHP = hullSpec?.baseHP ?? 100;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {

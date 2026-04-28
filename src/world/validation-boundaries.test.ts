@@ -5,7 +5,7 @@ import * as worldRegistry from '../core/worldRegistry';
 import { buildStarterShipState, WorldState } from '../core/worldState';
 import { WorldFileValidationError } from './validation';
 import { makeShipState } from '../test/fixtures';
-import type { WorldFile } from '../types';
+import type { ShipState, WorldFile } from '../types';
 import { exportValidatedWorldFile } from './worldFileExport';
 import { parseAndValidateWorldFileForImport } from './worldImport';
 
@@ -73,11 +73,15 @@ describe('validation boundaries', () => {
     it('treats invalid JSON separately from validation failures', () => {
       const badJson = parseAndValidateWorldFileForImport('{ not json');
       expect(badJson.ok).toBe(false);
-      expect(badJson.kind).toBe('invalid_json');
+      if (!badJson.ok) {
+        expect(badJson.kind).toBe('invalid_json');
+      }
 
       const badWorld = parseAndValidateWorldFileForImport(JSON.stringify(invalidWorldMissingHullSlots()));
       expect(badWorld.ok).toBe(false);
-      expect(badWorld.kind).toBe('validation');
+      if (!badWorld.ok) {
+        expect(badWorld.kind).toBe('validation');
+      }
     });
   });
 

@@ -1,10 +1,12 @@
 import { REQUIRED_SLOT_TYPES } from '../constants';
+import { expandSlotsToFullHull } from '../shipyard/slotLayout';
 import {
   emptyReductionProfile,
   type DamageTypeKey,
   type EquipmentItem,
   type EquipmentSlot,
   type FuelTankItem,
+  type HullSpec,
   type ReactorItem,
   type RegionType,
   type ShieldItem,
@@ -30,6 +32,10 @@ export class WorldFileValidationError extends Error {
 const DAMAGE_KEYS = Object.keys(emptyReductionProfile()) as DamageTypeKey[];
 
 const SPAWN_BEHAVIOURS = new Set(['patrol', 'transit', 'trade', 'hostile', 'flee']);
+
+const HULL_LOADOUT_VARIANTS = ['raw', 'basic', 'advanced'] as const;
+
+const LOADOUT_VARIANT_SET = new Set<string>(HULL_LOADOUT_VARIANTS);
 
 function isRegionCompatible(templateRegion: RegionType, sectorRegion: RegionType): boolean {
   if (templateRegion === sectorRegion) {
@@ -58,6 +64,60 @@ function equipmentTypeMatchesSlot(item: EquipmentItem, slotType: EquipmentSlot['
     return item.slotType === slotType;
   }
   return item.type === slotType;
+}
+
+function validateExpandedLoadout(
+  hull: HullSpec,
+  expandedSlots: EquipmentSlot[],
+  label: string,
+  equipmentById: Map<string, EquipmentItem>,
+  push: (msg: string) => void,
+  options?: { rawOnlyFilled?: boolean }
+): void {
+  const desired = { ...(hull.slotCounts ?? {}) } as Partial<Record<EquipmentSlot['slotType'], number>>;
+  if (desired.weapon === undefined) {
+    desired.weapon = hull.weaponSlots;
+  }
+
+  const perType: Partial<Record<EquipmentSlot['slotType'], number>> = {};
+  for (const slot of expandedSlots) {
+    perType[slot.slotType] = (perType[slot.slotType] ?? 0) + 1;
+  }
+  for (const [slotType, needed] of Object.entries(desired)) {
+    const have = perType[slotType as EquipmentSlot['slotType']] ?? 0;
+    if (have > (needed as number)) {
+      push(`${label} for hull "${hull.id}" exceeds slotCounts for ${slotType}`);
+    }
+  }
+
+  for (const slot of expandedSlots) {
+    if (!slot.itemId) {
+      continue;
+    }
+    const item = equipmentById.get(slot.itemId);
+    if (!item) {
+      push(`${label} hull "${hull.id}" references unknown equipment: ${slot.itemId}`);
+      continue;
+    }
+    if (!equipmentTypeMatchesSlot(item, slot.slotType)) {
+      push(`${label} hull "${hull.id}": item "${item.id}" type mismatch for slot ${slot.slotType}`);
+    }
+  }
+
+  for (const req of REQUIRED_SLOT_TYPES) {
+    const filled = expandedSlots.filter((s) => s.slotType === req && s.itemId !== null).length;
+    if (filled < 1) {
+      push(`${label} for hull "${hull.id}": required slot type "${req}" not filled`);
+    }
+  }
+
+  if (options?.rawOnlyFilled) {
+    for (const slot of expandedSlots) {
+      if (slot.itemId && !REQUIRED_SLOT_TYPES.includes(slot.slotType)) {
+        push(`${label} for hull "${hull.id}": raw loadout must not equip optional slot type "${slot.slotType}"`);
+      }
+    }
+  }
 }
 
 export function validateWorldFile(world: WorldFile): ValidationResult {
@@ -98,6 +158,29 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       push(`Duplicate equipment id: ${item.id}`);
     }
     equipIds.add(item.id);
+  }
+
+  const shipyardListings = world.shipyardListings ?? [];
+  const listingById = new Map(shipyardListings.map((l) => [l.id, l]));
+  const seenListingId = new Set<string>();
+  for (const listing of shipyardListings) {
+    if (seenListingId.has(listing.id)) {
+      push(`Duplicate shipyard listing id: ${listing.id}`);
+    }
+    seenListingId.add(listing.id);
+    if (!(listing.price > 0)) {
+      push(`Shipyard listing "${listing.id}" must have price > 0`);
+    }
+    const listHull = hullById.get(listing.hullSpecId);
+    if (!listHull) {
+      push(`Shipyard listing "${listing.id}" references unknown hullSpecId: ${listing.hullSpecId}`);
+      continue;
+    }
+    const listExpanded = expandSlotsToFullHull(
+      listHull,
+      (listing.equipmentSlots ?? []).map((s) => ({ ...s }))
+    );
+    validateExpandedLoadout(listHull, listExpanded, `Shipyard listing "${listing.id}"`, equipmentById, push);
   }
 
   if (world.defaultLoadouts) {
@@ -158,6 +241,22 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       const [a0, a1] = rule.arrivalIntervalRange;
       if (a0 > a1) {
         push(`Spawn rule arrivalIntervalRange invalid in sector ${sector.coord.x},${sector.coord.y}`);
+      }
+      if (rule.loadoutVariant !== undefined && !LOADOUT_VARIANT_SET.has(rule.loadoutVariant)) {
+        push(
+          `Invalid loadoutVariant "${String(rule.loadoutVariant)}" in sector ${sector.coord.x},${sector.coord.y} (expected raw|basic|advanced)`
+        );
+      }
+    }
+
+    for (const land of sector.landables) {
+      if (!land.shipyard?.listingIds?.length) {
+        continue;
+      }
+      for (const lid of land.shipyard.listingIds) {
+        if (!listingById.has(lid)) {
+          push(`Landable "${land.id}" shipyard references unknown listing id: ${lid}`);
+        }
       }
     }
   }
@@ -258,6 +357,27 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
 
     if (hull.equipmentLoadout?.length) {
       checkLoadout(hull.equipmentLoadout, 'equipmentLoadout');
+    }
+
+    if (!hull.defaultLoadouts) {
+      push(`Hull "${hull.id}" must define defaultLoadouts (raw, basic, advanced)`);
+    } else {
+      for (const v of HULL_LOADOUT_VARIANTS) {
+        const slots = hull.defaultLoadouts[v];
+        if (!Array.isArray(slots)) {
+          push(`Hull "${hull.id}" missing defaultLoadouts.${v}`);
+          continue;
+        }
+        const expanded = expandSlotsToFullHull(hull, slots.map((s) => ({ ...s })));
+        validateExpandedLoadout(
+          hull,
+          expanded,
+          `Hull "${hull.id}" defaultLoadouts.${v}`,
+          equipmentById,
+          push,
+          v === 'raw' ? { rawOnlyFilled: true } : undefined
+        );
+      }
     }
   }
 
