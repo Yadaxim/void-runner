@@ -104,6 +104,14 @@ export const HULL_DIMENSIONS = {
   heavy: { length: 56, width: 42 }
 } as const;
 
+export type HullClassKey = keyof typeof HULL_DIMENSIONS;
+
+/** Muzzle offset length from hull centre (used for bullets); defaults to fighter if class unknown. */
+export function hullLengthForHullClass(hullClass: HullClassKey | undefined): number {
+  const key = hullClass ?? 'fighter';
+  return HULL_DIMENSIONS[key].length;
+}
+
 export const COLOURS = {
   SPACE_BLACK: '#080810',
   STAR_DIM: '#2a2a3a',

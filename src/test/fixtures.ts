@@ -4,7 +4,7 @@ import { Vector2 } from '../physics/vector2';
 
 const BASE_SHIP: ShipState = {
   id: 'player',
-  hullSpecId: 'fighter_mk1',
+  hullSpecId: '__fixture_hull__',
   factionId: null,
   position: new Vector2(0, 0),
   velocity: new Vector2(0, 0),
@@ -65,7 +65,7 @@ export function makeArmour(overrides: {
     description: '',
     mass: 10,
     tier: 1,
-    factionAffinity: 'federation',
+    factionAffinity: '__fixture_faction__',
     hpBonus: overrides.hpBonus ?? 50,
     reductions
   };
@@ -87,7 +87,7 @@ export function makeShield(overrides: {
     description: '',
     mass: 5,
     tier: 1,
-    factionAffinity: 'federation',
+    factionAffinity: '__fixture_faction__',
     shieldHP: overrides.capacity ?? 100,
     regenRateHPPerSecond: overrides.regenRateHPPerSecond ?? 10,
     joulesPerHPRegen: overrides.joulesPerHPRegen ?? 10,
@@ -110,7 +110,7 @@ export function makeReactor(overrides: {
     description: '',
     mass: 10,
     tier: 1,
-    factionAffinity: 'federation',
+    factionAffinity: '__fixture_faction__',
     capacityJoules: overrides.capacityJoules ?? 500,
     chargeRateJoulesPerSecond: overrides.chargeRate ?? 20,
     fuelPerJoule: overrides.fuelPerJoule ?? 0.002,
@@ -155,7 +155,7 @@ export function makeWeaponFromBullet(bullet: BulletSpec, id = 'test_weapon'): We
     description: '',
     mass: 5,
     tier: 1,
-    factionAffinity: 'federation',
+    factionAffinity: '__fixture_faction__',
     bulletSpecId: bullet.id,
     fireRate: 1,
     energyCost: 0

@@ -273,16 +273,21 @@ export class SectorSimulation {
   }
 
   private buildNPC(rule: NPCSpawnRule, position: Vector2, velocity: Vector2): ShipEntity {
-    const hullSpecId =
-      (typeof rule.hullSpecId === 'string' && rule.hullSpecId.length > 0
-        ? rule.hullSpecId
-        : rule.factionId === 'federation'
-          ? 'courier_mk1'
-          : 'fighter_raider_mk1');
+    const hullSpecId = typeof rule.hullSpecId === 'string' ? rule.hullSpecId.trim() : '';
+    if (!hullSpecId) {
+      throw new Error(
+        `NPC spawn rule missing hullSpecId (faction ${rule.factionId}, ${rule.behaviourType}) in sector ${this.sector.coord.x},${this.sector.coord.y}`
+      );
+    }
     const hullSpec = this.worldState.getHullSpec(hullSpecId);
+    if (!hullSpec) {
+      throw new Error(
+        `NPC spawn rule references unknown hull "${hullSpecId}" in sector ${this.sector.coord.x},${this.sector.coord.y}`
+      );
+    }
     const variant = rule.loadoutVariant ?? 'basic';
     const loadout = this.worldState.getNpcSpawnPack(hullSpecId, variant);
-    const maxHullHP = hullSpec?.baseHP ?? 100;
+    const maxHullHP = hullSpec.baseHP;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {
       ...this.playerShip.state,

@@ -158,7 +158,8 @@ describe('validateWorldFile', () => {
 
   it('flags startingConditions factionReputations out of range', () => {
     const w = structuredClone(loadWorld());
-    w.startingConditions.factionReputations = { federation: 101 };
+    const fid = w.factions.find((f) => !f.isPirate)!.id;
+    w.startingConditions.factionReputations = { [fid]: 101 };
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('factionReputations') && e.includes('range'))).toBe(true);
   });
@@ -226,7 +227,8 @@ describe('validateWorldFile', () => {
 
   it('flags raw loadout with optional slot equipped', () => {
     const w = structuredClone(loadWorld());
-    const hull = w.hullSpecs.find((h) => h.id === 'fighter_mk1')!;
+    const hull =
+      w.hullSpecs.find((h) => h.defaultLoadouts.basic.length > h.defaultLoadouts.raw.length) ?? w.hullSpecs[0];
     hull.defaultLoadouts.raw = structuredClone(hull.defaultLoadouts.basic);
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('raw loadout must not equip optional'))).toBe(true);
@@ -234,7 +236,8 @@ describe('validateWorldFile', () => {
 
   it('flags basic loadout exceeding slot counts', () => {
     const w = structuredClone(loadWorld());
-    const hull = w.hullSpecs.find((h) => h.id === 'fighter_mk1')!;
+    const hull =
+      w.hullSpecs.find((h) => h.defaultLoadouts.basic.length > h.defaultLoadouts.raw.length) ?? w.hullSpecs[0];
     const wpn = w.equipmentCatalog.find((i) => i.type === 'weapon')!;
     hull.defaultLoadouts.basic = [
       ...hull.defaultLoadouts.basic,
@@ -255,7 +258,7 @@ describe('validateWorldFile', () => {
 
   it('flags shipyard listing with empty required slot', () => {
     const w = structuredClone(loadWorld());
-    const listing = w.shipyardListings.find((l) => l.hullSpecId === 'fighter_mk1')!;
+    const listing = w.shipyardListings[0];
     listing.equipmentSlots = listing.equipmentSlots.map((s) =>
       s.slotType === 'fuelTank' ? { ...s, itemId: null } : s
     );
@@ -272,7 +275,7 @@ describe('validateWorldFile', () => {
 
   it('flags landable shipyard referencing missing listing id', () => {
     const w = structuredClone(loadWorld());
-    const port = w.sectors.flatMap((s) => s.landables).find((l) => l.id === 'port_kaelen')!;
+    const port = w.sectors.flatMap((s) => s.landables).find((l) => l.shipyard?.listingIds?.length)!;
     port.shipyard!.listingIds = ['no_such_listing'];
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('unknown listing id'))).toBe(true);
@@ -283,5 +286,12 @@ describe('validateWorldFile', () => {
     w.sectors[0].npcSpawnRules[0].loadoutVariant = 'elite' as 'basic';
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('Invalid loadoutVariant'))).toBe(true);
+  });
+
+  it('flags npcSpawnRules with empty hullSpecId', () => {
+    const w = structuredClone(loadWorld());
+    (w.sectors[0].npcSpawnRules[0] as { hullSpecId: string }).hullSpecId = '   ';
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('non-empty hullSpecId'))).toBe(true);
   });
 });

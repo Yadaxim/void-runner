@@ -1473,7 +1473,7 @@ export class LandableScreen implements Screen {
       case 'repair':
         return tier !== 'hostile';
       case 'missionBoard':
-        if (landableFactionId === 'pirates') {
+        if (this.worldState.getFaction(landableFactionId)?.isPirate) {
           return tier === 'friendly' || tier === 'allied';
         }
         return tier !== 'hostile' && tier !== 'unfriendly';
@@ -2198,14 +2198,27 @@ export class LandableScreen implements Screen {
   }
 
   private getOverviewDescription(): string {
-    if (this.landable.factionId !== 'pirates') {
-      return this.landable.description || 'No description available.';
+    const trimmedLandable = this.landable.description?.trim();
+    if (trimmedLandable) {
+      return trimmedLandable;
     }
-    const pirateTier = this.worldState.getReputationTier('pirates');
+    const landableFaction = this.landable.factionId
+      ? this.worldState.getFaction(this.landable.factionId)
+      : null;
+    if (!landableFaction?.isPirate) {
+      return 'No description available.';
+    }
+    const pirateTier = this.worldState.getReputationTier(this.landable.factionId!);
+    const desc = landableFaction.description?.trim() ?? '';
+    const flavour = landableFaction.missionFlavour?.trim() ?? '';
     if (pirateTier === 'hostile') {
-      return "Strangers aren't welcome here.";
+      if (desc) return desc;
+      if (flavour) return flavour;
+      return 'No description available.';
     }
-    return "The Syndicate does not ask where you've been. Only where you're going.";
+    if (flavour) return flavour;
+    if (desc) return desc;
+    return 'No description available.';
   }
 
   private renderStanding(
@@ -2216,10 +2229,10 @@ export class LandableScreen implements Screen {
     contentBottomY: number
   ): void {
     const factions = this.worldState.getFactions();
-    const pirateFaction = this.worldState.getFaction('pirates');
-    const uniqueFactions = pirateFaction
-      ? [...factions.filter((faction) => faction.id !== 'pirates'), pirateFaction]
-      : factions;
+    const pirateFactions = factions.filter((faction) => faction.isPirate);
+    const nonPirateFactions = factions.filter((faction) => !faction.isPirate);
+    const uniqueFactions = [...nonPirateFactions, ...pirateFactions];
+    const lastPirate = pirateFactions[pirateFactions.length - 1] ?? null;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillStyle = COLOURS.UI_PRIMARY;
@@ -2235,10 +2248,16 @@ export class LandableScreen implements Screen {
     const repLogRowsHeight = repLog.length * 16;
     const availableForRows = Math.max(0, contentBottomY - y - standingHeaderHeight - repLogHeaderHeight - repLogRowsHeight - 8);
     const maxRows = Math.max(1, Math.floor(availableForRows / rowHeight));
-    const pirateIndex = uniqueFactions.findIndex((faction) => faction.id === 'pirates');
     let visibleFactions = uniqueFactions.slice(0, maxRows);
-    if (pirateIndex >= 0 && !visibleFactions.some((faction) => faction.id === 'pirates')) {
-      visibleFactions = [...visibleFactions.slice(0, Math.max(0, maxRows - 1)), uniqueFactions[pirateIndex]];
+    if (
+      lastPirate &&
+      !visibleFactions.some((faction) => faction.id === lastPirate.id) &&
+      uniqueFactions.some((faction) => faction.id === lastPirate.id)
+    ) {
+      const pinIndex = uniqueFactions.findIndex((faction) => faction.id === lastPirate.id);
+      if (pinIndex >= 0) {
+        visibleFactions = [...visibleFactions.slice(0, Math.max(0, maxRows - 1)), uniqueFactions[pinIndex]!];
+      }
     }
 
     for (let i = 0; i < visibleFactions.length; i += 1) {

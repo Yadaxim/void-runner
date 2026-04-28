@@ -12,7 +12,7 @@ import { makeShipState } from '../test/fixtures';
 
 const FACTIONS: FactionDefinition[] = [
   {
-    id: 'federation',
+    id: 'rep_test_alpha',
     name: 'Fed',
     demonym: '',
     description: '',
@@ -29,7 +29,7 @@ const FACTIONS: FactionDefinition[] = [
     isPirate: false
   },
   {
-    id: 'clans',
+    id: 'rep_test_beta',
     name: 'Clans',
     demonym: '',
     description: '',
@@ -46,7 +46,7 @@ const FACTIONS: FactionDefinition[] = [
     isPirate: false
   },
   {
-    id: 'pirates',
+    id: 'rep_test_pirate',
     name: 'Pirates',
     demonym: '',
     description: '',
@@ -106,13 +106,13 @@ describe('reputation pure functions', () => {
   });
 
   it('pirate rep is negative clamped average of non-pirate reps', () => {
-    const reps = { federation: 20, clans: 0 };
+    const reps = { rep_test_alpha: 20, rep_test_beta: 0 };
     expect(computePirateReputation(reps, FACTIONS)).toBe(-10);
   });
 
   it('pirate rep updates when a non-pirate rep changes', () => {
-    const r1 = computePirateReputation({ federation: 10, clans: 10 }, FACTIONS);
-    const r2 = computePirateReputation({ federation: -100, clans: -100 }, FACTIONS);
+    const r1 = computePirateReputation({ rep_test_alpha: 10, rep_test_beta: 10 }, FACTIONS);
+    const r2 = computePirateReputation({ rep_test_alpha: -100, rep_test_beta: -100 }, FACTIONS);
     expect(r2).not.toBe(r1);
     expect(r2).toBe(100);
   });
@@ -128,13 +128,13 @@ describe('reputation pure functions', () => {
       makeShipState({
         id: 'victim',
         isPlayerControlled: false,
-        factionId: 'federation',
+        factionId: 'rep_test_alpha',
         position: new Vector2(0, 0),
         velocity: new Vector2(0, 0)
       })
     );
-    ship.attachNPCController(new NPCController('patrol', 1, 'federation'), 'patrol');
-    ship.getNPCController()!.receiveAttack('ally', 'federation', 50);
+    ship.attachNPCController(new NPCController('patrol', 1, 'rep_test_alpha'), 'patrol');
+    ship.getNPCController()!.receiveAttack('ally', 'rep_test_alpha', 50);
     expect(ship.getNPCBehaviourType()).toBe('patrol');
     expect(ship.getNPCController()?.getAggroTargetId()).toBeNull();
   });

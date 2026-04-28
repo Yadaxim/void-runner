@@ -1,4 +1,4 @@
-import { GRAVITY_CONSTANT, HULL_DIMENSIONS, MIN_GRAVITY_DISTANCE } from '../constants';
+import { GRAVITY_CONSTANT, MIN_GRAVITY_DISTANCE } from '../constants';
 import { Vector2 } from '../physics/vector2';
 import type { BulletInstance, BulletSpec, ShipState } from '../types';
 import type { ShipEntity } from './shipEntity';
@@ -9,30 +9,23 @@ function angleFromDirection(direction: Vector2): number {
   return Math.atan2(direction.x, -direction.y);
 }
 
-function hullLengthFromShipState(shipState: ShipState): number {
-  if (shipState.hullSpecId.includes('courier')) {
-    return HULL_DIMENSIONS.courier.length;
-  }
-  if (shipState.hullSpecId.includes('freighter')) {
-    return HULL_DIMENSIONS.freighter.length;
-  }
-  if (shipState.hullSpecId.includes('heavy')) {
-    return HULL_DIMENSIONS.heavy.length;
-  }
-  return HULL_DIMENSIONS.fighter.length;
-}
-
 export class BulletEntity {
   readonly instance: BulletInstance;
   private readonly spec: BulletSpec;
   private expiredByHit = false;
 
-  constructor(spec: BulletSpec, ownerState: ShipState, spawnOffsetAngle: number, targetId: string | null) {
+  constructor(
+    spec: BulletSpec,
+    ownerState: ShipState,
+    spawnOffsetAngle: number,
+    targetId: string | null,
+    muzzleHullLength: number
+  ) {
     this.spec = spec;
     const muzzleAngle = ownerState.angle + spawnOffsetAngle;
     const muzzleDir = Vector2.fromAngle(muzzleAngle);
     const muzzleVelocity = muzzleDir.scale(spec.speed);
-    const hullLength = hullLengthFromShipState(ownerState);
+    const hullLength = muzzleHullLength;
     const spawnPosition = (ownerState.position as Vector2).add(muzzleDir.scale(hullLength / 2 + 4));
 
     const velocity = spec.inheritShipVelocity

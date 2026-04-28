@@ -5,7 +5,32 @@ import type { ShipyardStoreEntry } from './customize';
 import { loadTestWorldFile, makeHeadlessSim } from '../sim/headlessSim';
 import { expandSlotsToFullHull } from './slotLayout';
 import { slotOriginKey } from './customize';
-import type { EquipmentSlot } from '../types';
+import type { EquipmentSlot, WorldFile } from '../types';
+
+function pickLandableOfferingListing(wf: WorldFile, listingId: string) {
+  for (const sec of wf.sectors) {
+    for (const land of sec.landables) {
+      if (land.shipyard?.listingIds?.includes(listingId)) {
+        return land;
+      }
+    }
+  }
+  return null;
+}
+
+/** A shipyard listing for a hull different from the world's starter (so purchase changes hull). */
+function pickAlternateShipyardListing(wf: WorldFile) {
+  const start = wf.startingConditions.hullSpecId;
+  const listing = wf.shipyardListings.find((l) => l.hullSpecId !== start);
+  if (!listing) {
+    throw new Error('expected a shipyard listing whose hull differs from startingConditions.hullSpecId');
+  }
+  return listing;
+}
+
+function mostExpensiveShipyardListing(wf: WorldFile) {
+  return wf.shipyardListings.reduce((a, b) => (a.price >= b.price ? a : b));
+}
 
 function buildOriginsForListingSlots(hullId: string, world: WorldState, listingSlots: EquipmentSlot[]): Map<string, 'new' | 'old'> {
   const hull = world.getHullSpec(hullId)!;
@@ -61,36 +86,43 @@ describe('confirmShipyardPurchase', () => {
 
   it('applies hull, equipment, credits, and resets HP for a valid purchase', () => {
     const wf = loadTestWorldFile();
+    const starterId = wf.startingConditions.hullSpecId;
+    const starterHull = wf.hullSpecs.find((h) => h.id === starterId)!;
+    const listing = pickAlternateShipyardListing(wf);
+    const landableJson = pickLandableOfferingListing(wf, listing.id);
+    if (!landableJson) {
+      throw new Error('alternate listing not offered at any landable');
+    }
     const { worldState } = makeHeadlessSim({
       worldFile: wf,
       playerOverrides: {
         credits: 999_999,
-        hullSpecId: 'fighter_mk1',
+        hullSpecId: starterId,
         equipmentSlots: expandSlotsToFullHull(
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!,
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!.defaultLoadouts.raw.map((s) => ({ ...s }))
+          starterHull,
+          starterHull.defaultLoadouts.raw.map((s) => ({ ...s }))
         ),
         currentHullHP: 33,
         cargo: []
       }
     });
-    const landable = worldState.getLandableById('port_kaelen')!;
-    const listing = worldState.getShipyardListing('sy_fighter_raider_mk1_raw')!;
-    const newHull = worldState.getHullSpec(listing.hullSpecId)!;
-    const slots = expandSlotsToFullHull(newHull, listing.equipmentSlots.map((s) => ({ ...s })));
-    const origins = buildOriginsForListingSlots(newHull.id, worldState, listing.equipmentSlots);
+    const landable = worldState.getLandableById(landableJson.id)!;
+    const shipyardListing = worldState.getShipyardListing(listing.id)!;
+    const newHull = worldState.getHullSpec(shipyardListing.hullSpecId)!;
+    const slots = expandSlotsToFullHull(newHull, shipyardListing.equipmentSlots.map((s) => ({ ...s })));
+    const origins = buildOriginsForListingSlots(newHull.id, worldState, shipyardListing.equipmentSlots);
     const store = storeFromPlayerEquipment(worldState.getPlayerShipState());
     const creditsBefore = worldState.getPlayerShipState().credits;
     const r = worldState.confirmShipyardPurchase({
       landable,
-      listing,
+      listing: shipyardListing,
       finalEquipmentSlots: slots,
       slotOrigins: origins,
       storeEntries: store
     });
     expect(r.success).toBe(true);
     const ship = worldState.getPlayerShipState();
-    expect(ship.hullSpecId).toBe('fighter_raider_mk1');
+    expect(ship.hullSpecId).toBe(shipyardListing.hullSpecId);
     expect(ship.currentHullHP).toBe(ship.maxHullHP);
     expect(ship.maxHullHP).toBe(newHull.baseHP);
     expect(ship.credits).toBe(creditsBefore - (r as { success: true; netCost: number }).netCost);
@@ -99,28 +131,35 @@ describe('confirmShipyardPurchase', () => {
 
   it('returns failure without mutating state when credits are insufficient', () => {
     const wf = loadTestWorldFile();
+    const starterId = wf.startingConditions.hullSpecId;
+    const starterHull = wf.hullSpecs.find((h) => h.id === starterId)!;
+    const listing = mostExpensiveShipyardListing(wf);
+    const landableJson = pickLandableOfferingListing(wf, listing.id);
+    if (!landableJson) {
+      throw new Error('expensive listing not offered at any landable');
+    }
     const { worldState } = makeHeadlessSim({
       worldFile: wf,
       playerOverrides: {
         credits: 0,
-        hullSpecId: 'fighter_mk1',
+        hullSpecId: starterId,
         equipmentSlots: expandSlotsToFullHull(
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!,
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!.defaultLoadouts.raw.map((s) => ({ ...s }))
+          starterHull,
+          starterHull.defaultLoadouts.raw.map((s) => ({ ...s }))
         ),
         cargo: []
       }
     });
     const snap = JSON.stringify(worldState.getPlayerShipState());
-    const landable = worldState.getLandableById('port_kaelen')!;
-    const listing = worldState.getShipyardListing('sy_freighter_mk1_advanced')!;
-    const newHull = worldState.getHullSpec(listing.hullSpecId)!;
-    const slots = expandSlotsToFullHull(newHull, listing.equipmentSlots.map((s) => ({ ...s })));
-    const origins = buildOriginsForListingSlots(newHull.id, worldState, listing.equipmentSlots);
+    const landable = worldState.getLandableById(landableJson.id)!;
+    const shipyardListing = worldState.getShipyardListing(listing.id)!;
+    const newHull = worldState.getHullSpec(shipyardListing.hullSpecId)!;
+    const slots = expandSlotsToFullHull(newHull, shipyardListing.equipmentSlots.map((s) => ({ ...s })));
+    const origins = buildOriginsForListingSlots(newHull.id, worldState, shipyardListing.equipmentSlots);
     const store = storeFromPlayerEquipment(worldState.getPlayerShipState());
     const r = worldState.confirmShipyardPurchase({
       landable,
-      listing,
+      listing: shipyardListing,
       finalEquipmentSlots: slots,
       slotOrigins: origins,
       storeEntries: store
@@ -131,28 +170,35 @@ describe('confirmShipyardPurchase', () => {
 
   it('returns failure when cargo exceeds new hull capacity', () => {
     const wf = loadTestWorldFile();
+    const starterId = wf.startingConditions.hullSpecId;
+    const starterHull = wf.hullSpecs.find((h) => h.id === starterId)!;
+    const listing = pickAlternateShipyardListing(wf);
+    const landableJson = pickLandableOfferingListing(wf, listing.id);
+    if (!landableJson) {
+      throw new Error('alternate listing not offered at any landable');
+    }
     const { worldState } = makeHeadlessSim({
       worldFile: wf,
       playerOverrides: {
         credits: 999_999,
-        hullSpecId: 'fighter_mk1',
+        hullSpecId: starterId,
         equipmentSlots: expandSlotsToFullHull(
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!,
-          wf.hullSpecs.find((h) => h.id === 'fighter_mk1')!.defaultLoadouts.raw.map((s) => ({ ...s }))
+          starterHull,
+          starterHull.defaultLoadouts.raw.map((s) => ({ ...s }))
         ),
         cargo: [{ missionId: 'x', description: 'bulk', weight: 500 }]
       }
     });
     const snap = JSON.stringify(worldState.getPlayerShipState());
-    const landable = worldState.getLandableById('port_kaelen')!;
-    const listing = worldState.getShipyardListing('sy_fighter_raider_mk1_raw')!;
-    const newHull = worldState.getHullSpec(listing.hullSpecId)!;
-    const slots = expandSlotsToFullHull(newHull, listing.equipmentSlots.map((s) => ({ ...s })));
-    const origins = buildOriginsForListingSlots(newHull.id, worldState, listing.equipmentSlots);
+    const landable = worldState.getLandableById(landableJson.id)!;
+    const shipyardListing = worldState.getShipyardListing(listing.id)!;
+    const newHull = worldState.getHullSpec(shipyardListing.hullSpecId)!;
+    const slots = expandSlotsToFullHull(newHull, shipyardListing.equipmentSlots.map((s) => ({ ...s })));
+    const origins = buildOriginsForListingSlots(newHull.id, worldState, shipyardListing.equipmentSlots);
     const store = storeFromPlayerEquipment(worldState.getPlayerShipState());
     const r = worldState.confirmShipyardPurchase({
       landable,
-      listing,
+      listing: shipyardListing,
       finalEquipmentSlots: slots,
       slotOrigins: origins,
       storeEntries: store

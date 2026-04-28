@@ -227,6 +227,16 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       if (!factionIds.has(rule.factionId)) {
         push(`npcSpawnRules in sector ${sector.coord.x},${sector.coord.y} references unknown factionId: ${rule.factionId}`);
       }
+      const spawnHullId = typeof rule.hullSpecId === 'string' ? rule.hullSpecId.trim() : '';
+      if (!spawnHullId) {
+        push(
+          `npcSpawnRules in sector ${sector.coord.x},${sector.coord.y} (${rule.factionId} / ${rule.behaviourType}) must set a non-empty hullSpecId`
+        );
+      } else if (!hullById.has(spawnHullId)) {
+        push(
+          `npcSpawnRules in sector ${sector.coord.x},${sector.coord.y} references unknown hullSpecId: ${spawnHullId}`
+        );
+      }
       if (!SPAWN_BEHAVIOURS.has(rule.behaviourType)) {
         push(`Invalid behaviourType "${rule.behaviourType}" in sector ${sector.coord.x},${sector.coord.y}`);
       }

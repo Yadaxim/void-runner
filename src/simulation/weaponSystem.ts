@@ -3,6 +3,7 @@ import {
   BULLET_MOMENTUM_TRANSFER_SCALE,
   COLOURS,
   HULL_DIMENSIONS,
+  hullLengthForHullClass,
   NPC_ALLY_ALERT_RANGE,
   REP_PENALTY_HIT,
   REP_PENALTY_KILL
@@ -75,7 +76,9 @@ export class WeaponSystem {
         const side = stackIndex % 2 === 0 ? 1 : -1;
         const pairIndex = Math.floor(stackIndex / 2) + 1;
         const offset = slot.stackCount > 1 ? side * pairIndex * STACK_OFFSET_RAD : 0;
-        this.activeBullets.push(new BulletEntity(bulletSpec, shipState, offset, targetId));
+        const ownerHull = worldState.getHullSpec(shipState.hullSpecId);
+        const muzzleLen = hullLengthForHullClass(ownerHull?.hullClass);
+        this.activeBullets.push(new BulletEntity(bulletSpec, shipState, offset, targetId, muzzleLen));
       }
       slot.cooldownRemaining = item.fireRate > 0 ? 1 / item.fireRate : 0;
     }

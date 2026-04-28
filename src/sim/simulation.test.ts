@@ -21,6 +21,15 @@ function loadWorld(): WorldFile {
   return JSON.parse(readFileSync(join(process.cwd(), 'public/testWorld.json'), 'utf-8')) as WorldFile;
 }
 
+function sampleFactionIds(wf: WorldFile): { pirateId: string; lawfulId: string } {
+  const pirate = wf.factions.find((f) => f.isPirate);
+  const lawful = wf.factions.find((f) => !f.isPirate);
+  if (!pirate || !lawful) {
+    throw new Error('test world needs at least one pirate and one non-pirate faction');
+  }
+  return { pirateId: pirate.id, lawfulId: lawful.id };
+}
+
 describe('headless SectorSimulation', () => {
   it('ship reactor raises battery when below capacity', () => {
     const wf = loadWorld();
@@ -150,6 +159,7 @@ describe('headless SectorSimulation', () => {
 
   it('hostile NPC decreases distance to player after aggro', () => {
     const wf = loadWorld();
+    const { pirateId } = sampleFactionIds(wf);
     const ws = new WorldState(wf, { x: 5, y: 5 }, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const player = new ShipEntity(ws.getPlayerShipState());
@@ -158,12 +168,12 @@ describe('headless SectorSimulation', () => {
       ...ws.getPlayerShipState(),
       id: 'h1',
       isPlayerControlled: false,
-      factionId: 'pirates',
+      factionId: pirateId,
       position: new Vector2(0, 400),
       velocity: new Vector2(0, 0)
     };
     const hostile = new ShipEntity(hostileBase);
-    hostile.attachNPCController(new NPCController('hostile', 9, 'pirates'), 'hostile');
+    hostile.attachNPCController(new NPCController('hostile', 9, pirateId), 'hostile');
     hostile.getNPCController()!.receiveAttack('player', null, 50);
     const d0 = Vector2.distance(hostile.state.position as Vector2, player.state.position as Vector2);
     for (let i = 0; i < 40; i += 1) {
@@ -185,16 +195,17 @@ describe('headless SectorSimulation', () => {
     const ws = new WorldState(wf, sector.coord, makeShipState({ id: 'npc_t' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const player = new ShipEntity(ws.getPlayerShipState());
+    const { lawfulId } = sampleFactionIds(wf);
     const npcState: ShipState = {
       ...ws.getPlayerShipState(),
       id: 'npc_transit',
       isPlayerControlled: false,
-      factionId: 'federation',
+      factionId: lawfulId,
       position: pos,
       velocity: new Vector2(0, 0)
     };
     const npc = new ShipEntity(npcState);
-    npc.attachNPCController(new NPCController('transit', 42, 'federation'), 'transit');
+    npc.attachNPCController(new NPCController('transit', 42, lawfulId), 'transit');
     expect(TRANSIT_LOITER_RADIUS).toBeGreaterThan(0);
     npc.update(0.016, ws, undefined, {
       player,
@@ -217,6 +228,7 @@ describe('headless SectorSimulation', () => {
 
   it('aggro target stays on higher-threat NPC when player is closer', () => {
     const wf = loadWorld();
+    const { pirateId, lawfulId } = sampleFactionIds(wf);
     const ws = new WorldState(wf, { x: 5, y: 5 }, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const player = new ShipEntity(ws.getPlayerShipState());
@@ -225,7 +237,7 @@ describe('headless SectorSimulation', () => {
       makeShipState({
         id: 'npc_far',
         isPlayerControlled: false,
-        factionId: 'pirates',
+        factionId: pirateId,
         position: new Vector2(0, 800),
         velocity: new Vector2(0, 0)
       })
@@ -234,14 +246,14 @@ describe('headless SectorSimulation', () => {
       makeShipState({
         id: 'npc_hostile',
         isPlayerControlled: false,
-        factionId: 'federation',
+        factionId: lawfulId,
         position: new Vector2(0, 100),
         velocity: new Vector2(0, 0)
       })
     );
-    hostile.attachNPCController(new NPCController('patrol', 2, 'federation'), 'patrol');
+    hostile.attachNPCController(new NPCController('patrol', 2, lawfulId), 'patrol');
     const ctl = hostile.getNPCController()!;
-    ctl.receiveAttack('npc_far', 'pirates', 100);
+    ctl.receiveAttack('npc_far', pirateId, 100);
     expect(ctl.getAggroTargetId()).toBe('npc_far');
     for (let i = 0; i < 5; i += 1) {
       hostile.update(0.05, ws, undefined, {
