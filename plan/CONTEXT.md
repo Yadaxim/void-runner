@@ -44,10 +44,9 @@ Vanilla DOM — no React/Vue.
 | `plan/CONTEXT.md` | This document — paste for new sessions; runtime architecture and priorities |
 | `plan/VOID_RUNNER_GDD.md` | Full game design |
 | `plan/VOID_RUNNER_WorldGen.md` | Generator pipeline, PRNG domains, export format |
-| `claudePrompts/` (repo root, gitignored) | Optional per-task prompts and notes; not committed |
+| `plan/VOID_RUNNER_Art_Guidelines_v1.0.md` | Visual design, renderer spec |
 | `plan/VOID_RUNNER_Roadmap.md` | Delivery order, backlog, deferred type sketches, and world-gen guidelines |
-
-Art guidelines: `claudePrompts/VOID_RUNNER_Art_Guidelines_v1.0.md` when you maintain that folder locally.
+| `claudePrompts/` (repo root, gitignored) | Optional per-task prompts and notes; not committed |
 
 ---
 
