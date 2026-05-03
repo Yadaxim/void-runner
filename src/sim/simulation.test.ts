@@ -9,7 +9,7 @@ import {
 import { buildStarterShipState, WorldState } from '../core/worldState';
 import { Vector2 } from '../physics/vector2';
 import { applyForce } from '../physics/newtonian';
-import { tickPlayerEnergyAndShield } from './playerEnergyShield';
+import { tickShipEnergyAndShield } from './shipEnergyShield';
 import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from './sectorNav';
 import { makeHeadlessSim } from './headlessSim';
 import { NPCController } from '../simulation/npcController';
@@ -38,7 +38,7 @@ describe('headless SectorSimulation', () => {
       playerOverrides: { currentJoules: 10, fuel: 500 }
     });
     const before = playerShip.state.currentJoules;
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 0.5, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 0.5, Date.now());
     expect(playerShip.state.currentJoules).toBeGreaterThan(before);
   });
 
@@ -49,7 +49,7 @@ describe('headless SectorSimulation', () => {
       playerOverrides: { currentJoules: 499, fuel: 500 }
     });
     for (let i = 0; i < 50; i += 1) {
-      tickPlayerEnergyAndShield(playerShip.state, worldState, 0.2, Date.now());
+      tickShipEnergyAndShield(playerShip.state, worldState, 0.2, Date.now());
     }
     const reactor = worldState.getInstalledReactorItem();
     expect(reactor).toBeTruthy();
@@ -64,7 +64,7 @@ describe('headless SectorSimulation', () => {
     });
     const reactor = worldState.getInstalledReactorItem()!;
     const fuel0 = playerShip.state.fuel;
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 1, Date.now());
     const generated = Math.min(reactor.chargeRateJoulesPerSecond * 1, reactor.capacityJoules);
     const expectedFuel = fuel0 - generated * reactor.fuelPerJoule;
     expect(playerShip.state.fuel).toBeCloseTo(expectedFuel, 5);
@@ -86,7 +86,7 @@ describe('headless SectorSimulation', () => {
     });
     const shield = worldState.getInstalledShieldItem()!;
     const joulesBefore = playerShip.state.currentJoules;
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 1, Date.now());
     const expectedHpGain = Math.min(
       shield.regenRateHPPerSecond * 1,
       shield.shieldHP - 0,
@@ -112,13 +112,13 @@ describe('headless SectorSimulation', () => {
     });
     const shield = worldState.getInstalledShieldItem()!;
     const hp0 = playerShip.state.currentShieldHP;
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 0.1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 0.1, Date.now());
     expect(playerShip.state.currentShieldHP).toBe(hp0);
     vi.setSystemTime(new Date(1_000_000 + (shield.regenDelay - 0.1) * 1000));
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 0.1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 0.1, Date.now());
     expect(playerShip.state.currentShieldHP).toBe(hp0);
     vi.setSystemTime(new Date(1_000_000 + shield.regenDelay * 1000));
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 0.5, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 0.5, Date.now());
     expect(playerShip.state.currentShieldHP).toBeGreaterThan(hp0);
     vi.useRealTimers();
   });
@@ -135,7 +135,7 @@ describe('headless SectorSimulation', () => {
       }
     });
     const hp0 = playerShip.state.currentShieldHP;
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 1, Date.now());
     expect(playerShip.state.currentShieldHP).toBe(hp0);
   });
 
@@ -150,9 +150,9 @@ describe('headless SectorSimulation', () => {
         lastHitTime: 0
       }
     });
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 1, Date.now());
     expect(playerShip.state.shieldRebootTimer).toBeCloseTo(1);
-    tickPlayerEnergyAndShield(playerShip.state, worldState, 1.1, Date.now());
+    tickShipEnergyAndShield(playerShip.state, worldState, 1.1, Date.now());
     expect(playerShip.state.shieldRebooting).toBe(false);
     expect(playerShip.state.shieldRebootTimer).toBe(0);
   });

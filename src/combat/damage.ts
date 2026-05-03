@@ -7,19 +7,19 @@ export interface BulletDamageResult {
   totalReduction: number;
 }
 
-export interface PlayerDamageWorldView {
+export interface ShipDamageWorldView {
   isShieldOnline(ship: ShipState): boolean;
   getEquipmentItem(id: string): EquipmentItem | null;
 }
 
 /**
- * Player-only instant bullet resolution (shield layer, then first armour layer with HP, then hull).
- * Mutates `ship` in place to mirror WeaponSystem.applyBulletDamage.
+ * Instant bullet resolution: shield (if online and HP), then first armour layer with HP, then hull.
+ * Mutates `ship` in place. Used for player and NPC ships.
  */
-export function resolvePlayerBulletDamage(
+export function resolveShipBulletDamage(
   bulletSpec: BulletSpec,
   ship: ShipState,
-  world: PlayerDamageWorldView
+  world: ShipDamageWorldView
 ): BulletDamageResult {
   const typeKey = getDamageTypeKey(bulletSpec.damageCategory, bulletSpec.matterType);
   const damage = bulletSpec.damage;
@@ -54,8 +54,8 @@ export function resolvePlayerBulletDamage(
   return { effectiveDamage: damage, totalReduction: 0 };
 }
 
-/** Plasma DoT vs player: outermost armour with HP, else hull. Mutates `state`. */
-export function applyPlasmaDotToPlayer(
+/** Plasma DoT: outermost armour with HP, else hull (does not go through shield). Mutates `state`. */
+export function applyPlasmaDotToShip(
   state: ShipState,
   damage: number,
   getEquipmentItem: (id: string) => EquipmentItem | null

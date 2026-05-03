@@ -27,6 +27,11 @@ import type { ShipEntity } from './shipEntity';
 export type NPCState = 'patrol' | 'transit' | 'trade' | 'hostile' | 'flee';
 type TransitPhase = 'approaching' | 'loitering' | 'departing';
 
+/**
+ * One simulation frame of flight + weapon inputs for an AI-controlled ship.
+ * Field names mirror keyboard-held state (same booleans the player pipeline uses via {@link ShipEntity.applyThrusterInputs}
+ * and weapon fire keys). Future neural autopilot and replay training should emit this shape only, not direct forces.
+ */
 export interface NPCInputs {
   forward: boolean;
   reverse: boolean;

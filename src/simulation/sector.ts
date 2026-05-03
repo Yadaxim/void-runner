@@ -7,6 +7,7 @@ import {
 } from '../constants';
 import { childPRNG } from '../core/prng';
 import type { WorldState } from '../core/worldState';
+import { tickShipEnergyAndShield } from '../sim/shipEnergyShield';
 import { computeGravity } from '../physics/gravity';
 import { Vector2 } from '../physics/vector2';
 import type { Landable, NPCSpawnRule, SectorMetadata, ShipState, WeaponFireKey } from '../types';
@@ -179,6 +180,12 @@ export class SectorSimulation {
     this.weaponSystem.pruneExpired();
     this.particleSystem.update(dt);
 
+    const nowMs = Date.now();
+    tickShipEnergyAndShield(this.playerShip.state, this.worldState, dt, nowMs);
+    for (const npc of this.npcShips) {
+      tickShipEnergyAndShield(npc.state, this.worldState, dt, nowMs);
+    }
+
     this.npcShips = this.npcShips.filter((npc) => {
       if (npc.isDestroyed()) {
         const colour = this.worldState.getFactionVisual(npc.state.factionId ?? '').primaryColour;
@@ -287,6 +294,7 @@ export class SectorSimulation {
     }
     const variant = rule.loadoutVariant ?? 'basic';
     const loadout = this.worldState.getNpcSpawnPack(hullSpecId, variant);
+    const combat = this.worldState.getCombatStateFromEquipmentSlots(loadout.equipmentSlots);
     const maxHullHP = hullSpec.baseHP;
     const id = `npc_${this.sector.coord.x}_${this.sector.coord.y}_${rule.factionId}_${this.shipCounter++}`;
     const shipState: ShipState = {
@@ -300,13 +308,14 @@ export class SectorSimulation {
       angularVelocity: 0,
       currentHullHP: maxHullHP,
       maxHullHP,
-      armourLayers: [],
-      currentShieldHP: 0,
-      maxShieldHP: 0,
+      armourLayers: combat.armourLayers,
+      currentShieldHP: combat.currentShieldHP,
+      maxShieldHP: combat.maxShieldHP,
       shieldRebooting: false,
       shieldRebootTimer: 0,
       lastHitTime: 0,
-      currentJoules: 0,
+      currentJoules: combat.maxJoules,
+      fuel: this.worldState.getMaxFuelForSlots(loadout.equipmentSlots),
       equipmentSlots: loadout.equipmentSlots,
       autoBrakeLinearEnabled: true,
       autoBrakeRotationEnabled: true,

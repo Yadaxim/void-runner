@@ -740,11 +740,38 @@ export class WorldState {
     return this.getMaxFuelForSlots(this.getPlayerShipState().equipmentSlots);
   }
 
-  getInstalledShieldItem(): ShieldItem | null {
-    const slot = this.getPlayerShipState().equipmentSlots.find((s) => s.slotType === 'shield');
+  getShieldItemForEquipmentSlots(equipmentSlots: EquipmentSlot[]): ShieldItem | null {
+    const slot = equipmentSlots.find((s) => s.slotType === 'shield' && s.itemId);
     if (!slot?.itemId) return null;
     const item = this.getEquipmentItem(slot.itemId);
     return item?.type === 'shield' ? (item as ShieldItem) : null;
+  }
+
+  getInstalledShieldItemForShip(ship: ShipState): ShieldItem | null {
+    return this.getShieldItemForEquipmentSlots(ship.equipmentSlots);
+  }
+
+  getInstalledShieldItem(): ShieldItem | null {
+    return this.getInstalledShieldItemForShip(this.getPlayerShipState());
+  }
+
+  /** Full-HP armour layers, shield cap, and reactor battery cap from a slot list (e.g. NPC spawn loadout). */
+  getCombatStateFromEquipmentSlots(equipmentSlots: EquipmentSlot[]): {
+    armourLayers: ArmourLayerState[];
+    maxShieldHP: number;
+    currentShieldHP: number;
+    maxJoules: number;
+  } {
+    const armourLayers = deriveStarterArmourLayers(this, equipmentSlots);
+    const shieldItem = this.getShieldItemForEquipmentSlots(equipmentSlots);
+    const maxShieldHP = shieldItem?.shieldHP ?? 0;
+    const maxJoules = this.getMaxJoulesForSlots(equipmentSlots);
+    return {
+      armourLayers,
+      maxShieldHP,
+      currentShieldHP: maxShieldHP,
+      maxJoules
+    };
   }
 
   getInstalledReactorItem(): ReactorItem | null {
@@ -769,17 +796,20 @@ export class WorldState {
     return this.getMaxJoules() > 0;
   }
 
-  isShieldOnline(): boolean {
-    const ship = this.getPlayerShipState();
-    if (!this.getInstalledShieldItem()) return false;
-    if (!this.isReactorOnline()) return false;
+  isShieldOnlineForShip(ship: ShipState): boolean {
+    if (!this.getInstalledShieldItemForShip(ship)) return false;
+    if (this.getMaxJoulesForSlots(ship.equipmentSlots) <= 0) return false;
     if (ship.shieldRebooting) return false;
     return true;
   }
 
+  isShieldOnline(): boolean {
+    return this.isShieldOnlineForShip(this.getPlayerShipState());
+  }
+
   getOutermostDamageLayer(): 'shield' | 'armour' | 'hull' {
     const ship = this.getPlayerShipState();
-    if (this.isShieldOnline() && ship.currentShieldHP > 0) return 'shield';
+    if (this.isShieldOnlineForShip(ship) && ship.currentShieldHP > 0) return 'shield';
     for (const layer of ship.armourLayers) {
       if (layer.currentHP > 0) return 'armour';
     }

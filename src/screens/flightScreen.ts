@@ -26,7 +26,6 @@ import {
 } from '../constants';
 import { LandableScreen } from './landableScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
-import { tickPlayerEnergyAndShield } from '../sim/playerEnergyShield';
 import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from '../sim/sectorNav';
 import { ScreenManager, type Screen } from './screenManager';
 
@@ -348,7 +347,6 @@ export class FlightScreen implements Screen {
       return;
     }
     this.applyRadiationDamage(dt);
-    this.updateEnergyAndShield(dt);
     this.worldState.addPlayTime(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
@@ -358,6 +356,13 @@ export class FlightScreen implements Screen {
       currentHullHP: this.playerShip.state.currentHullHP,
       maxHullHP: this.playerShip.state.maxHullHP,
       fuel: this.playerShip.state.fuel,
+      currentJoules: this.playerShip.state.currentJoules,
+      currentShieldHP: this.playerShip.state.currentShieldHP,
+      maxShieldHP: this.playerShip.state.maxShieldHP,
+      shieldRebooting: this.playerShip.state.shieldRebooting,
+      shieldRebootTimer: this.playerShip.state.shieldRebootTimer,
+      lastHitTime: this.playerShip.state.lastHitTime,
+      armourLayers: this.playerShip.state.armourLayers,
       credits: this.playerShip.state.credits,
       autoBrakeLinearEnabled: this.playerShip.isLinearAutoBrakeEnabled(),
       autoBrakeRotationEnabled: this.playerShip.isRotationAutoBrakeEnabled(),
@@ -665,18 +670,6 @@ export class FlightScreen implements Screen {
 
     if (newHP <= 0) {
       this.handleShipDestruction();
-    }
-  }
-
-  private updateEnergyAndShield(dt: number): void {
-    if (!this.playerShip) {
-      return;
-    }
-    const ship = this.playerShip.state;
-    const updated = tickPlayerEnergyAndShield(ship, this.worldState, dt, Date.now());
-    if (updated) {
-      this.playerShip.state = ship;
-      this.worldState.updatePlayerShipState(ship);
     }
   }
 

@@ -1,9 +1,9 @@
-// Exercises resolvePlayerBulletDamage and applyPlasmaDotToPlayer extracted from src/simulation/weaponSystem.ts
-// and getDamageTypeKey from src/types/bullet.ts (void category is `void` in code, not `voidtype`).
+// Exercises resolveShipBulletDamage and applyPlasmaDotToShip (shared player + NPC resolution).
+// getDamageTypeKey from src/types/bullet.ts (void category is `void` in code, not `voidtype`).
 import { describe, expect, it } from 'vitest';
-import type { BulletSpec, DamageCategory, EquipmentItem, MatterType, ShipState } from '../types';
+import type { BulletSpec, DamageCategory, EquipmentItem, MatterType } from '../types';
 import { getDamageTypeKey } from '../types';
-import { applyPlasmaDotToPlayer, resolvePlayerBulletDamage, type PlayerDamageWorldView } from './damage';
+import { applyPlasmaDotToShip, resolveShipBulletDamage, type ShipDamageWorldView } from './damage';
 import { makeArmour, makeBullet, makeShipState, makeShield } from '../test/fixtures';
 
 const MATRIX: Array<{ category: DamageCategory; matter: MatterType; key: string }> = [
@@ -22,7 +22,7 @@ const MATRIX: Array<{ category: DamageCategory; matter: MatterType; key: string 
   { category: 'void', matter: 'normal', key: 'void' }
 ];
 
-function viewShieldOnline(online: boolean, catalog: Map<string, EquipmentItem>): PlayerDamageWorldView {
+function viewShieldOnline(online: boolean, catalog: Map<string, EquipmentItem>): ShipDamageWorldView {
   return {
     isShieldOnline: () => online,
     getEquipmentItem: (id) => catalog.get(id) ?? null
@@ -46,7 +46,7 @@ describe('getDamageTypeKey', () => {
   });
 });
 
-describe('resolvePlayerBulletDamage', () => {
+describe('resolveShipBulletDamage', () => {
   const shield = makeShield({ id: 'sh', capacity: 100, rebootTime: 12, regenDelay: 2, joulesPerHPRegen: 1 });
   const armour = makeArmour({ id: 'ar', layers: { kinetic: 0 } });
 
@@ -57,8 +57,13 @@ describe('resolvePlayerBulletDamage', () => {
     ]);
   }
 
-  it('shield absorbs when HP > damage; armour untouched', () => {
+  it.each([
+    [true, 'player'],
+    [false, 'npc_hostile']
+  ])('shield absorbs when HP > damage; armour untouched (isPlayer=%s)', (isPlayer, id) => {
     const ship = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
       currentShieldHP: 100,
       maxShieldHP: 100,
       shieldRebooting: false,
@@ -69,7 +74,7 @@ describe('resolvePlayerBulletDamage', () => {
       ]
     });
     const bullet = makeBullet({ damage: 20, damageType: { category: 'kinetic', matter: 'normal' } });
-    resolvePlayerBulletDamage(bullet as BulletSpec, ship, viewShieldOnline(true, cat()));
+    resolveShipBulletDamage(bullet as BulletSpec, ship, viewShieldOnline(true, cat()));
     expect(ship.currentShieldHP).toBe(80);
     expect(ship.armourLayers[0].currentHP).toBe(50);
   });
@@ -84,7 +89,7 @@ describe('resolvePlayerBulletDamage', () => {
       ]
     });
     const bullet = makeBullet({ damage: 20 });
-    resolvePlayerBulletDamage(bullet as BulletSpec, ship, viewShieldOnline(true, cat()));
+    resolveShipBulletDamage(bullet as BulletSpec, ship, viewShieldOnline(true, cat()));
     expect(ship.currentShieldHP).toBe(0);
     expect(ship.armourLayers[0].currentHP).toBe(50);
   });
@@ -98,13 +103,18 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'ar' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 40 }) as BulletSpec, ship, viewShieldOnline(true, cat()));
+    resolveShipBulletDamage(makeBullet({ damage: 40 }) as BulletSpec, ship, viewShieldOnline(true, cat()));
     expect(ship.currentShieldHP).toBe(0);
     expect(ship.armourLayers[0].currentHP).toBe(50);
   });
 
-  it('shield at 0 and offline path: damage hits armour layer 0', () => {
+  it.each([
+    [true, 'player'],
+    [false, 'npc_1']
+  ])('shield at 0 and offline path: damage hits armour layer 0 (isPlayer=%s)', (isPlayer, id) => {
     const ship = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
       currentShieldHP: 0,
       shieldRebooting: false,
       armourLayers: [{ itemId: 'ar', currentHP: 50, maxHP: 50 }],
@@ -113,7 +123,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'ar' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 15 }) as BulletSpec, ship, viewShieldOnline(false, cat()));
+    resolveShipBulletDamage(makeBullet({ damage: 15 }) as BulletSpec, ship, viewShieldOnline(false, cat()));
     expect(ship.armourLayers[0].currentHP).toBe(35);
   });
 
@@ -132,7 +142,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'ar2' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(false, m));
     expect(ship.armourLayers[0].currentHP).toBe(50);
   });
 
@@ -151,7 +161,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'ar3' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(false, m));
     expect(ship.armourLayers[0].currentHP).toBe(35);
   });
 
@@ -176,7 +186,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'a2' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 20 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    resolveShipBulletDamage(makeBullet({ damage: 20 }) as BulletSpec, ship, viewShieldOnline(false, m));
     expect(ship.armourLayers[0].currentHP).toBe(0);
     expect(ship.armourLayers[1].currentHP).toBe(10);
   });
@@ -202,7 +212,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'a2' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 4 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    resolveShipBulletDamage(makeBullet({ damage: 4 }) as BulletSpec, ship, viewShieldOnline(false, m));
     expect(ship.armourLayers[1].currentHP).toBe(6);
   });
 
@@ -222,7 +232,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'a1' }
       ]
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 7 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    resolveShipBulletDamage(makeBullet({ damage: 7 }) as BulletSpec, ship, viewShieldOnline(false, m));
     expect(ship.currentHullHP).toBe(93);
   });
 
@@ -235,7 +245,7 @@ describe('resolvePlayerBulletDamage', () => {
         { slotType: 'armour', itemId: 'ar' }
       ]
     });
-    resolvePlayerBulletDamage(
+    resolveShipBulletDamage(
       makeBullet({ damage: 10, damageType: { category: 'void', matter: 'normal' } }) as BulletSpec,
       ship,
       viewShieldOnline(true, cat())
@@ -252,14 +262,17 @@ describe('resolvePlayerBulletDamage', () => {
       equipmentSlots: [{ slotType: 'shield', itemId: 'sh' }],
       armourLayers: []
     });
-    resolvePlayerBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(true, cat()));
+    resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(true, cat()));
     expect(ship.shieldRebooting).toBe(true);
     expect(ship.shieldRebootTimer).toBe(12);
   });
 });
 
-describe('applyPlasmaDotToPlayer', () => {
-  it('applies to outermost armour with HP', () => {
+describe('applyPlasmaDotToShip', () => {
+  it.each([
+    [true, 'player'],
+    [false, 'npc_burn']
+  ])('applies to outermost armour with HP (isPlayer=%s)', (isPlayer, id) => {
     const a1 = makeArmour({ id: 'x1', layers: { plasma: 0 } });
     const a2 = makeArmour({ id: 'x2', layers: { plasma: 0 } });
     const m = new Map([
@@ -267,13 +280,15 @@ describe('applyPlasmaDotToPlayer', () => {
       ['x2', a2]
     ]);
     const state = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
       currentHullHP: 100,
       armourLayers: [
         { itemId: 'x1', currentHP: 5, maxHP: 5 },
         { itemId: 'x2', currentHP: 8, maxHP: 8 }
       ]
     });
-    applyPlasmaDotToPlayer(state, 2, (id) => m.get(id) ?? null);
+    applyPlasmaDotToShip(state, 2, (id) => m.get(id) ?? null);
     expect(state.armourLayers[0].currentHP).toBe(3);
     expect(state.armourLayers[1].currentHP).toBe(8);
     expect(state.currentHullHP).toBe(100);
@@ -285,7 +300,7 @@ describe('applyPlasmaDotToPlayer', () => {
       currentHullHP: 100,
       armourLayers: [{ itemId: 'x1', currentHP: 0, maxHP: 5 }]
     });
-    applyPlasmaDotToPlayer(state, 3, () => a1);
+    applyPlasmaDotToShip(state, 3, () => a1);
     expect(state.currentHullHP).toBe(97);
   });
 
@@ -296,7 +311,7 @@ describe('applyPlasmaDotToPlayer', () => {
       currentHullHP: 50,
       armourLayers: [{ itemId: 'x1', currentHP: 4, maxHP: 5 }]
     });
-    applyPlasmaDotToPlayer(state, 2, () => a1);
+    applyPlasmaDotToShip(state, 2, () => a1);
     expect(state.currentShieldHP).toBe(100);
     expect(state.armourLayers[0].currentHP).toBe(2);
   });

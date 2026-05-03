@@ -3,10 +3,16 @@ import type { WorldState } from '../core/worldState';
 import type { ReactorItem, ShieldItem, ShipState } from '../types';
 
 /**
- * Advances reactor charge, shield reboot countdown, and shield HP regen for the player ship.
+ * Advances reactor charge (fuel → joules), shield reboot countdown, and shield HP regen for any ship.
  * Mutates `ship` in place. `nowMs` should match `Date.now()` semantics (shield regen uses hit cooldown vs wall clock).
+ * Player and NPC ships use the same rules; shield gating uses {@link WorldState.isShieldOnlineForShip}.
  */
-export function tickPlayerEnergyAndShield(ship: ShipState, worldState: WorldState, dt: number, nowMs: number): boolean {
+export function tickShipEnergyAndShield(
+  ship: ShipState,
+  worldState: WorldState,
+  dt: number,
+  nowMs: number
+): boolean {
   let updated = false;
 
   const reactorSlot = ship.equipmentSlots.find((s) => s.slotType === 'reactor');
@@ -40,7 +46,7 @@ export function tickPlayerEnergyAndShield(ship: ShipState, worldState: WorldStat
   }
 
   const shieldSlot = ship.equipmentSlots.find((s) => s.slotType === 'shield');
-  if (shieldSlot?.itemId && worldState.isShieldOnline()) {
+  if (shieldSlot?.itemId && worldState.isShieldOnlineForShip(ship)) {
     const shieldItem = worldState.getEquipmentItem(shieldSlot.itemId);
     if (shieldItem?.type === 'shield') {
       const shield = shieldItem as ShieldItem;

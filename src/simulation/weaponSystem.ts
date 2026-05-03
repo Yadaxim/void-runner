@@ -11,9 +11,8 @@ import {
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
-import type { ArmourItem, BulletSpec, Landable, ShipState, WeaponFireKey, WeaponItem } from '../types';
-import { getDamageTypeKey } from '../types';
-import { applyPlasmaDotToPlayer, resolvePlayerBulletDamage } from '../combat/damage';
+import type { BulletSpec, Landable, ShipState, WeaponFireKey, WeaponItem } from '../types';
+import { applyPlasmaDotToShip, resolveShipBulletDamage } from '../combat/damage';
 import { BulletEntity } from './bulletEntity';
 import { ParticleSystem } from './particleSystem';
 import type { ShipEntity } from './shipEntity';
@@ -155,11 +154,7 @@ export class WeaponSystem {
         return false;
       }
       burn.remainingDuration -= dt;
-      if (target.state.isPlayerControlled) {
-        this.applyBurnDamage(target.state, burn.damagePerSecond, dt, worldState);
-      } else {
-        target.state.currentHullHP = Math.max(0, target.state.currentHullHP - burn.damagePerSecond * dt);
-      }
+      this.applyBurnDamage(target.state, burn.damagePerSecond, dt, worldState);
       if (target.state.currentHullHP <= 0) {
         target.markDestroyed();
         if (target.state.isPlayerControlled) {
@@ -195,32 +190,21 @@ export class WeaponSystem {
     target: ShipEntity,
     worldState: WorldState
   ): BulletDamageResult {
-    if (!target.state.isPlayerControlled) {
-      const typeKey = getDamageTypeKey(bulletSpec.damageCategory, bulletSpec.matterType);
-      const totalReduction = target.state.equipmentSlots.reduce((total, slot) => {
-        if (!slot.itemId) return total;
-        const item = worldState.getEquipmentItem(slot.itemId);
-        if (!item || item.type !== 'armour') return total;
-        return total + ((item as ArmourItem).reductions[typeKey] ?? 0);
-      }, 0);
-      const effectiveDamage = Math.max(0, bulletSpec.damage - totalReduction);
-      target.state.currentHullHP = Math.max(0, target.state.currentHullHP - effectiveDamage);
-      return { effectiveDamage, totalReduction };
-    }
-
     const ship = target.state;
     const view = {
-      isShieldOnline: (s: ShipState) => worldState.isShieldOnline(),
+      isShieldOnline: (s: ShipState) => worldState.isShieldOnlineForShip(s),
       getEquipmentItem: (id: string) => worldState.getEquipmentItem(id)
     };
-    const result = resolvePlayerBulletDamage(bulletSpec, ship, view);
-    worldState.updatePlayerShipState(ship);
+    const result = resolveShipBulletDamage(bulletSpec, ship, view);
+    if (ship.isPlayerControlled) {
+      worldState.updatePlayerShipState(ship);
+    }
     return result;
   }
 
   private applyBurnDamage(targetState: ShipState, damagePerSecond: number, dt: number, worldState: WorldState): void {
     const damage = damagePerSecond * dt;
-    applyPlasmaDotToPlayer(targetState, damage, (id) => worldState.getEquipmentItem(id));
+    applyPlasmaDotToShip(targetState, damage, (id) => worldState.getEquipmentItem(id));
   }
 
   private tryApplyPlasmaBurn(bulletSpec: BulletSpec, target: ShipEntity): void {
