@@ -1,6 +1,6 @@
 # VOID RUNNER — Project context
 
-> Single handoff document for new sessions (`plan/CONTEXT.md`). Detailed design lives in `plan/VOID_RUNNER_GDD.md` and `plan/VOID_RUNNER_WorldGen.md`. Optional session prompts live in repo-root **`claudePrompts/`** (gitignored — keep a local copy; not authoritative for “what’s done”).
+> Single handoff document for new sessions (`plan/CONTEXT.md`). Detailed design lives in `plan/VOID_RUNNER_GDD.md`, `plan/VOID_RUNNER_WorldGen.md`, and **`plan/VOID_RUNNER_Art_Guidelines_v1.0.md`** (visual / renderer spec). Optional session prompts live in repo-root **`claudePrompts/`** (gitignored — keep a local copy; not authoritative for “what’s done”).
 
 ---
 
