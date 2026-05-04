@@ -16,6 +16,7 @@ interface TargetInputs {
   cycleLandableTarget: boolean;
   toggleMissionsPanel: boolean;
   toggleGalaxyMap: boolean;
+  hyperspaceJumpQueued: boolean;
 }
 
 export class PlayerController {
@@ -28,6 +29,7 @@ export class PlayerController {
   private cycleLandableTargetQueued = false;
   private toggleMissionsPanelQueued = false;
   private toggleGalaxyMapQueued = false;
+  private hyperspaceJumpQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -41,6 +43,7 @@ export class PlayerController {
     'KeyG',
     'KeyM',
     'KeyK',
+    'KeyJ',
     'KeyZ',
     'KeyX',
     'KeyC',
@@ -75,6 +78,9 @@ export class PlayerController {
     }
     if (!event.repeat && event.code === 'KeyK') {
       this.toggleGalaxyMapQueued = true;
+    }
+    if (!event.repeat && event.code === 'KeyJ') {
+      this.hyperspaceJumpQueued = true;
     }
     this.pressedKeys.add(event.code);
   };
@@ -121,12 +127,14 @@ export class PlayerController {
       cycleShipTarget: this.cycleShipTargetQueued,
       cycleLandableTarget: this.cycleLandableTargetQueued,
       toggleMissionsPanel: this.toggleMissionsPanelQueued,
-      toggleGalaxyMap: this.toggleGalaxyMapQueued
+      toggleGalaxyMap: this.toggleGalaxyMapQueued,
+      hyperspaceJumpQueued: this.hyperspaceJumpQueued
     };
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
     this.toggleGalaxyMapQueued = false;
+    this.hyperspaceJumpQueued = false;
     return inputs;
   }
 
@@ -152,5 +160,6 @@ export class PlayerController {
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
     this.toggleGalaxyMapQueued = false;
+    this.hyperspaceJumpQueued = false;
   }
 }

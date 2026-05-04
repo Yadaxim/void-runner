@@ -14,6 +14,9 @@ import {
   ARRIVAL_MESSAGE_DURATION_MS,
   AUTOSAVE_INTERVAL_SECONDS,
   COLOURS,
+  HYPERSPACE_JUMP_IN_SECONDS,
+  HYPERSPACE_JUMP_OUT_SECONDS,
+  HYPERSPACE_OFFSCREEN_METRES,
   INSURANCE_PAYOUT_FRACTION,
   INSURANCE_REPAIR_COST_FRACTION,
   LANDING_RADIUS_MULTIPLIER,
@@ -27,6 +30,7 @@ import {
 import { LandableScreen } from './landableScreen';
 import { GalaxyMapScreen } from './galaxyMapScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
+import { computeHyperspaceLandingSector } from '../sim/hyperspaceJump';
 import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from '../sim/sectorNav';
 import { ScreenManager, type Screen } from './screenManager';
 
@@ -52,6 +56,17 @@ export class FlightScreen implements Screen {
   private lastDt = 0;
   private autosaveAccumulator = 0;
   private isTransitioning = false;
+  private hyperspaceJump: {
+    phase: 'out' | 'in';
+    elapsed: number;
+    outDuration: number;
+    inDuration: number;
+    dir: Vector2;
+    landingCoord: { x: number; y: number };
+    cooldownSeconds: number;
+  } | null = null;
+  private flightBannerUntilMs = 0;
+  private flightBannerText = '';
   private boundaryWarningUntilMs = 0;
   private arrivalMessageUntilMs = 0;
   private arrivalMessageSectorName = '';
@@ -251,6 +266,7 @@ export class FlightScreen implements Screen {
     this.playerShip = null;
     this.sectorSimulation?.dispose();
     this.sectorSimulation = null;
+    this.hyperspaceJump = null;
   }
 
   update(dt: number): void {
@@ -279,6 +295,13 @@ export class FlightScreen implements Screen {
       return;
     }
 
+    if (this.hyperspaceJump) {
+      this.lastDt = dt;
+      this.updateHyperspaceJump(dt);
+      this.worldState.addPlayTime(dt);
+      return;
+    }
+
     if (this.isPaused) {
       return;
     }
@@ -287,19 +310,26 @@ export class FlightScreen implements Screen {
     if (this.landingCooldownSeconds > 0) {
       this.landingCooldownSeconds = Math.max(0, this.landingCooldownSeconds - dt);
     }
-    const inputs = this.isTransitioning
-      ? {
-          forward: false,
-          reverse: false,
-          rotateCW: false,
-          rotateCCW: false,
-          autoBrakeLinear: false,
-          autoBrakeRotation: false,
-          landPressed: false,
-          devRefuelPressed: false
-        }
-      : this.playerController.update();
+    const zeroInputs = {
+      forward: false,
+      reverse: false,
+      rotateCW: false,
+      rotateCCW: false,
+      autoBrakeLinear: false,
+      autoBrakeRotation: false,
+      landPressed: false,
+      devRefuelPressed: false
+    };
+    const inputs = this.isTransitioning ? zeroInputs : this.playerController.update();
     const targetInputs = this.playerController.getTargetInputs();
+    if (targetInputs.hyperspaceJumpQueued) {
+      this.tryBeginHyperspaceJump();
+    }
+    if (this.hyperspaceJump) {
+      this.updateHyperspaceJump(dt);
+      this.worldState.addPlayTime(dt);
+      return;
+    }
     const fireInputs = this.playerController.getFireInputs();
     this.heldFireKeys = { ...fireInputs };
     this.lastKnownShipPosition = this.playerShip.state.position as Vector2;
@@ -406,8 +436,9 @@ export class FlightScreen implements Screen {
       return;
     }
 
+    const camPos = (this.playerShip.state.position as Vector2).add(this.getHyperspaceCameraOffset());
     const camera: Camera = {
-      playerWorldPos: this.playerShip.state.position,
+      playerWorldPos: camPos,
       canvasWidth: this.canvas.width,
       canvasHeight: this.canvas.height
     };
@@ -440,6 +471,8 @@ export class FlightScreen implements Screen {
         return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;
       })
     });
+    this.drawHyperspaceFlashOverlay(this.ctx);
+    this.drawFlightBanner(this.ctx);
     }
     this.landableScreen?.render(this.ctx);
     this.insuranceScreen?.render(this.ctx);
@@ -519,7 +552,7 @@ export class FlightScreen implements Screen {
       'Q: linear auto-brake, E: rotation auto-brake',
       'L: land when landing prompt appears',
       'M: toggle active missions panel',
-      'K: galaxy map (hyperspace target)',
+      'K: galaxy map (hyperspace target), J: hyper jump toward target',
       'Tab: cycle ship target, G: cycle landable target',
       'Z/X/C/V/B: fire weapon groups',
       'Esc: pause'
@@ -877,6 +910,209 @@ export class FlightScreen implements Screen {
       position: nextPosition,
       velocity: nextVelocity
     });
+  }
+
+  private showFlightBanner(text: string): void {
+    this.flightBannerText = text;
+    this.flightBannerUntilMs = performance.now() + 3200;
+  }
+
+  private tryBeginHyperspaceJump(): void {
+    if (this.hyperspaceJump || this.isTransitioning || !this.playerShip) {
+      return;
+    }
+    const drive = this.worldState.getPlayerHyperspaceDrive();
+    if (!drive) {
+      this.showFlightBanner('NO HYPERDRIVE INSTALLED');
+      return;
+    }
+    const target = this.worldState.getHyperspaceTargetCoord();
+    if (!target) {
+      this.showFlightBanner('NO HYPER TARGET — MAP (K) THEN ENTER');
+      return;
+    }
+    const from = this.worldState.getCurrentSectorCoord();
+    const landing = computeHyperspaceLandingSector(
+      from,
+      target,
+      drive.jumpRange,
+      this.worldState.getGridWidth(),
+      this.worldState.getGridHeight()
+    );
+    if (!landing) {
+      this.showFlightBanner('ALREADY AT TARGET');
+      return;
+    }
+    if (landing.x === from.x && landing.y === from.y) {
+      this.showFlightBanner('ALREADY AT TARGET');
+      return;
+    }
+    if (!this.worldState.isHyperspaceJumpOffCooldown()) {
+      const s = Math.ceil(this.worldState.getHyperspaceCooldownRemainingSeconds());
+      this.showFlightBanner(`HYPER COOLDOWN ${s}s`);
+      return;
+    }
+    const ship = this.playerShip.state;
+    if (ship.fuel < drive.fuelCostPerJump) {
+      this.showFlightBanner('INSUFFICIENT FUEL FOR HYPER');
+      return;
+    }
+    const gdx = landing.x - from.x;
+    const gdy = landing.y - from.y;
+    const gmag = Math.hypot(gdx, gdy);
+    const dir = gmag < 1e-9 ? new Vector2(1, 0) : new Vector2(gdx, -gdy).normalise();
+    const newFuel = ship.fuel - drive.fuelCostPerJump;
+    this.playerShip.state = {
+      ...ship,
+      fuel: newFuel,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    };
+    this.worldState.updatePlayerShipState({ fuel: newFuel, velocity: Vector2.zero(), angularVelocity: 0 });
+    this.hyperspaceJump = {
+      phase: 'out',
+      elapsed: 0,
+      outDuration: HYPERSPACE_JUMP_OUT_SECONDS,
+      inDuration: HYPERSPACE_JUMP_IN_SECONDS,
+      dir,
+      landingCoord: { ...landing },
+      cooldownSeconds: drive.cooldown
+    };
+  }
+
+  private updateHyperspaceJump(dt: number): void {
+    const j = this.hyperspaceJump;
+    if (!j || !this.playerShip) {
+      return;
+    }
+    j.elapsed += dt;
+    if (j.phase === 'out') {
+      if (j.elapsed >= j.outDuration) {
+        this.completeHyperspaceOutPhase();
+      }
+      return;
+    }
+    const t = Math.min(1, j.elapsed / j.inDuration);
+    const ease = 1 - (1 - t) ** 3;
+    const dist = HYPERSPACE_OFFSCREEN_METRES * (1 - ease);
+    const pos = j.dir.scale(-dist);
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      position: pos,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    };
+    this.worldState.updatePlayerShipState({
+      position: pos,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    });
+    if (j.elapsed >= j.inDuration) {
+      this.finishHyperspaceJump();
+    }
+  }
+
+  private completeHyperspaceOutPhase(): void {
+    const j = this.hyperspaceJump;
+    if (!j || !this.playerShip) {
+      return;
+    }
+    const spawn = j.dir.scale(-HYPERSPACE_OFFSCREEN_METRES);
+    this.worldState.setCurrentSector(j.landingCoord);
+    this.worldState.markVisited(j.landingCoord);
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      position: spawn,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    };
+    this.worldState.updatePlayerShipState({
+      position: spawn,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    });
+    this.loadCurrentSector();
+    this.setArrivalMessageForSector();
+    j.phase = 'in';
+    j.elapsed = 0;
+  }
+
+  private finishHyperspaceJump(): void {
+    const j = this.hyperspaceJump;
+    if (!j || !this.playerShip) {
+      return;
+    }
+    this.playerShip.state = {
+      ...this.playerShip.state,
+      position: Vector2.zero(),
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    };
+    this.worldState.updatePlayerShipState({
+      position: Vector2.zero(),
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    });
+    this.worldState.armHyperspaceCooldown(j.cooldownSeconds);
+    this.hyperspaceJump = null;
+    this.worldState.saveToLocalStorage();
+  }
+
+  private getHyperspaceCameraOffset(): Vector2 {
+    const j = this.hyperspaceJump;
+    if (!j) {
+      return Vector2.zero();
+    }
+    if (j.phase !== 'out') {
+      return Vector2.zero();
+    }
+    const t = Math.min(1, j.elapsed / j.outDuration);
+    const e = t * t * t;
+    return j.dir.scale(-e * HYPERSPACE_OFFSCREEN_METRES);
+  }
+
+  private drawHyperspaceFlashOverlay(ctx: CanvasRenderingContext2D): void {
+    const j = this.hyperspaceJump;
+    if (!j) {
+      return;
+    }
+    let alpha = 0;
+    if (j.phase === 'out') {
+      const t = j.elapsed / j.outDuration;
+      alpha = Math.max(0, (t - 0.7) / 0.3) * 0.62;
+    } else {
+      const t = j.elapsed / j.inDuration;
+      alpha = Math.max(0, 1 - t / 0.2) * 0.55;
+    }
+    if (alpha < 0.03) {
+      return;
+    }
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxR = Math.hypot(w, h) * 0.65;
+    ctx.save();
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    g.addColorStop(0.25, `rgba(210, 240, 255, ${alpha * 0.55})`);
+    g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  private drawFlightBanner(ctx: CanvasRenderingContext2D): void {
+    if (performance.now() > this.flightBannerUntilMs || !this.flightBannerText) {
+      return;
+    }
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.WARNING;
+    ctx.fillText(this.flightBannerText, ctx.canvas.width / 2, ctx.canvas.height - 36);
+    ctx.restore();
   }
 
   private async transitionToSector(edge: SectorEdge): Promise<void> {

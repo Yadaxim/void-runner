@@ -2149,7 +2149,10 @@ export class LandableScreen implements Screen {
           `${item.joulesPerHPRegen} J/HP  delay ${item.regenDelay}s  reboot ${item.rebootTime}s`
         ];
       case 'hyperspaceDrive':
-        return [`Range: ${item.jumpRange} sectors`, `Mass: ${item.mass}`];
+        return [
+          `Range: ${item.jumpRange} sectors  CD: ${item.cooldown}s`,
+          `Fuel/jump: ${item.fuelCostPerJump}  Mass: ${item.mass}`
+        ];
       case 'sensorArray':
         return [`Range: ${item.range}  Slots: ${item.trackedObjectSlots}`, `Mass: ${item.mass}`];
       case 'neuralBrain':

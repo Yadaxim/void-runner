@@ -27,6 +27,7 @@ import type {
   GridCoord,
   HullLoadoutVariantKey,
   HullSpec,
+  HyperspaceDriveItem,
   Landable,
   ReactorItem,
   SectorMetadata,
@@ -59,6 +60,8 @@ interface PersistedWorldState {
   playTimeSeconds: number;
   /** Hyperspace jump target (Session 5 UI; jump rules in Session 6). */
   hyperspaceTargetCoord?: GridCoord | null;
+  /** Earliest `playTimeSeconds` at which another hyperspace jump is allowed. */
+  hyperspaceCooldownUntilPlayTime?: number;
 }
 
 export interface SaveMetadata {
@@ -349,6 +352,7 @@ export class WorldState {
   private currentSectorCoord: GridCoord;
   private visitedSectors: Set<string>;
   private hyperspaceTargetCoord: GridCoord | null = null;
+  private hyperspaceCooldownUntilPlayTime = 0;
   private playerShipState: ShipState;
   private factionReputations: Record<string, number>;
   private repLog: RepEvent[] = [];
@@ -377,6 +381,7 @@ export class WorldState {
     this.activeSaveId = options?.activeSaveId ?? generateSaveId();
     this.currentSectorCoord = { ...startSector };
     this.visitedSectors = new Set<string>([coordKey(startSector)]);
+    this.hyperspaceCooldownUntilPlayTime = 0;
     this.playerShipState = normaliseShipState(playerShipState);
     this.ensureHullSlots();
     this.factionReputations = defaultFactionReputations(indexedWorld);
@@ -1279,6 +1284,34 @@ export class WorldState {
     this.hyperspaceTargetCoord = { ...coord };
   }
 
+  getPlayerHyperspaceDrive(): HyperspaceDriveItem | null {
+    const ship = this.getPlayerShipState();
+    const slot = ship.equipmentSlots.find((s) => s.slotType === 'hyperspaceDrive' && s.itemId);
+    if (!slot?.itemId) {
+      return null;
+    }
+    const item = this.getEquipmentItem(slot.itemId);
+    return item?.type === 'hyperspaceDrive' ? (item as HyperspaceDriveItem) : null;
+  }
+
+  isHyperspaceJumpOffCooldown(): boolean {
+    return this.playTimeSeconds >= this.hyperspaceCooldownUntilPlayTime;
+  }
+
+  getHyperspaceCooldownRemainingSeconds(): number {
+    return Math.max(0, this.hyperspaceCooldownUntilPlayTime - this.playTimeSeconds);
+  }
+
+  /** Schedules next allowed jump time from current career play time. */
+  armHyperspaceCooldown(cooldownSeconds: number): void {
+    const add = Math.max(0, cooldownSeconds);
+    this.hyperspaceCooldownUntilPlayTime = this.playTimeSeconds + add;
+  }
+
+  private applyLoadedHyperspaceCooldown(t: number): void {
+    this.hyperspaceCooldownUntilPlayTime = Math.max(0, t);
+  }
+
   saveToLocalStorage(): void {
     const payload: PersistedWorldState = {
       currentSectorCoord: this.currentSectorCoord,
@@ -1288,7 +1321,8 @@ export class WorldState {
       repLog: this.repLog,
       pilotName: this.pilotName,
       playTimeSeconds: this.playTimeSeconds,
-      hyperspaceTargetCoord: this.hyperspaceTargetCoord
+      hyperspaceTargetCoord: this.hyperspaceTargetCoord,
+      hyperspaceCooldownUntilPlayTime: this.hyperspaceCooldownUntilPlayTime
     };
     const worldSeed = this.worldFile.metadata.seed;
     const { saveKey, metaKey } = persistKeys(worldSeed, this.activeSaveId);
@@ -1337,6 +1371,10 @@ export class WorldState {
         Number.isFinite(ht.y)
       ) {
         state.setHyperspaceTargetCoord({ x: ht.x, y: ht.y });
+      }
+      const cd = parsed.hyperspaceCooldownUntilPlayTime;
+      if (typeof cd === 'number' && Number.isFinite(cd)) {
+        state.applyLoadedHyperspaceCooldown(cd);
       }
       return state;
     } catch (e) {

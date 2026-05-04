@@ -31,7 +31,7 @@ interface MapLayout {
   titleBand: number;
 }
 
-/** Full-grid galaxy map: factions, visited state, radiation overlay, hyperspace target selection (jump in Session 6). */
+/** Full-grid galaxy map: factions, visited state, radiation overlay, hyperspace target selection (jump with J in flight). */
 export class GalaxyMapScreen implements Screen {
   private cursor: GridCoord;
   private pulseMs = 0;
@@ -423,8 +423,8 @@ export class GalaxyMapScreen implements Screen {
     y += 4;
     ctx.fillStyle = COLOURS.WARNING;
     ctx.font = "10px 'Courier New', monospace";
-    line('Jump: fuel / range / CD');
-    line('in a later build.');
+    line('In flight: J — hyper jump');
+    line('toward target (drive + fuel).');
   }
 
   private renderRightPositionsPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {

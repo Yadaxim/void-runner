@@ -47,12 +47,12 @@ Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Shipped
 
 From roadmap **Navigation slice** and context **Session 6**.
 
-- [ ] Jump only to **visible** sectors on the galaxy map (skip intermediates)  
-- [ ] Fuel cost per jump  
-- [ ] Cooldown between jumps  
-- [ ] Jump range by drive tier  
-- [ ] Alignment requirement + jump animation  
-- [ ] **Fleet:** all ships align heading before jump; weakest drive limits range  
+- [x] Jump toward galaxy-map target along grid ray; **partial hops** when target farther than drive **range** (Euclidean sector units); otherwise land on target sector  
+- [x] Fuel cost per jump (from equipped **`hyperspaceDrive`**)  
+- [x] Cooldown between jumps (career **`playTimeSeconds`**, persisted)  
+- [x] Jump **range** from drive spec (`jumpRange`); **no drive → no jump**  
+- [x] Jump **animation** (camera streak out + arrival streak in + radial flash); no separate alignment gate  
+- [ ] **Fleet:** all ships align heading before jump; weakest drive limits range — *deferred until fleet ownership exists*  
 
 ---
 

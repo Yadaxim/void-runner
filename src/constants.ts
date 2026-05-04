@@ -50,6 +50,10 @@ export const GALAXY_GRID_HEIGHT = 30;
 export const SECTOR_WIDTH = 3200;
 export const SECTOR_HEIGHT = 3200;
 export const SECTOR_EDGE_THRESHOLD = 40;
+/** Hyperspace jump presentation (flight screen). */
+export const HYPERSPACE_JUMP_OUT_SECONDS = 0.52;
+export const HYPERSPACE_JUMP_IN_SECONDS = 0.52;
+export const HYPERSPACE_OFFSCREEN_METRES = 3000;
 export const RADIATION_OUTER_RADIUS = 3.0;
 export const RADIATION_INNER_RADIUS = 1.0;
 export const RADIATION_VIGNETTE_MAX_OPACITY = 0.55;

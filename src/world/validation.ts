@@ -6,6 +6,7 @@ import {
   type EquipmentItem,
   type EquipmentSlot,
   type FuelTankItem,
+  type HyperspaceDriveItem,
   type HullSpec,
   type ReactorItem,
   type RegionType,
@@ -376,6 +377,12 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       const f = item as FuelTankItem;
       if (f.fuelCapacity <= 0) {
         push(`Fuel tank "${item.id}" must have positive fuelCapacity`);
+      }
+    }
+    if (item.type === 'hyperspaceDrive') {
+      const h = item as HyperspaceDriveItem;
+      if (!(h.jumpRange > 0) || !(h.fuelCostPerJump > 0) || !(h.cooldown > 0)) {
+        push(`Hyperspace drive "${item.id}" requires positive jumpRange, fuelCostPerJump, and cooldown`);
       }
     }
   }

@@ -176,7 +176,8 @@
         "autoBrake": 1,
         "fuelTank": 1,
         "reactor": 1,
-        "shield": 1
+        "shield": 1,
+        "hyperspaceDrive": 1
       },
       "price": 18000,
       "sellValue": 10800,
@@ -213,6 +214,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": null
           }
         ],
         "basic": [
@@ -247,6 +252,10 @@
           {
             "slotType": "weapon",
             "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ],
         "advanced": [
@@ -281,6 +290,10 @@
           {
             "slotType": "weapon",
             "itemId": "seeker_launcher_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ]
       }
@@ -303,7 +316,8 @@
         "weapon": 1,
         "armour": 1,
         "autoBrake": 1,
-        "fuelTank": 1
+        "fuelTank": 1,
+        "hyperspaceDrive": 1
       },
       "price": 14000,
       "sellValue": 8400,
@@ -332,6 +346,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": null
           }
         ],
         "basic": [
@@ -358,6 +376,10 @@
           {
             "slotType": "weapon",
             "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ],
         "advanced": [
@@ -384,6 +406,10 @@
           {
             "slotType": "weapon",
             "itemId": "slug_thrower_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ]
       }
@@ -409,7 +435,8 @@
         "autoBrake": 1,
         "fuelTank": 1,
         "reactor": 1,
-        "shield": 1
+        "shield": 1,
+        "hyperspaceDrive": 1
       },
       "price": 32000,
       "sellValue": 19200,
@@ -454,6 +481,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": null
           }
         ],
         "basic": [
@@ -496,6 +527,10 @@
           {
             "slotType": "weapon",
             "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ],
         "advanced": [
@@ -538,6 +573,10 @@
           {
             "slotType": "weapon",
             "itemId": "slug_thrower_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ]
       }
@@ -563,7 +602,8 @@
         "autoBrake": 1,
         "fuelTank": 2,
         "reactor": 1,
-        "shield": 1
+        "shield": 1,
+        "hyperspaceDrive": 1
       },
       "price": 52000,
       "sellValue": 28000,
@@ -612,6 +652,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": null
           }
         ],
         "basic": [
@@ -658,6 +702,10 @@
           {
             "slotType": "weapon",
             "itemId": "pulse_cannon_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ],
         "advanced": [
@@ -704,6 +752,10 @@
           {
             "slotType": "weapon",
             "itemId": "seeker_launcher_t1"
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ]
       }
@@ -728,7 +780,8 @@
         "autoBrake": 1,
         "fuelTank": 1,
         "reactor": 1,
-        "shield": 1
+        "shield": 1,
+        "hyperspaceDrive": 1
       },
       "price": 24000,
       "sellValue": 14400,
@@ -789,6 +842,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": null
           }
         ],
         "basic": [
@@ -847,6 +904,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ],
         "advanced": [
@@ -905,6 +966,10 @@
           {
             "slotType": "weapon",
             "itemId": null
+          },
+          {
+            "slotType": "hyperspaceDrive",
+            "itemId": "hyperdrive_basic"
           }
         ]
       }
@@ -1309,6 +1374,20 @@
       "regenDelay": 6,
       "rebootTime": 18,
       "slotType": "shield"
+    },
+    {
+      "id": "hyperdrive_basic",
+      "type": "hyperspaceDrive",
+      "name": "Mark I Hop Drive",
+      "description": "Short-range hyperspace hopper. Burns a quarter tank per jump; two-sector reach.",
+      "mass": 18,
+      "tier": 1,
+      "price": 1200,
+      "factionAffinity": "federation",
+      "jumpRange": 2,
+      "fuelCostPerJump": 25,
+      "cooldown": 20,
+      "slotType": "hyperspaceDrive"
     }
   ],
   "startingConditions": {
