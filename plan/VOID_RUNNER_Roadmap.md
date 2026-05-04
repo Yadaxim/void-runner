@@ -1,6 +1,6 @@
 # VOID RUNNER — Roadmap
 
-> Single delivery document: **priority-ordered work**, **AI control pre-wiring**, and **deferred design** (including type sketches and world-generator guidelines formerly in a separate “future plans” file). Runtime handoff and architecture live in **`plan/CONTEXT.md`**.
+> Single delivery document: **priority-ordered work**, **AI control pre-wiring**, and **deferred design** (including type sketches and world-generator guidelines formerly in a separate “future plans” file). Runtime handoff and architecture live in **`plan/CONTEXT.md`**. The actionable **checklist** lives in **`plan/VOID_RUNNER_Backlog.md`** — update it when you ship or reprioritize.
 
 ---
 
@@ -236,7 +236,7 @@ void(type)    voidtype  —           —
 
 - **Engineering priority** defaults to top-to-bottom within a section, then section order as listed.  
 - **Appendices** are reference for design and world-gen; promote items into the main sections when they get a release anchor.  
-- After major milestones, update **`plan/CONTEXT.md`** (“implemented vs remaining”) and trim this roadmap so **Now** stays honest.
+- After major milestones, update **`plan/CONTEXT.md`** (“implemented vs remaining”), refresh **`plan/VOID_RUNNER_Backlog.md`** (check off shipped items, add new rows), and trim this roadmap so **Now** stays honest.
 
 ---
 

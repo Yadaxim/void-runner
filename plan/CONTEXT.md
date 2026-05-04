@@ -45,7 +45,8 @@ Vanilla DOM — no React/Vue.
 | `plan/VOID_RUNNER_GDD.md` | Full game design |
 | `plan/VOID_RUNNER_WorldGen.md` | Generator pipeline, PRNG domains, export format |
 | `plan/VOID_RUNNER_Art_Guidelines_v1.0.md` | Visual design, renderer spec |
-| `plan/VOID_RUNNER_Roadmap.md` | Delivery order, backlog, deferred type sketches, and world-gen guidelines |
+| `plan/VOID_RUNNER_Roadmap.md` | Delivery order, deferred type sketches, and world-gen guidelines |
+| **`plan/VOID_RUNNER_Backlog.md`** | **Checklist** of planned work (kept in sync with this file and the roadmap) |
 | `claudePrompts/` (repo root, gitignored) | Optional per-task prompts and notes; not committed |
 
 ---
@@ -140,7 +141,7 @@ Authoritative detail lives in the checklist below (historical handoff content fr
 - **Session 5:** galaxy map — visited sectors, factions, radiation zone, hyperspace target selection UI.  
 - **Session 6:** hyperspace drive — jump cost, cooldown, alignment, animation.
 
-See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order, backlog, and deferred design appendices.
+See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.
 
 ---
 
