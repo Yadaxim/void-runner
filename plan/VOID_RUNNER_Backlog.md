@@ -23,7 +23,7 @@ From roadmap **Navigation slice** and context **Session 5**.
 - [x] Visited-sector state on the map  
 - [x] Faction colouring on the map  
 - [x] Radiation zone overlay  
-- [x] Hyperspace **target selection** UI (jump rules may stay stubbed until Session 6)  
+- [x] Hyperspace **target selection** UI (jump execution in Session 6)  
 
 ---
 
@@ -51,7 +51,9 @@ From roadmap **Navigation slice** and context **Session 6**.
 - [x] Fuel cost per jump (from equipped **`hyperspaceDrive`**)  
 - [x] Cooldown between jumps (career **`playTimeSeconds`**, persisted)  
 - [x] Jump **range** from drive spec (`jumpRange`); **no drive → no jump**  
-- [x] Jump **animation** (camera streak out + arrival streak in + radial flash); no separate alignment gate  
+- [x] Galaxy map: **one-hop range** (sector tint + dashed ring from equipped drive)  
+- [x] Pre-jump **speed** (below landing-style threshold) and **hull alignment** to hop vector; **edge beacon** + **`[ J ]`** prompt when fuel and cooldown allow; on jump start **snap nose** to jump bearing and **zero linear + angular velocity**  
+- [x] Jump **animation** (camera streak out + arrival streak in + radial flash)  
 - [ ] **Fleet:** all ships align heading before jump; weakest drive limits range — *deferred until fleet ownership exists*  
 
 ---
