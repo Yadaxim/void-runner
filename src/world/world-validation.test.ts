@@ -88,10 +88,11 @@ describe('validateWorldFile', () => {
 
   it('flags equipment missing valid price', () => {
     const w = structuredClone(loadWorld());
-    const first = w.equipmentCatalog[0] as { price?: number };
-    delete first.price;
+    const first = w.equipmentCatalog[0];
+    const firstId = first.id;
+    delete (first as { price?: number }).price;
     const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('price') && e.includes(first.id))).toBe(true);
+    expect(r.errors.some((e) => e.includes('price') && e.includes(firstId))).toBe(true);
   });
 
   it('flags duplicate hull id', () => {
@@ -301,5 +302,32 @@ describe('validateWorldFile', () => {
     (w.sectors[0].npcSpawnRules[0] as { hullSpecId: string }).hullSpecId = '   ';
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('non-empty hullSpecId'))).toBe(true);
+  });
+
+  it('flags bullet legacy seeking/turnRatio fields', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
+    (spec as { seeking?: boolean }).seeking = true;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('removed fields seeking'))).toBe(true);
+  });
+
+  it('flags bullet seeking ability with invalid turnRatio', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'seeker_missile')!;
+    spec.abilities = [{ type: 'seeking', turnRatio: Number.NaN }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('finite turnRatio'))).toBe(true);
+  });
+
+  it('flags duplicate seeking abilities on one bullet', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'seeker_missile')!;
+    spec.abilities = [
+      { type: 'seeking', turnRatio: 1 },
+      { type: 'seeking', turnRatio: 2 }
+    ];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('at most one seeking'))).toBe(true);
   });
 });

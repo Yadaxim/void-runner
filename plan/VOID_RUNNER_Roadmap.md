@@ -12,10 +12,9 @@
 - Physics unit tests (forces, momentum, critical constants).  
 - Keep world validation tests current as schemas evolve.
 
-**Seeking as ability (quick win)**  
-Migrate `seeking: boolean` and `turnRatio?: number` off `BulletSpec` into a `SeekingAbility` in the ability system (`turnRatio: number`). Low effort, aligns with the ability-system direction.
-
 ---
+
+*Recently shipped:* seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`** (`{ type: 'seeking', turnRatio }`); `getBulletSeekingAbility` in `src/types/bullet.ts`; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs.
 
 ## AI control bus (keypress / pre-neural)
 

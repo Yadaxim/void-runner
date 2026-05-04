@@ -1,6 +1,6 @@
 import { GRAVITY_CONSTANT, MIN_GRAVITY_DISTANCE } from '../constants';
 import { Vector2 } from '../physics/vector2';
-import type { BulletInstance, BulletSpec, ShipState } from '../types';
+import { getBulletSeekingAbility, type BulletInstance, type BulletSpec, type ShipState } from '../types';
 import type { ShipEntity } from './shipEntity';
 
 let bulletCounter = 0;
@@ -72,14 +72,15 @@ export class BulletEntity {
       this.instance.body.velocity = (this.instance.body.velocity as Vector2).add(gravityAcceleration.scale(dt));
     }
 
-    if (this.spec.seeking && target) {
+    const seeking = getBulletSeekingAbility(this.spec);
+    if (seeking && target) {
       const toTarget = (target.state.position as Vector2).sub(this.instance.body.position as Vector2);
       if (toTarget.magnitudeSquared() > 0) {
         const targetAngle = angleFromDirection(toTarget);
         const currentVelocity = this.instance.body.velocity as Vector2;
         const currentAngle =
           currentVelocity.magnitudeSquared() > 0 ? angleFromDirection(currentVelocity) : targetAngle;
-        const maxTurn = (this.spec.turnRatio ?? 0) * dt;
+        const maxTurn = seeking.turnRatio * dt;
         let delta = targetAngle - currentAngle;
         while (delta > Math.PI) delta -= Math.PI * 2;
         while (delta < -Math.PI) delta += Math.PI * 2;

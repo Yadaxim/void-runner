@@ -211,6 +211,52 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     }
   }
 
+  const knownBulletAbilityTypes = new Set(['seeking']);
+  for (const spec of world.bulletSpecs) {
+    const legacy = spec as unknown as Record<string, unknown>;
+    if ('seeking' in legacy || 'turnRatio' in legacy) {
+      push(
+        `Bullet "${spec.id}" uses removed fields seeking/turnRatio; use abilities: [{ "type": "seeking", "turnRatio": <rad/s> }]`
+      );
+    }
+
+    const abilities = spec.abilities;
+    if (abilities === undefined) {
+      continue;
+    }
+    if (!Array.isArray(abilities)) {
+      push(`Bullet "${spec.id}" abilities must be an array`);
+      continue;
+    }
+
+    let seekingCount = 0;
+    abilities.forEach((entry, i) => {
+      if (!entry || typeof entry !== 'object') {
+        push(`Bullet "${spec.id}" abilities[${i}] is invalid`);
+        return;
+      }
+      const a = entry as { type?: unknown; turnRatio?: unknown };
+      if (typeof a.type !== 'string') {
+        push(`Bullet "${spec.id}" abilities[${i}] is missing type`);
+        return;
+      }
+      if (!knownBulletAbilityTypes.has(a.type)) {
+        push(`Bullet "${spec.id}" abilities[${i}] unknown type "${a.type}"`);
+        return;
+      }
+      if (a.type === 'seeking') {
+        seekingCount += 1;
+        if (typeof a.turnRatio !== 'number' || !Number.isFinite(a.turnRatio) || a.turnRatio < 0) {
+          push(`Bullet "${spec.id}" seeking ability requires finite turnRatio >= 0`);
+        }
+      }
+    });
+
+    if (seekingCount > 1) {
+      push(`Bullet "${spec.id}" must have at most one seeking ability`);
+    }
+  }
+
   for (const sector of world.sectors) {
     if (sector.factionId && !factionIds.has(sector.factionId)) {
       push(`Sector ${sector.coord.x},${sector.coord.y} has unknown factionId: ${sector.factionId}`);

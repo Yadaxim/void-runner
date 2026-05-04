@@ -109,6 +109,7 @@ These rules avoid brittle coupling to `testWorld.json`:
 - **`npcSpawnRules`** must set **`hullSpecId`** present in **`hullSpecs`** (`validateWorldFile` enforces this). Sector NPC build does not infer hull from `factionId` alone.  
 - Pirate landable/mission UI uses **`FactionDefinition.isPirate`** and the station’s real **`factionId`**.  
 - Bullet muzzle offset uses **`HullSpec.hullClass`** via **`hullLengthForHullClass`** in `constants.ts`, not string hacks on `hullSpecId`.  
+- **`bulletSpecs`:** homing uses **`abilities`** with **`{ "type": "seeking", "turnRatio": <rad/s> }`** (optional **`"abilities": []`** when none). Top-level **`seeking` / `turnRatio`** on a bullet spec are invalid and fail **`validateWorldFile`**.  
 - Tests should use ids from a loaded **`WorldFile`** or synthetic **`__fixture_*`** ids.
 
 **Equipment catalog:** every catalog item needs a positive **`price`** (credits). Buy/sell use that field; sell uses **`Math.round(price × EQUIPMENT_SELL_FRACTION)`** — legacy mass×tier formulas were removed from constants.
@@ -131,11 +132,11 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 Authoritative detail lives in the checklist below (historical handoff content from older context docs was merged into this file; keep this section current as you ship).
 
-**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes.
+**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** rejects legacy **`seeking` / `turnRatio`** on bullet specs; **Vitest** coverage for Newtonian helpers, shield reboot / no-reactor joules, and bullet-ability validation cases.
 
 **Remaining near-term (from live checklist):**
 
-- Phase 4 Session 4 **remaining:** physics unit tests (Vitest); extend damage / energy tests as systems grow.  
+- Phase 4 Session 4 **remaining:** extend damage / energy / physics tests as systems grow; keep **`validateWorldFile`** current (including **`bulletSpecs.abilities`** rules).  
 - **Session 5:** galaxy map — visited sectors, factions, radiation zone, hyperspace target selection UI.  
 - **Session 6:** hyperspace drive — jump cost, cooldown, alignment, animation.
 
@@ -145,7 +146,7 @@ See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order, backlog, and deferred 
 
 ## Key type locations
 
-Primary definitions under `src/types/`: `WorldFile`, `SectorMetadata`, `ShipState`, `HullSpec`, equipment unions, `BulletSpec` / `BulletInstance`, mission/cargo types, `TargetState`, faction types, etc.
+Primary definitions under `src/types/`: `WorldFile`, `SectorMetadata`, `ShipState`, `HullSpec`, equipment unions, **`BulletSpec`** (optional **`abilities`**: **`SeekingAbility`** and future **`BulletAbility`** variants), **`BulletInstance`**, mission/cargo types, `TargetState`, faction types, etc.
 
 ---
 

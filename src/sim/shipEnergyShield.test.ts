@@ -80,6 +80,53 @@ describe('tickShipEnergyAndShield (player and NPC ship state)', () => {
     vi.useRealTimers();
   });
 
+  it.each([
+    [true, 'player'],
+    [false, 'npc_reboot']
+  ])('shield reboot timer counts down and clears rebooting flag (isPlayerControlled=%s)', (isPlayer, id) => {
+    const reactor = makeReactor({ id: 'r_re' });
+    const shield = makeShield({ id: 's_re' });
+    const cat = new Map<string, EquipmentItem>([
+      ['r_re', reactor],
+      ['s_re', shield]
+    ]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
+      shieldRebooting: true,
+      shieldRebootTimer: 2,
+      currentJoules: 100,
+      fuel: 50,
+      equipmentSlots: [
+        { slotType: 'reactor', itemId: 'r_re' },
+        { slotType: 'shield', itemId: 's_re' }
+      ]
+    });
+    tickShipEnergyAndShield(ship, ws, 0.5, Date.now());
+    expect(ship.shieldRebootTimer).toBeCloseTo(1.5);
+    expect(ship.shieldRebooting).toBe(true);
+    tickShipEnergyAndShield(ship, ws, 2, Date.now());
+    expect(ship.shieldRebooting).toBe(false);
+    expect(ship.shieldRebootTimer).toBe(0);
+  });
+
+  it.each([
+    [true, 'player'],
+    [false, 'npc_noreact']
+  ])('ship without reactor slot drains joules to zero (isPlayerControlled=%s)', (isPlayer, id) => {
+    const ws = mockWorldState(new Map(), true);
+    const ship = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
+      currentJoules: 50,
+      fuel: 100,
+      equipmentSlots: []
+    });
+    tickShipEnergyAndShield(ship, ws, 0.1, Date.now());
+    expect(ship.currentJoules).toBe(0);
+  });
+
   it('does not regen shield when isShieldOnlineForShip is false', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(20_000_000));

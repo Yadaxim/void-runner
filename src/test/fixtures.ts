@@ -123,7 +123,18 @@ export function makeReactor(overrides: {
 
 export function makeBullet(
   overrides: Partial<
-    Pick<BulletSpec, 'damage' | 'dotDuration' | 'dotDamagePerSecond' | 'id' | 'name' | 'mass' | 'speed' | 'lifespan'>
+    Pick<
+      BulletSpec,
+      | 'damage'
+      | 'dotDuration'
+      | 'dotDamagePerSecond'
+      | 'id'
+      | 'name'
+      | 'mass'
+      | 'speed'
+      | 'lifespan'
+      | 'abilities'
+    >
   > & {
     damageType?: { category: DamageCategory; matter: MatterType };
   }
@@ -140,13 +151,13 @@ export function makeBullet(
     damageCategory: cat,
     matterType: matter,
     attractedByGravity: false,
-    seeking: false,
     infinite: false,
     lifespan: overrides.lifespan ?? 5,
     visualType: 'bolt',
     colour: '#fff',
     dotDuration: overrides.dotDuration,
-    dotDamagePerSecond: overrides.dotDamagePerSecond
+    dotDamagePerSecond: overrides.dotDamagePerSecond,
+    ...(overrides.abilities !== undefined ? { abilities: overrides.abilities } : {})
   };
 }
 

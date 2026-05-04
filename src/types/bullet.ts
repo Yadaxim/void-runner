@@ -20,6 +20,19 @@ export type DamageTypeKey =
   | 'darkmatter_plasma'
   | 'void';
 
+/** Homing toward the locked target; max turn rate in radians per second. */
+export interface SeekingAbility {
+  type: 'seeking';
+  turnRatio: number;
+}
+
+/** Extensible bullet behaviours (stack multiple non-conflicting abilities later). */
+export type BulletAbility = SeekingAbility;
+
+export function getBulletSeekingAbility(spec: BulletSpec): SeekingAbility | undefined {
+  return spec.abilities?.find((a): a is SeekingAbility => a.type === 'seeking');
+}
+
 export function getDamageTypeKey(category: DamageCategory, matter: MatterType): DamageTypeKey {
   if (category === 'void') {
     if (matter !== 'normal') {
@@ -51,8 +64,8 @@ export interface BulletSpec {
   dotDuration?: number;
   dotDamagePerSecond?: number;
   attractedByGravity: boolean;
-  seeking: boolean;
-  turnRatio?: number;
+  /** Optional combat modifiers (e.g. homing). */
+  abilities?: BulletAbility[];
   infinite: boolean;
   lifespan: number;
   visualType: BulletVisualType;
