@@ -62,11 +62,13 @@ From roadmap **Navigation slice** and context **Session 6**.
 
 Roadmap steps A–E; aligns with context **AI / control bus**.
 
-- [ ] **Step A —** Canonical **`ShipControlFrame`** (or rename **`NPCInputs`**); **`NPCController.update`** return type; **`FlightScreen`** maps keys → same struct  
-- [ ] **Step B —** **`applyShipControlFrame(ship, frame, worldState, dt)`** for player and NPC paths  
-- [ ] **Step C —** **`Pilot` / `getControlFrame`**: **`HumanPilot`**, **`ScriptedNPCPilot`** (wraps NPC controller); stub path for future **`NeuralPilot`**  
+- [x] **Step A —** Canonical **`ShipControlFrame`** (or rename **`NPCInputs`**); **`NPCController.update`** return type; **`FlightScreen`** maps keys → same struct  
+- [x] **Step B —** **`applyShipControlFrame(ship, frame, worldState, dt)`** for player and NPC paths  
+- [x] **Step C —** **`Pilot` / `getControlFrame`**: **`HumanPilot`**, **`ScriptedNPCPilot`** (wraps NPC controller); stub path for future **`NeuralPilot`**  
 - [ ] **Step D —** Record/replay: ring buffer or export **`(timestamp, frame[, sensor])`**; headless replay for determinism / datasets  
 - [ ] **Step E —** Neural adapter: output dim = control frame; threshold to booleans; loadout staleness; training simulator uses same frame format  
+
+*Partial toward Step D:* **`ControlFrameRecorder`** + **`replayControlFramesHeadless`** stub in **`src/simulation/controlFrameRecorder.ts`** (not wired to flight loop yet).
 
 ---
 
@@ -144,6 +146,9 @@ Roadmap **Neural AI**.
 
 Roadmap **Polish and presentation**.
 
+- [x] **Flight backdrop —** faint **world-aligned sector grid** above parallax stars (**`BackgroundLayer`**, **`FLIGHT_SECTOR_GRID_SPACING`** / **`FLIGHT_SECTOR_GRID_ALPHA`** in **`constants.ts`**)  
+- [x] **Minimap —** landables: **stroke ring** (faction **`secondaryColour`**) and dot sizing so ports read distinct from ship markers (**`minimapRenderer.ts`**)  
+- [x] **Auto-brake —** passive linear/angular damping only when matching thrusters are not producing thrust this frame (**`ShipEntity`**)  
 - [ ] Sound — Web Audio API (engines, weapons, UI)  
 - [ ] Visual variety — distinct hull silhouettes per class (**`plan/VOID_RUNNER_Art_Guidelines_v1.0.md`**)  
 - [ ] Engine glow and damage VFX for readability  

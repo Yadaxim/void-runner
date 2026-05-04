@@ -1,8 +1,7 @@
 import {
   COLOURS,
   MINIMAP_SIZE,
-  SECTOR_HEIGHT,
-  SECTOR_WIDTH
+  SECTOR_SIZE
 } from '../../constants';
 import type { WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
@@ -10,6 +9,9 @@ import type { Landable, Mission, Vector2 } from '../../types';
 
 const MIN_LANDABLE_DOT_SIZE = 3;
 const MAX_LANDABLE_DOT_SIZE = 8;
+/** Pixels beyond filled landable disc for the port identification ring. */
+const LANDABLE_MINIMAP_RING_OUTSET = 1.35;
+const LANDABLE_MINIMAP_RING_LINE = 1.2;
 const PANEL_MARGIN = 16;
 const NPC_DOT_RADIUS = 2.5;
 
@@ -58,11 +60,11 @@ export class MinimapRenderer {
         .map((mission) => mission.destinationLandableId)
     );
     for (const landable of currentSector.landables) {
-      const relativeX = (landable.position.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH;
-      const relativeY = (landable.position.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT;
+      const relativeX = (landable.position.x + SECTOR_SIZE / 2) / SECTOR_SIZE;
+      const relativeY = (landable.position.y + SECTOR_SIZE / 2) / SECTOR_SIZE;
       const dotX = mapX + clamp(relativeX, 0, 1) * MINIMAP_SIZE;
       const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
-      const dotRadius = clamp(landable.radius / 4, MIN_LANDABLE_DOT_SIZE, MAX_LANDABLE_DOT_SIZE);
+      const dotRadius = clamp(landable.radius / 10, MIN_LANDABLE_DOT_SIZE, MAX_LANDABLE_DOT_SIZE);
 
       const factionVisual = landable.factionId
         ? worldState.getFactionVisual(landable.factionId)
@@ -71,6 +73,13 @@ export class MinimapRenderer {
       this.ctx.beginPath();
       this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
       this.ctx.fill();
+
+      this.ctx.strokeStyle = factionVisual?.secondaryColour ?? 'rgba(210, 214, 235, 0.55)';
+      this.ctx.lineWidth = LANDABLE_MINIMAP_RING_LINE;
+      this.ctx.beginPath();
+      this.ctx.arc(dotX, dotY, dotRadius + LANDABLE_MINIMAP_RING_OUTSET, 0, Math.PI * 2);
+      this.ctx.stroke();
+
       if (missionDestinationIds.has(landable.id)) {
         const pulse = 0.45 + (Math.sin(performance.now() * (Math.PI * 2 / 750)) + 1) * 0.25;
         this.ctx.save();
@@ -96,8 +105,8 @@ export class MinimapRenderer {
     }
 
     for (const npc of npcShips) {
-      const relativeX = (npc.state.position.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH;
-      const relativeY = (npc.state.position.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT;
+      const relativeX = (npc.state.position.x + SECTOR_SIZE / 2) / SECTOR_SIZE;
+      const relativeY = (npc.state.position.y + SECTOR_SIZE / 2) / SECTOR_SIZE;
       const dotX = mapX + clamp(relativeX, 0, 1) * MINIMAP_SIZE;
       const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
       const hostility = npc.getNPCHostilityState();
@@ -123,8 +132,8 @@ export class MinimapRenderer {
       this.ctx.restore();
     }
 
-    const playerMapX = mapX + ((playerPosition.x + SECTOR_WIDTH / 2) / SECTOR_WIDTH) * MINIMAP_SIZE;
-    const playerMapY = mapY + ((playerPosition.y + SECTOR_HEIGHT / 2) / SECTOR_HEIGHT) * MINIMAP_SIZE;
+    const playerMapX = mapX + ((playerPosition.x + SECTOR_SIZE / 2) / SECTOR_SIZE) * MINIMAP_SIZE;
+    const playerMapY = mapY + ((playerPosition.y + SECTOR_SIZE / 2) / SECTOR_SIZE) * MINIMAP_SIZE;
     const heading = worldState.getPlayerShipState().angle - Math.PI / 2;
     const size = 6;
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;

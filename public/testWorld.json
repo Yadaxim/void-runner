@@ -1702,8 +1702,8 @@
           "mass": 140000,
           "radius": 70,
           "position": {
-            "x": 300,
-            "y": -250
+            "x": 750,
+            "y": -625
           },
           "services": [
             {
@@ -1734,8 +1734,8 @@
           "mass": 30000,
           "radius": 28,
           "position": {
-            "x": 500,
-            "y": -100
+            "x": 1250,
+            "y": -250
           },
           "services": [
             {
@@ -1760,8 +1760,8 @@
           "mass": 0,
           "radius": 40,
           "position": {
-            "x": -400,
-            "y": 200
+            "x": -1000,
+            "y": 500
           },
           "services": [
             {
@@ -1866,8 +1866,8 @@
           "mass": 0,
           "radius": 30,
           "position": {
-            "x": -200,
-            "y": 300
+            "x": -500,
+            "y": 750
           },
           "services": [
             {
@@ -1929,8 +1929,8 @@
           "mass": 0,
           "radius": 25,
           "position": {
-            "x": 100,
-            "y": 150
+            "x": 250,
+            "y": 375
           },
           "services": [
             {
@@ -2006,14 +2006,14 @@
           "id": "derelict_platform",
           "name": "Derelict Platform",
           "type": "station",
-          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line \u2014 it works, barely.",
+          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line — it works, barely.",
           "atmosphere": "eerie and abandoned",
           "factionId": null,
           "mass": 0,
           "radius": 22,
           "position": {
-            "x": 50,
-            "y": -180
+            "x": 125,
+            "y": -450
           },
           "services": [
             {
@@ -2090,8 +2090,8 @@
           "mass": 110000,
           "radius": 58,
           "position": {
-            "x": -150,
-            "y": -300
+            "x": -375,
+            "y": -750
           },
           "services": [
             {
@@ -2119,8 +2119,8 @@
           "mass": 20000,
           "radius": 20,
           "position": {
-            "x": 200,
-            "y": -100
+            "x": 500,
+            "y": -250
           },
           "services": [
             {
@@ -2206,14 +2206,14 @@
           "id": "clan_home",
           "name": "Rig Tharkan",
           "type": "planet",
-          "description": "The Frontier Clans' de facto capital \u2014 a rugged, storm-swept world where self-reliance is the only law.",
+          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
           "factionId": "frontier_clans",
           "mass": 120000,
           "radius": 62,
           "position": {
-            "x": -100,
-            "y": 200
+            "x": -250,
+            "y": 500
           },
           "services": [
             {
@@ -2241,8 +2241,8 @@
           "mass": 0,
           "radius": 35,
           "position": {
-            "x": 300,
-            "y": -50
+            "x": 750,
+            "y": -125
           },
           "services": [
             {
@@ -2308,7 +2308,7 @@
           "radius": 20,
           "position": {
             "x": 0,
-            "y": 100
+            "y": 250
           },
           "services": [
             {
@@ -2385,8 +2385,8 @@
           "mass": 160000,
           "radius": 75,
           "position": {
-            "x": -200,
-            "y": 150
+            "x": -500,
+            "y": 375
           },
           "services": [
             {
@@ -2414,8 +2414,8 @@
           "mass": 0,
           "radius": 45,
           "position": {
-            "x": 300,
-            "y": 200
+            "x": 750,
+            "y": 500
           },
           "services": [
             {
@@ -2443,8 +2443,8 @@
           "mass": 35000,
           "radius": 30,
           "position": {
-            "x": -400,
-            "y": -200
+            "x": -1000,
+            "y": -500
           },
           "services": [
             {
@@ -2500,14 +2500,14 @@
           "id": "outpost_sigma",
           "name": "Outpost Sigma",
           "type": "station",
-          "description": "Nobody built this station with intention. It just accumulated over decades \u2014 modules bolted on as needed, never taken off.",
+          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
           "atmosphere": "improvised and weathered",
           "factionId": null,
           "mass": 0,
           "radius": 28,
           "position": {
-            "x": -100,
-            "y": -200
+            "x": -250,
+            "y": -500
           },
           "services": [
             {
@@ -2584,8 +2584,8 @@
           "mass": 0,
           "radius": 38,
           "position": {
-            "x": 100,
-            "y": 50
+            "x": 250,
+            "y": 125
           },
           "services": [
             {
@@ -2765,7 +2765,7 @@
         }
       ],
       "price": 18740,
-      "name": "Fighter \u2014 Raw",
+      "name": "Fighter — Raw",
       "description": "raw factory fit for Fighter Mk I."
     },
     {
@@ -2806,7 +2806,7 @@
         }
       ],
       "price": 20380,
-      "name": "Fighter \u2014 Basic",
+      "name": "Fighter — Basic",
       "description": "basic factory fit for Fighter Mk I."
     },
     {
@@ -2847,7 +2847,7 @@
         }
       ],
       "price": 21740,
-      "name": "Fighter \u2014 Advanced",
+      "name": "Fighter — Advanced",
       "description": "advanced factory fit for Fighter Mk I."
     },
     {
@@ -2880,7 +2880,7 @@
         }
       ],
       "price": 14740,
-      "name": "Raider \u2014 Raw",
+      "name": "Raider — Raw",
       "description": "raw factory fit for Raider Mk I."
     },
     {
@@ -2913,7 +2913,7 @@
         }
       ],
       "price": 15440,
-      "name": "Raider \u2014 Basic",
+      "name": "Raider — Basic",
       "description": "basic factory fit for Raider Mk I."
     },
     {
@@ -2946,7 +2946,7 @@
         }
       ],
       "price": 16360,
-      "name": "Raider \u2014 Advanced",
+      "name": "Raider — Advanced",
       "description": "advanced factory fit for Raider Mk I."
     },
     {
@@ -2995,7 +2995,7 @@
         }
       ],
       "price": 32800,
-      "name": "Courier \u2014 Raw",
+      "name": "Courier — Raw",
       "description": "raw factory fit for Courier Mk I."
     },
     {
@@ -3044,7 +3044,7 @@
         }
       ],
       "price": 34760,
-      "name": "Courier \u2014 Basic",
+      "name": "Courier — Basic",
       "description": "basic factory fit for Courier Mk I."
     },
     {
@@ -3093,7 +3093,7 @@
         }
       ],
       "price": 35640,
-      "name": "Courier \u2014 Advanced",
+      "name": "Courier — Advanced",
       "description": "advanced factory fit for Courier Mk I."
     },
     {
@@ -3146,7 +3146,7 @@
         }
       ],
       "price": 53460,
-      "name": "Freighter \u2014 Raw",
+      "name": "Freighter — Raw",
       "description": "raw factory fit for Freighter Mk I."
     },
     {
@@ -3199,7 +3199,7 @@
         }
       ],
       "price": 56200,
-      "name": "Freighter \u2014 Basic",
+      "name": "Freighter — Basic",
       "description": "basic factory fit for Freighter Mk I."
     },
     {
@@ -3252,7 +3252,7 @@
         }
       ],
       "price": 57920,
-      "name": "Freighter \u2014 Advanced",
+      "name": "Freighter — Advanced",
       "description": "advanced factory fit for Freighter Mk I."
     },
     {
@@ -3317,7 +3317,7 @@
         }
       ],
       "price": 24800,
-      "name": "Store \u2014 Raw",
+      "name": "Store — Raw",
       "description": "raw factory fit for Store Test Rig."
     },
     {
@@ -3382,7 +3382,7 @@
         }
       ],
       "price": 27140,
-      "name": "Store \u2014 Basic",
+      "name": "Store — Basic",
       "description": "basic factory fit for Store Test Rig."
     },
     {
@@ -3447,7 +3447,7 @@
         }
       ],
       "price": 29440,
-      "name": "Store \u2014 Advanced",
+      "name": "Store — Advanced",
       "description": "advanced factory fit for Store Test Rig."
     }
   ]

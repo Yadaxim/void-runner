@@ -51,9 +51,10 @@ export const REQUIRED_SLOT_TYPES: EquipmentSlot['slotType'][] = ['thruster_forwa
 // Galaxy generation and world sizing
 export const GALAXY_GRID_WIDTH = 30;
 export const GALAXY_GRID_HEIGHT = 30;
-export const SECTOR_WIDTH = 3200;
-export const SECTOR_HEIGHT = 3200;
-export const SECTOR_EDGE_THRESHOLD = 40;
+/** Square sector extent in world units (width and height). */
+export const SECTOR_SIZE = 10000;
+/** Band inside each edge where sector-cross / boundary UX applies (fraction of `SECTOR_SIZE`). */
+export const SECTOR_EDGE_THRESHOLD = SECTOR_SIZE * 0.01;
 /** Hyperspace jump presentation (flight screen). */
 export const HYPERSPACE_JUMP_OUT_SECONDS = 0.52;
 export const HYPERSPACE_JUMP_IN_SECONDS = 0.52;
@@ -99,6 +100,10 @@ export const NPC_LEAVING_OPACITY = 0.3;
 // Rendering and UI sizing
 export const STAR_LAYER_COUNTS = [7000, 3500, 100, 40] as const;
 export const STAR_SCROLL_FACTORS = [0.02, 0.08, 0.2, 0.5] as const;
+/** World-space flight backdrop: faint grid aligned to sector axes (drawn above parallax stars). */
+export const FLIGHT_SECTOR_GRID_SPACING = 500;
+/** Stroke alpha for sector grid lines (0–1). */
+export const FLIGHT_SECTOR_GRID_ALPHA = 0.065;
 export const MINIMAP_SIZE = 160;
 export const EQUIPMENT_ICON_SIZE = 24;
 export const ARRIVAL_MESSAGE_DURATION_MS = 3000;

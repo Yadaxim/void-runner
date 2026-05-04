@@ -58,7 +58,7 @@ Vanilla DOM — no React/Vue.
 - **`WorldFile`** — full galaxy JSON loaded at startup (`public/testWorld.json` in development).  
 - **Persistence (two-tier — planned)** — today, `WorldState.saveToLocalStorage` / `loadFromLocalStorage` persist **`PersistedWorldState`** keyed by world **`metadata.seed`**. **Roadmap / GDD / backlog:** add **JSON file** export/import (and optionally **File System Access** file-handle writes) using the **same blob**, with **disk** flushed on **fewer** events than `localStorage` (sector change, landable enter/exit, credit/equipment/fuel/hull–changing actions, hyperspace target on map, menu/quit best-effort). See **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves) and **`plan/VOID_RUNNER_Backlog.md`**.  
 - **`SectorSimulation`** — current sector entities, physics integration, bullets, NPCs, burns, **per-frame energy/shield/reactor tick for the player and every NPC** (`tickShipEnergyAndShield`).  
-- **`ShipEntity`** — wraps `ShipState`; equipment drives effective masses, thrust, fuel use, etc. NPC flight uses **`NPCController`** output as a **boolean control frame** (thrusters + weapon keys), same shape the player uses conceptually (see **AI / control bus**).  
+- **`ShipEntity`** — wraps `ShipState`; equipment drives effective masses, thrust, fuel use, etc. NPC flight uses **`NPCController`** via **`ScriptedNPCPilot`** into the shared **`ShipControlFrame`** (thrusters + weapon keys), same shape as **`HumanPilot`** for the player (see **AI / control bus**).  
 - **`ScreenManager`** — stack-based screens (main menu, flight, landable, …).  
 - **`RenderPipeline`** — ordered Canvas layers (see below).  
 - **Camera** — ship-centred; `worldToScreen()` in `src/renderer/camera.ts`.
@@ -99,9 +99,9 @@ Damage typing: `DamageCategory` × `MatterType` → **`DamageTypeKey`** (13 keys
 
 ### AI / control bus (keypress parity, pre-neural)
 
-**Design rule:** Any pilot — human, hand-authored NPC, or future trained net — should ultimately drive the ship **only** through the same **boolean control frame** (forward/reverse/rotate/auto-brake + per-weapon fire keys). **`NPCInputs`** in `src/simulation/npcController.ts` is documented as that interchange format; **`ShipEntity.applyThrusterInputs`** already consumes the thruster subset; sector weapon updates consume the fire-key subset.
+**Design rule:** Any pilot — human, hand-authored NPC, or future trained net — should ultimately drive the ship **only** through the same **boolean control frame** (forward/reverse/rotate/auto-brake + per-weapon fire keys). Canonical type: **`ShipControlFrame`** in `src/simulation/shipControlFrame.ts` (`thrusters` + `weapons`); **`NPCController.update`** returns that type; **`applyShipControlFrame`** applies thrusters; **`WeaponSystem`** consumes `frame.weapons`. **`HumanPilot`** / **`ScriptedNPCPilot`** implement **`Pilot`** (`src/simulation/pilot.ts`); **`NeuralPilotStub`** returns a zero frame until TF.js wiring lands.
 
-Roadmap section **“AI control bus (keypress / pre-neural)”** lists concrete steps: canonical shared type, single apply entry, record/replay, NN adapter. That path supports imitation learning and escort brains without a second physics stack.
+Roadmap section **“AI control bus (keypress / pre-neural)”** lists concrete steps: canonical shared type, single apply entry, record/replay, NN adapter. Steps A–C are implemented; **D** has a **`ControlFrameRecorder`** ring buffer + stub **`replayControlFramesHeadless`** (`src/simulation/controlFrameRecorder.ts`). That path supports imitation learning and escort brains without a second physics stack.
 
 ---
 

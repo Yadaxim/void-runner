@@ -21,14 +21,14 @@ Coverage passes are in **`damage.test.ts`**, **`shipEnergyShield.test.ts`** (rea
 
 **Goal:** Human, scripted NPC, and future TensorFlow.js autopilot all drive ships through the **same boolean control frame** (thrusters + `WeaponFireKey` booleans). No parallel “NPC physics” or direct velocity hacks. Baseline today: `NPCInputs` + `ShipEntity.applyThrusterInputs` + sector `WeaponSystem.update` for NPCs; `tickShipEnergyAndShield` for all ships in `SectorSimulation`.
 
-**Step A — Canonical type**  
-Export a single **`ShipControlFrame`** (or rename `NPCInputs`) in one module: thruster booleans + `Record<WeaponFireKey, boolean>`. `NPCController.update` return type becomes that type; keyboard handling in `FlightScreen` maps DOM keys → the same struct (adapter only at the edge).
+**Step A — Canonical type** *(shipped)*  
+**`ShipControlFrame`** in `src/simulation/shipControlFrame.ts`: `thrusters` + `Record<WeaponFireKey, boolean>` weapons. `NPCController.update` returns it; `FlightScreen` uses **`HumanPilot`** so keyboard maps to the same struct at the edge.
 
-**Step B — Single apply entry**  
-Introduce **`applyShipControlFrame(ship, frame, worldState, dt)`** (on `ShipEntity` or a tiny helper) used by both player and NPC paths so `ShipEntity.update` does not special-case “NPC branch” beyond “who produces `frame`”.
+**Step B — Single apply entry** *(shipped)*  
+**`applyShipControlFrame(ship, frame, worldState, dt)`** in `shipControlFrame.ts` — used from **`FlightScreen`** (player) and **`ShipEntity.update`** (NPC via **`scriptedNpcPilot`**).
 
-**Step C — Pilot interface**  
-Define **`Pilot` / `getControlFrame(dt, context)`** with implementations: `HumanPilot` (reads buffered keys), `ScriptedNPCPilot` (wraps `NPCController`), later `NeuralPilot` (TF.js → thresholds → frame). `SectorSimulation` asks the pilot for a frame then applies it.
+**Step C — Pilot interface** *(shipped)*  
+**`Pilot` / `getControlFrame`** in `src/simulation/pilot.ts`: **`HumanPilot`**, **`ScriptedNPCPilot`** (delegates to `NPCController.update`), **`NeuralPilotStub`**. NPC frame is still produced inside **`ShipEntity.update`** through the scripted pilot (sector then reads returned `weapons` for **`WeaponSystem`**).
 
 **Step D — Record / replay**  
 Append `(timestamp, frame[, optional sensor vector])` to a ring buffer or export for training; headless runner replays frames on a ship with no keyboard to validate determinism and for dataset generation.

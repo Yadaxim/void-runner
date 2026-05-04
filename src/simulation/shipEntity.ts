@@ -14,17 +14,18 @@ import {
 import { Vector2 } from '../physics/vector2';
 import type { Landable } from '../types';
 import type { WorldState } from '../core/worldState';
-import type { NPCController, NPCInputs, NPCState } from './npcController';
+import type { NPCController, NPCState } from './npcController';
+import {
+  applyShipControlFrame,
+  emptyWeaponFireInputs,
+  type ShipControlFrame,
+  type ShipThrusterInputs
+} from './shipControlFrame';
+import { scriptedNpcPilot } from './pilot';
 import type { SpawnRuleState } from './sector';
 
-export interface ThrusterInputs {
-  forward: boolean;
-  reverse: boolean;
-  rotateCW: boolean;
-  rotateCCW: boolean;
-  autoBrakeLinear: boolean;
-  autoBrakeRotation: boolean;
-}
+/** Historical name — same as {@link ShipThrusterInputs}. */
+export type ThrusterInputs = ShipThrusterInputs;
 
 export class ShipEntity {
   state: ShipState;
@@ -189,7 +190,7 @@ export class ShipEntity {
     return worldState.getHullSpec(this.state.hullSpecId)?.topAngularSpeed ?? 3.0;
   }
 
-  applyThrusterInputs(inputs: ThrusterInputs, worldState: WorldState, dt: number): void {
+  applyThrusterInputs(inputs: ShipThrusterInputs, worldState: WorldState, dt: number): void {
     this.autoBrakeLinear = inputs.autoBrakeLinear;
     this.autoBrakeRotation = inputs.autoBrakeRotation;
     this.forwardThrusterRequested = inputs.forward;
@@ -234,38 +235,42 @@ export class ShipEntity {
     if (this.rotateCCWThrusterRequested && rotateForce > 0 && fuelScale > 0) {
       this.pendingTorque -= (rotateForce * fuelScale) / mass;
     }
-    if (this.autoBrakeRotation && rotateForce > 0 && fuelScale > 0) {
-      const av = this.state.angularVelocity;
-      if (Math.abs(av) > 0.01) {
-        this.pendingTorque -= Math.sign(av) * ((rotateForce * fuelScale) / mass) * 0.5;
-      }
-    }
-
-    if (this.autoBrakeLinear && autoBrake) {
-      this.autoBrakeLinearActive = true;
-    }
-    if (this.autoBrakeRotation && autoBrake) {
-      this.autoBrakeRotationActive = true;
-    }
 
     this.linearThrustersActive = fuelScale > 0 && activeLinearThrusters > 0;
     this.rotationThrustersActive = fuelScale > 0 && activeRotationThrusters > 0;
+
+    if (this.autoBrakeLinear && autoBrake && !this.linearThrustersActive) {
+      this.autoBrakeLinearActive = true;
+    }
+    if (this.autoBrakeRotation && autoBrake && !this.rotationThrustersActive) {
+      this.autoBrakeRotationActive = true;
+    }
     this.state.fuel = Math.max(0, this.state.fuel - fuelConsumed);
   }
 
   update(
     dt: number,
     worldState: WorldState,
-    externalInputs?: ThrusterInputs,
+    externalInputs?: ShipThrusterInputs,
     context?: { player: ShipEntity; otherNPCs: ShipEntity[]; landables: Landable[] }
-  ): NPCInputs | null {
-    let npcInputs: NPCInputs | null = null;
+  ): ShipControlFrame | null {
+    let npcFrame: ShipControlFrame | null = null;
     if (this.npcController && !this.state.isPlayerControlled && context) {
-      npcInputs = this.npcController.update(dt, this, context.player, context.otherNPCs, context.landables, worldState);
-      this.applyThrusterInputs(npcInputs, worldState, dt);
+      npcFrame = scriptedNpcPilot.getControlFrame(dt, this, {
+        player: context.player,
+        otherNPCs: context.otherNPCs,
+        landables: context.landables,
+        worldState
+      });
+      applyShipControlFrame(this, npcFrame, worldState, dt);
       this.npcLastState = this.npcController.getState();
     } else if (externalInputs) {
-      this.applyThrusterInputs(externalInputs, worldState, dt);
+      applyShipControlFrame(
+        this,
+        { thrusters: externalInputs, weapons: emptyWeaponFireInputs() },
+        worldState,
+        dt
+      );
     }
 
     const mass = this.getEffectiveMass(worldState);
@@ -307,6 +312,6 @@ export class ShipEntity {
     this.rotateCCWThrusterRequested = false;
 
     this.spawnAge += dt;
-    return npcInputs;
+    return npcFrame;
   }
 }

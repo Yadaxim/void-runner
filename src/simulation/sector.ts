@@ -2,15 +2,15 @@ import {
   NPC_ARRIVAL_SPEED_MAX,
   NPC_ARRIVAL_SPEED_MIN,
   NPC_EDGE_INSET,
-  SECTOR_HEIGHT,
-  SECTOR_WIDTH
+  SECTOR_SIZE
 } from '../constants';
 import { childPRNG } from '../core/prng';
 import type { WorldState } from '../core/worldState';
 import { tickShipEnergyAndShield } from '../sim/shipEnergyShield';
 import { computeGravity } from '../physics/gravity';
 import { Vector2 } from '../physics/vector2';
-import type { Landable, NPCSpawnRule, SectorMetadata, ShipState, WeaponFireKey } from '../types';
+import type { Landable, NPCSpawnRule, SectorMetadata, ShipState } from '../types';
+import { emptyWeaponFireInputs } from './shipControlFrame';
 import { NPCController, type NPCState } from './npcController';
 import { ParticleSystem } from './particleSystem';
 import { ShipEntity } from './shipEntity';
@@ -151,18 +151,12 @@ export class SectorSimulation {
         }))
       );
       ship.applyExternalForce(gravity);
-      const inputs = ship.update(dt, this.worldState, undefined, {
+      const controlFrame = ship.update(dt, this.worldState, undefined, {
         player: this.playerShip,
         otherNPCs: this.npcShips.filter((candidate) => candidate.state.id !== ship.state.id),
         landables: this.landables
       });
-      const fireInputs: Record<WeaponFireKey, boolean> = {
-        Z: inputs?.fireZ ?? false,
-        X: inputs?.fireX ?? false,
-        C: inputs?.fireC ?? false,
-        V: inputs?.fireV ?? false,
-        B: inputs?.fireB ?? false
-      };
+      const fireInputs = controlFrame?.weapons ?? emptyWeaponFireInputs();
       const targetId = ship.getNPCController()?.getAggroTargetId() ?? 'player';
       this.weaponSystem.update(dt, ship.state, fireInputs, this.worldState, targetId);
     }
@@ -235,8 +229,8 @@ export class SectorSimulation {
     if (ruleState.currentCount >= this.getRuleMaxPresent(ruleState.rule)) {
       return;
     }
-    const hw = SECTOR_WIDTH / 2 - 100;
-    const hh = SECTOR_HEIGHT / 2 - 100;
+    const hw = SECTOR_SIZE / 2 - 100;
+    const hh = SECTOR_SIZE / 2 - 100;
     const pos = new Vector2((this.prng.next() - 0.5) * hw * 2, (this.prng.next() - 0.5) * hh * 2);
     const speed = this.randomRange(NPC_ARRIVAL_SPEED_MIN, NPC_ARRIVAL_SPEED_MAX);
     const angle = this.prng.next() * Math.PI * 2;
@@ -252,24 +246,24 @@ export class SectorSimulation {
       return;
     }
     const edge: SectorEdge = ['north', 'south', 'east', 'west'][this.prng.nextInt(0, 3)] as SectorEdge;
-    const hw = SECTOR_WIDTH / 2 - NPC_EDGE_INSET;
-    const hh = SECTOR_HEIGHT / 2 - NPC_EDGE_INSET;
+    const hw = SECTOR_SIZE / 2 - NPC_EDGE_INSET;
+    const hh = SECTOR_SIZE / 2 - NPC_EDGE_INSET;
     const speed = this.randomRange(NPC_ARRIVAL_SPEED_MIN, NPC_ARRIVAL_SPEED_MAX);
 
     let spawnPos: Vector2;
     let initialVelocity: Vector2;
 
     if (edge === 'north') {
-      spawnPos = new Vector2((this.prng.next() - 0.5) * SECTOR_WIDTH * 0.8, -hh);
+      spawnPos = new Vector2((this.prng.next() - 0.5) * SECTOR_SIZE * 0.8, -hh);
       initialVelocity = new Vector2((this.prng.next() - 0.5) * 0.3, 1).normalise().scale(speed);
     } else if (edge === 'south') {
-      spawnPos = new Vector2((this.prng.next() - 0.5) * SECTOR_WIDTH * 0.8, hh);
+      spawnPos = new Vector2((this.prng.next() - 0.5) * SECTOR_SIZE * 0.8, hh);
       initialVelocity = new Vector2((this.prng.next() - 0.5) * 0.3, -1).normalise().scale(speed);
     } else if (edge === 'east') {
-      spawnPos = new Vector2(hw, (this.prng.next() - 0.5) * SECTOR_HEIGHT * 0.8);
+      spawnPos = new Vector2(hw, (this.prng.next() - 0.5) * SECTOR_SIZE * 0.8);
       initialVelocity = new Vector2(-1, (this.prng.next() - 0.5) * 0.3).normalise().scale(speed);
     } else {
-      spawnPos = new Vector2(-hw, (this.prng.next() - 0.5) * SECTOR_HEIGHT * 0.8);
+      spawnPos = new Vector2(-hw, (this.prng.next() - 0.5) * SECTOR_SIZE * 0.8);
       initialVelocity = new Vector2(1, (this.prng.next() - 0.5) * 0.3).normalise().scale(speed);
     }
 
@@ -335,10 +329,10 @@ export class SectorSimulation {
 
   private isOutsideBounds(pos: Vector2): boolean {
     return (
-      pos.x < -(SECTOR_WIDTH / 2) ||
-      pos.x > SECTOR_WIDTH / 2 ||
-      pos.y < -(SECTOR_HEIGHT / 2) ||
-      pos.y > SECTOR_HEIGHT / 2
+      pos.x < -(SECTOR_SIZE / 2) ||
+      pos.x > SECTOR_SIZE / 2 ||
+      pos.y < -(SECTOR_SIZE / 2) ||
+      pos.y > SECTOR_SIZE / 2
     );
   }
 }

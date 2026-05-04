@@ -5,9 +5,11 @@ import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { RenderPipeline } from '../renderer/renderPipeline';
 import type { Camera } from '../renderer/camera';
+import { HumanPilot } from '../simulation/pilot';
 import { PlayerController } from '../simulation/playerController';
 import { SectorSimulation } from '../simulation/sector';
 import { ShipEntity } from '../simulation/shipEntity';
+import { applyShipControlFrame, zeroControlFrame } from '../simulation/shipControlFrame';
 import { TargetingSystem } from '../simulation/targetingSystem';
 import type { Landable } from '../types';
 import {
@@ -25,8 +27,7 @@ import {
   LANDING_SPEED_THRESHOLD,
   MAX_RADIATION_DAMAGE_PER_SECOND,
   SECTOR_EDGE_THRESHOLD,
-  SECTOR_HEIGHT,
-  SECTOR_WIDTH,
+  SECTOR_SIZE,
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
@@ -41,6 +42,7 @@ export class FlightScreen implements Screen {
   private gameLoop: GameLoop | null = null;
 
   private playerController: PlayerController | null = null;
+  private humanPilot: HumanPilot | null = null;
 
   private playerShip: ShipEntity | null = null;
 
@@ -195,6 +197,7 @@ export class FlightScreen implements Screen {
       autoBrakeLinearEnabled: this.playerShip.state.autoBrakeLinearEnabled,
       autoBrakeRotationEnabled: this.playerShip.state.autoBrakeRotationEnabled
     });
+    this.humanPilot = new HumanPilot(this.playerController);
     this.ensureDefaultLoadout();
     // WorldState.updatePlayerShipState replaces its ship object; keep layers in sync with equipment
     // (same fix as LandableScreen.onEnter — otherwise HUD/sim can show no armour until first land).
@@ -264,6 +267,7 @@ export class FlightScreen implements Screen {
     this.worldState.saveToLocalStorage();
     this.playerController?.destroy();
     this.playerController = null;
+    this.humanPilot = null;
     this.playerShip = null;
     this.sectorSimulation?.dispose();
     this.sectorSimulation = null;
@@ -311,17 +315,18 @@ export class FlightScreen implements Screen {
     if (this.landingCooldownSeconds > 0) {
       this.landingCooldownSeconds = Math.max(0, this.landingCooldownSeconds - dt);
     }
-    const zeroInputs = {
-      forward: false,
-      reverse: false,
-      rotateCW: false,
-      rotateCCW: false,
-      autoBrakeLinear: false,
-      autoBrakeRotation: false,
-      landPressed: false,
-      devRefuelPressed: false
+    const npcShips = this.sectorSimulation?.getNPCShips() ?? [];
+    const pilotContext = {
+      player: this.playerShip,
+      otherNPCs: npcShips,
+      landables: this.landables,
+      worldState: this.worldState
     };
-    const inputs = this.isTransitioning ? zeroInputs : this.playerController.update();
+    const frame = this.isTransitioning
+      ? zeroControlFrame()
+      : this.humanPilot!.getControlFrame(dt, this.playerShip, pilotContext);
+    const landPressed = this.isTransitioning ? false : this.humanPilot!.getLastLandPressed();
+    const devRefuelPressed = this.isTransitioning ? false : this.humanPilot!.getLastDevRefuelPressed();
     const targetInputs = this.playerController.getTargetInputs();
     if (targetInputs.hyperspaceJumpQueued) {
       this.tryBeginHyperspaceJump();
@@ -331,10 +336,10 @@ export class FlightScreen implements Screen {
       this.worldState.addPlayTime(dt);
       return;
     }
-    const fireInputs = this.playerController.getFireInputs();
+    const fireInputs = frame.weapons;
     this.heldFireKeys = { ...fireInputs };
     this.lastKnownShipPosition = this.playerShip.state.position as Vector2;
-    this.playerShip.applyThrusterInputs(inputs, this.worldState, dt);
+    applyShipControlFrame(this.playerShip, frame, this.worldState, dt);
     const playerMass = this.playerShip.getEffectiveMass(this.worldState);
     const gravity = computeGravity(
       this.playerShip.state.position as Vector2,
@@ -347,13 +352,12 @@ export class FlightScreen implements Screen {
     );
     this.playerShip.applyExternalForce(gravity);
     this.playerShip.update(dt, this.worldState);
-    if (inputs.devRefuelPressed) {
+    if (devRefuelPressed) {
       this.playerShip.state = {
         ...this.playerShip.state,
         fuel: this.worldState.getMaxFuel()
       };
     }
-    const npcShips = this.sectorSimulation?.getNPCShips() ?? [];
     if (targetInputs.cycleShipTarget) {
       this.targeting.cycleShipTarget(
         this.playerShip.state.position as Vector2,
@@ -415,7 +419,7 @@ export class FlightScreen implements Screen {
       this.worldState.saveToLocalStorage();
       this.autosaveAccumulator = 0;
     }
-    this.checkLandingConditions(inputs.landPressed);
+    this.checkLandingConditions(landPressed);
     if (this.isTransitioning) {
       return;
     }
@@ -685,16 +689,16 @@ export class FlightScreen implements Screen {
       return null;
     }
     const position = this.playerShip.state.position as Vector2;
-    if (position.y < -(SECTOR_HEIGHT / 2) + SECTOR_EDGE_THRESHOLD) {
+    if (position.y < -(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD) {
       return 'north';
     }
-    if (position.y > SECTOR_HEIGHT / 2 - SECTOR_EDGE_THRESHOLD) {
+    if (position.y > SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD) {
       return 'south';
     }
-    if (position.x > SECTOR_WIDTH / 2 - SECTOR_EDGE_THRESHOLD) {
+    if (position.x > SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD) {
       return 'east';
     }
-    if (position.x < -(SECTOR_WIDTH / 2) + SECTOR_EDGE_THRESHOLD) {
+    if (position.x < -(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD) {
       return 'west';
     }
     return null;
@@ -902,16 +906,16 @@ export class FlightScreen implements Screen {
     let nextPosition = position;
     let nextVelocity = velocity;
     if (edge === 'east') {
-      nextPosition = new Vector2(SECTOR_WIDTH / 2 - SECTOR_EDGE_THRESHOLD, position.y);
+      nextPosition = new Vector2(SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD, position.y);
       nextVelocity = new Vector2(Math.min(0, velocity.x), velocity.y);
     } else if (edge === 'west') {
-      nextPosition = new Vector2(-(SECTOR_WIDTH / 2) + SECTOR_EDGE_THRESHOLD, position.y);
+      nextPosition = new Vector2(-(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD, position.y);
       nextVelocity = new Vector2(Math.max(0, velocity.x), velocity.y);
     } else if (edge === 'north') {
-      nextPosition = new Vector2(position.x, -(SECTOR_HEIGHT / 2) + SECTOR_EDGE_THRESHOLD);
+      nextPosition = new Vector2(position.x, -(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD);
       nextVelocity = new Vector2(velocity.x, Math.max(0, velocity.y));
     } else {
-      nextPosition = new Vector2(position.x, SECTOR_HEIGHT / 2 - SECTOR_EDGE_THRESHOLD);
+      nextPosition = new Vector2(position.x, SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD);
       nextVelocity = new Vector2(velocity.x, Math.min(0, velocity.y));
     }
     this.playerShip.state = {

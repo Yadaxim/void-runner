@@ -9,8 +9,7 @@ import {
   NPC_THREAT_MEMORY_DURATION,
   PATROL_WAYPOINT_ARRIVAL_RADIUS,
   PATROL_WAYPOINT_COUNT,
-  SECTOR_HEIGHT,
-  SECTOR_WIDTH,
+  SECTOR_SIZE,
   TRANSIT_APPROACH_BRAKE_RADIUS,
   TRANSIT_LOITER_EXTENSION,
   TRANSIT_LOITER_DRIFT_THRESHOLD,
@@ -22,29 +21,12 @@ import { childPRNG, SplitMix64 } from '../core/prng';
 import type { WorldState } from '../core/worldState';
 import { Vector2 } from '../physics/vector2';
 import type { Landable } from '../types';
+import type { ShipControlFrame } from './shipControlFrame';
+import { defaultControlFrame, zeroControlFrame } from './shipControlFrame';
 import type { ShipEntity } from './shipEntity';
 
 export type NPCState = 'patrol' | 'transit' | 'trade' | 'hostile' | 'flee';
 type TransitPhase = 'approaching' | 'loitering' | 'departing';
-
-/**
- * One simulation frame of flight + weapon inputs for an AI-controlled ship.
- * Field names mirror keyboard-held state (same booleans the player pipeline uses via {@link ShipEntity.applyThrusterInputs}
- * and weapon fire keys). Future neural autopilot and replay training should emit this shape only, not direct forces.
- */
-export interface NPCInputs {
-  forward: boolean;
-  reverse: boolean;
-  rotateCW: boolean;
-  rotateCCW: boolean;
-  autoBrakeLinear: boolean;
-  autoBrakeRotation: boolean;
-  fireZ: boolean;
-  fireX: boolean;
-  fireC: boolean;
-  fireV: boolean;
-  fireB: boolean;
-}
 
 const ROTATION_THRESHOLD_RAD = 0.08;
 const TAIL_DISTANCE = 500;
@@ -59,38 +41,6 @@ function wrapAngle(angle: number): number {
 function angleToTarget(from: Vector2, to: Vector2): number {
   const delta = to.sub(from);
   return Math.atan2(delta.x, -delta.y);
-}
-
-function defaultInputs(): NPCInputs {
-  return {
-    forward: false,
-    reverse: false,
-    rotateCW: false,
-    rotateCCW: false,
-    autoBrakeLinear: true,
-    autoBrakeRotation: true,
-    fireZ: false,
-    fireX: false,
-    fireC: false,
-    fireV: false,
-    fireB: false
-  };
-}
-
-function allZeroInputs(): NPCInputs {
-  return {
-    forward: false,
-    reverse: false,
-    rotateCW: false,
-    rotateCCW: false,
-    autoBrakeLinear: false,
-    autoBrakeRotation: false,
-    fireZ: false,
-    fireX: false,
-    fireC: false,
-    fireV: false,
-    fireB: false
-  };
 }
 
 function rotateToward(
@@ -193,7 +143,7 @@ export class NPCController {
     otherNPCs: ShipEntity[],
     landables: Landable[],
     worldState: WorldState
-  ): NPCInputs {
+  ): ShipControlFrame {
     this.updateThreatMemory(dt);
 
     const selfPos = self.state.position as Vector2;
@@ -238,8 +188,8 @@ export class NPCController {
     player: ShipEntity,
     playerDistance: number,
     worldState: WorldState
-  ): NPCInputs {
-    const inputs = defaultInputs();
+  ): ShipControlFrame {
+    const frame = defaultControlFrame();
     const factionId = self.state.factionId;
     const tier = factionId ? worldState.getReputationTier(factionId) : 'neutral';
     if (tier === 'unfriendly') return this.updateTailPlayer(self, player, playerDistance);
@@ -247,22 +197,22 @@ export class NPCController {
     const selfPos = self.state.position as Vector2;
     const targetAngle = angleToTarget(selfPos, this.patrolTarget);
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-      inputs.forward = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.forward = true;
+      frame.thrusters.autoBrakeLinear = false;
     }
     if (Vector2.distance(selfPos, this.patrolTarget) <= PATROL_WAYPOINT_ARRIVAL_RADIUS) {
       this.patrolIndex = (this.patrolIndex + 1) % this.patrolPoints.length;
       this.patrolTarget = this.patrolPoints[this.patrolIndex];
     }
-    return inputs;
+    return frame;
   }
 
-  private updateTransit(dt: number, self: ShipEntity, landables: Landable[], worldState: WorldState): NPCInputs {
-    const inputs = defaultInputs();
+  private updateTransit(dt: number, self: ShipEntity, landables: Landable[], worldState: WorldState): ShipControlFrame {
+    const frame = defaultControlFrame();
     if (!this.transitTarget) {
       this.transitTarget = this.pickTransitTarget(self, landables);
     }
@@ -273,16 +223,16 @@ export class NPCController {
       const dist = Vector2.distance(selfPos, target);
       const targetAngle = angleToTarget(selfPos, target);
       let rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-      inputs.rotateCW = rotation.rotateCW;
-      inputs.rotateCCW = rotation.rotateCCW;
-      inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+      frame.thrusters.rotateCW = rotation.rotateCW;
+      frame.thrusters.rotateCCW = rotation.rotateCCW;
+      frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
       if (dist <= TRANSIT_APPROACH_BRAKE_RADIUS && (self.state.velocity as Vector2).magnitude() > LANDING_SPEED_THRESHOLD) {
         if (self.hasAutoBrake(worldState)) {
-          inputs.autoBrakeLinear = true;
+          frame.thrusters.autoBrakeLinear = true;
         } else if (self.hasReverseThruster(worldState)) {
           if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-            inputs.reverse = true;
-            inputs.autoBrakeLinear = false;
+            frame.thrusters.reverse = true;
+            frame.thrusters.autoBrakeLinear = false;
           }
         } else {
           const velocity = self.state.velocity as Vector2;
@@ -292,23 +242,23 @@ export class NPCController {
               : selfPos.add(Vector2.fromAngle(self.state.angle).scale(-1));
           const retrogradeAngle = angleToTarget(selfPos, retrogradeTarget);
           rotation = rotateToward(self.state.angle, retrogradeAngle, self.state.angularVelocity);
-          inputs.rotateCW = rotation.rotateCW;
-          inputs.rotateCCW = rotation.rotateCCW;
-          inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+          frame.thrusters.rotateCW = rotation.rotateCW;
+          frame.thrusters.rotateCCW = rotation.rotateCCW;
+          frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
           if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-            inputs.forward = true;
-            inputs.autoBrakeLinear = false;
+            frame.thrusters.forward = true;
+            frame.thrusters.autoBrakeLinear = false;
           }
         }
       } else if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-        inputs.forward = true;
-        inputs.autoBrakeLinear = false;
+        frame.thrusters.forward = true;
+        frame.thrusters.autoBrakeLinear = false;
       }
       if (dist <= TRANSIT_LOITER_RADIUS) {
         this.transitPhase = 'loitering';
         this.loiterTimer = this.randomRange(TRANSIT_LOITER_MIN, TRANSIT_LOITER_MAX);
       }
-      return inputs;
+      return frame;
     }
 
     if (this.transitPhase === 'loitering') {
@@ -318,19 +268,19 @@ export class NPCController {
       this.loiterTimer -= dt;
       if (driftDistance > TRANSIT_LOITER_RADIUS * TRANSIT_LOITER_DRIFT_THRESHOLD) {
         this.transitPhase = 'approaching';
-        return defaultInputs();
+        return defaultControlFrame();
       }
       if (this.loiterTimer <= 0) {
         const ruleState = self.spawnRuleStateRef;
         const minPresent = Number.isFinite(ruleState?.rule.minPresent) ? Math.max(0, Math.floor(ruleState!.rule.minPresent)) : 0;
         if (ruleState && ruleState.currentCount - 1 < minPresent) {
           this.loiterTimer = TRANSIT_LOITER_MIN * TRANSIT_LOITER_EXTENSION;
-          return allZeroInputs();
+          return zeroControlFrame();
         }
         this.transitPhase = 'departing';
         self.isLeaving = true;
       }
-      return allZeroInputs();
+      return zeroControlFrame();
     }
 
     if (!this.departureTarget) {
@@ -340,64 +290,64 @@ export class NPCController {
     const selfPos = self.state.position as Vector2;
     const targetAngle = angleToTarget(selfPos, this.departureTarget);
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-      inputs.forward = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.forward = true;
+      frame.thrusters.autoBrakeLinear = false;
     }
-    return inputs;
+    return frame;
   }
 
-  private updateTailPlayer(self: ShipEntity, player: ShipEntity, playerDistance: number): NPCInputs {
-    const inputs = defaultInputs();
+  private updateTailPlayer(self: ShipEntity, player: ShipEntity, playerDistance: number): ShipControlFrame {
+    const frame = defaultControlFrame();
     const selfPos = self.state.position as Vector2;
     const playerPos = player.state.position as Vector2;
     const targetAngle = angleToTarget(selfPos, playerPos);
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
 
     if (playerDistance > TAIL_DISTANCE + 75 && Math.abs(rotation.angleDiff) < (30 * Math.PI) / 180) {
-      inputs.forward = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.forward = true;
+      frame.thrusters.autoBrakeLinear = false;
     } else if (playerDistance < TAIL_DISTANCE - 75 && Math.abs(rotation.angleDiff) < (30 * Math.PI) / 180) {
-      inputs.reverse = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.reverse = true;
+      frame.thrusters.autoBrakeLinear = false;
     }
-    return inputs;
+    return frame;
   }
 
-  private updateTrade(self: ShipEntity, landables: Landable[]): NPCInputs {
-    const inputs = defaultInputs();
+  private updateTrade(self: ShipEntity, landables: Landable[]): ShipControlFrame {
+    const frame = defaultControlFrame();
     this.ensureTradeRoute(landables);
     const target = this.tradeToA ? this.tradePointA : this.tradePointB;
-    if (!target) return inputs;
+    if (!target) return frame;
     const selfPos = self.state.position as Vector2;
     const targetAngle = angleToTarget(selfPos, target);
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     if (Math.abs(rotation.angleDiff) < (20 * Math.PI) / 180) {
-      inputs.forward = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.forward = true;
+      frame.thrusters.autoBrakeLinear = false;
     }
     if (Vector2.distance(selfPos, target) <= PATROL_WAYPOINT_ARRIVAL_RADIUS) {
       this.tradeToA = !this.tradeToA;
     }
-    return inputs;
+    return frame;
   }
 
-  private updateHostile(dt: number, self: ShipEntity, player: ShipEntity, otherNPCs: ShipEntity[]): NPCInputs {
-    const inputs = defaultInputs();
+  private updateHostile(dt: number, self: ShipEntity, player: ShipEntity, otherNPCs: ShipEntity[]): ShipControlFrame {
+    const frame = defaultControlFrame();
     const target = this.resolveAggroTarget(player, otherNPCs);
     if (!target) {
       this.clearAggro();
       this.state = 'patrol';
-      return defaultInputs();
+      return defaultControlFrame();
     }
 
     const selfPos = self.state.position as Vector2;
@@ -411,25 +361,25 @@ export class NPCController {
     ) {
       this.clearAggro();
       this.state = 'patrol';
-      return defaultInputs();
+      return defaultControlFrame();
     }
 
     const targetAngle = angleToTarget(selfPos, targetPos);
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     const absAngleDiff = Math.abs(rotation.angleDiff);
 
     if (targetDistance > this.preferredCombatRange + 100) {
       if (absAngleDiff < (35 * Math.PI) / 180) {
-        inputs.forward = true;
-        inputs.autoBrakeLinear = false;
+        frame.thrusters.forward = true;
+        frame.thrusters.autoBrakeLinear = false;
       }
     } else if (targetDistance < this.preferredCombatRange - 100) {
       if (absAngleDiff < (35 * Math.PI) / 180) {
-        inputs.reverse = true;
-        inputs.autoBrakeLinear = false;
+        frame.thrusters.reverse = true;
+        frame.thrusters.autoBrakeLinear = false;
       }
     } else if (absAngleDiff < (30 * Math.PI) / 180) {
       this.strafeTimer += dt;
@@ -437,26 +387,26 @@ export class NPCController {
         this.strafeTimer = 0;
         this.strafeDirection = this.strafeDirection === 1 ? -1 : 1;
       }
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.autoBrakeLinear = false;
       if (this.strafeDirection === 1) {
-        inputs.rotateCW = true;
-        inputs.rotateCCW = false;
-        inputs.autoBrakeRotation = false;
+        frame.thrusters.rotateCW = true;
+        frame.thrusters.rotateCCW = false;
+        frame.thrusters.autoBrakeRotation = false;
       } else {
-        inputs.rotateCCW = true;
-        inputs.rotateCW = false;
-        inputs.autoBrakeRotation = false;
+        frame.thrusters.rotateCCW = true;
+        frame.thrusters.rotateCW = false;
+        frame.thrusters.autoBrakeRotation = false;
       }
     }
 
     if (Math.abs(rotation.angleDiff) < (20 * Math.PI) / 180 && targetDistance <= this.fireRange) {
-      inputs.fireZ = true;
+      frame.weapons.Z = true;
     }
-    return inputs;
+    return frame;
   }
 
-  private updateFlee(self: ShipEntity, player: ShipEntity, otherNPCs: ShipEntity[], playerDistance: number): NPCInputs {
-    const inputs = defaultInputs();
+  private updateFlee(self: ShipEntity, player: ShipEntity, otherNPCs: ShipEntity[], playerDistance: number): ShipControlFrame {
+    const frame = defaultControlFrame();
     self.isLeaving = true;
     const threatTarget = this.resolveAggroTarget(player, otherNPCs) ?? player;
     const threatDistance =
@@ -467,21 +417,21 @@ export class NPCController {
     if (threatDistance > this.aggroRange * 2) {
       this.clearAggro();
       this.state = 'patrol';
-      return defaultInputs();
+      return defaultControlFrame();
     }
 
     const selfPos = self.state.position as Vector2;
     const awayDirection = selfPos.sub(threatTarget.state.position as Vector2);
     const targetAngle = awayDirection.magnitudeSquared() > 0 ? Math.atan2(awayDirection.x, -awayDirection.y) : self.state.angle;
     const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
-    inputs.rotateCW = rotation.rotateCW;
-    inputs.rotateCCW = rotation.rotateCCW;
-    inputs.autoBrakeRotation = rotation.autoBrakeRotation;
+    frame.thrusters.rotateCW = rotation.rotateCW;
+    frame.thrusters.rotateCCW = rotation.rotateCCW;
+    frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     if (Math.abs(rotation.angleDiff) < (25 * Math.PI) / 180) {
-      inputs.forward = true;
-      inputs.autoBrakeLinear = false;
+      frame.thrusters.forward = true;
+      frame.thrusters.autoBrakeLinear = false;
     }
-    return inputs;
+    return frame;
   }
 
   private ensureTradeRoute(landables: Landable[]): void {
@@ -581,17 +531,16 @@ export class NPCController {
 
   private pickDepartureTarget(): Vector2 {
     const edge = ['north', 'south', 'east', 'west'][this.prng.nextInt(0, 3)] as 'north' | 'south' | 'east' | 'west';
-    const halfWidth = SECTOR_WIDTH / 2;
-    const halfHeight = SECTOR_HEIGHT / 2;
-    if (edge === 'north') return new Vector2((this.prng.next() - 0.5) * SECTOR_WIDTH * 0.875, -(halfHeight + 200));
-    if (edge === 'south') return new Vector2((this.prng.next() - 0.5) * SECTOR_WIDTH * 0.875, halfHeight + 200);
-    if (edge === 'east') return new Vector2(halfWidth + 200, (this.prng.next() - 0.5) * SECTOR_HEIGHT * 0.875);
-    return new Vector2(-(halfWidth + 200), (this.prng.next() - 0.5) * SECTOR_HEIGHT * 0.875);
+    const half = SECTOR_SIZE / 2;
+    if (edge === 'north') return new Vector2((this.prng.next() - 0.5) * SECTOR_SIZE * 0.875, -(half + 200));
+    if (edge === 'south') return new Vector2((this.prng.next() - 0.5) * SECTOR_SIZE * 0.875, half + 200);
+    if (edge === 'east') return new Vector2(half + 200, (this.prng.next() - 0.5) * SECTOR_SIZE * 0.875);
+    return new Vector2(-(half + 200), (this.prng.next() - 0.5) * SECTOR_SIZE * 0.875);
   }
 
   private randomSectorPoint(inset: number): Vector2 {
-    const min = -(SECTOR_WIDTH / 2) + inset;
-    const max = SECTOR_WIDTH / 2 - inset;
+    const min = -(SECTOR_SIZE / 2) + inset;
+    const max = SECTOR_SIZE / 2 - inset;
     return new Vector2(this.prng.nextInt(min, max), this.prng.nextInt(min, max));
   }
 

@@ -1,4 +1,4 @@
-import { SECTOR_EDGE_THRESHOLD, SECTOR_HEIGHT, SECTOR_WIDTH } from '../constants';
+import { SECTOR_EDGE_THRESHOLD, SECTOR_SIZE } from '../constants';
 import type { GridCoord } from '../types';
 import { Vector2 } from '../physics/vector2';
 
@@ -22,13 +22,13 @@ export function getAdjacentSectorCoord(coord: GridCoord, edge: SectorEdge): Grid
 export function playerSpawnPositionAfterCrossing(edge: SectorEdge, previousPosition: Vector2): Vector2 {
   const spawnInset = SECTOR_EDGE_THRESHOLD * 2;
   if (edge === 'east') {
-    return new Vector2(-(SECTOR_WIDTH / 2) + spawnInset, previousPosition.y);
+    return new Vector2(-(SECTOR_SIZE / 2) + spawnInset, previousPosition.y);
   }
   if (edge === 'west') {
-    return new Vector2(SECTOR_WIDTH / 2 - spawnInset, previousPosition.y);
+    return new Vector2(SECTOR_SIZE / 2 - spawnInset, previousPosition.y);
   }
   if (edge === 'north') {
-    return new Vector2(previousPosition.x, SECTOR_HEIGHT / 2 - spawnInset);
+    return new Vector2(previousPosition.x, SECTOR_SIZE / 2 - spawnInset);
   }
-  return new Vector2(previousPosition.x, -(SECTOR_HEIGHT / 2) + spawnInset);
+  return new Vector2(previousPosition.x, -(SECTOR_SIZE / 2) + spawnInset);
 }

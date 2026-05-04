@@ -1,4 +1,11 @@
-import { COLOURS, STAR_COLOURS, STAR_LAYER_COUNTS, STAR_SCROLL_FACTORS } from '../../constants';
+import {
+  COLOURS,
+  FLIGHT_SECTOR_GRID_ALPHA,
+  FLIGHT_SECTOR_GRID_SPACING,
+  STAR_COLOURS,
+  STAR_LAYER_COUNTS,
+  STAR_SCROLL_FACTORS
+} from '../../constants';
 import { childPRNG } from '../../core/prng';
 import type { Vector2 } from '../../types';
 
@@ -103,5 +110,39 @@ export class BackgroundLayer {
         this.ctx.fill();
       }
     }
+
+    this.renderSectorSpaceGrid(playerWorldPos);
+  }
+
+  /** World-locked grid: 1:1 with sector coordinates so motion reads against empty space. */
+  private renderSectorSpaceGrid(playerWorldPos: Vector2): void {
+    const spacing = FLIGHT_SECTOR_GRID_SPACING;
+    const halfW = this.canvasWidth / 2;
+    const halfH = this.canvasHeight / 2;
+    const px = playerWorldPos.x;
+    const py = playerWorldPos.y;
+    const minWx = px - halfW;
+    const maxWx = px + halfW;
+    const minWy = py - halfH;
+    const maxWy = py + halfH;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = `rgba(200, 205, 230, ${FLIGHT_SECTOR_GRID_ALPHA})`;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    let wx = Math.floor(minWx / spacing) * spacing;
+    for (; wx <= maxWx + spacing; wx += spacing) {
+      const sx = wx - px + halfW;
+      this.ctx.moveTo(sx, 0);
+      this.ctx.lineTo(sx, this.canvasHeight);
+    }
+    let wy = Math.floor(minWy / spacing) * spacing;
+    for (; wy <= maxWy + spacing; wy += spacing) {
+      const sy = wy - py + halfH;
+      this.ctx.moveTo(0, sy);
+      this.ctx.lineTo(this.canvasWidth, sy);
+    }
+    this.ctx.stroke();
+    this.ctx.restore();
   }
 }
