@@ -137,6 +137,7 @@ Authoritative detail lives in the checklist below (historical handoff content fr
 
 **Remaining near-term (from live checklist):**
 
+- **Galaxy map UI polish** — square cells, visited/landable density cues, legend text for current/cursor/target, selected-sector summary pane, hyperspace target near ship/land targets in flight HUD (**`plan/VOID_RUNNER_Backlog.md`**, section *Galaxy map — UI polish*; ideas also in local **`plan/RandomToughts.md`**).  
 - **Session 6:** hyperspace drive — jump to map-visible sectors, fuel cost, cooldown, range tier, alignment / animation, fleet rules.  
 - **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change.
 
