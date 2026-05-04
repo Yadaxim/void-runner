@@ -193,14 +193,20 @@ export class LoadGameScreen implements Screen {
     let cardY = panelY + LoadGameScreen.HEADER_HEIGHT + 18;
     const cardWidth = panelWidth - 56;
     for (let si = 0; si < this.saves.length; si += 1) {
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
       const save = this.saves[si];
       const selected = si === this.selectedSaveIndex;
+      const hasConfirm =
+        this.pendingDelete?.worldSeed === save.worldSeed &&
+        this.pendingDelete?.saveId === save.saveId;
+      const cardH = hasConfirm ? 138 : 118;
       ctx.strokeStyle = selected ? COLOURS.UI_ACCENT : COLOURS.UI_SECONDARY;
       if (selected) {
         ctx.fillStyle = 'rgba(64, 192, 255, 0.07)';
-        ctx.fillRect(cardX, cardY, cardWidth, 118);
+        ctx.fillRect(cardX, cardY, cardWidth, cardH);
       }
-      ctx.strokeRect(cardX, cardY, cardWidth, 118);
+      ctx.strokeRect(cardX, cardY, cardWidth, cardH);
       ctx.fillStyle = COLOURS.UI_PRIMARY;
       ctx.textAlign = 'left';
       ctx.font = "16px 'Courier New', monospace";
@@ -238,29 +244,45 @@ export class LoadGameScreen implements Screen {
       this.actionRects.push({ type: 'resume', worldSeed: save.worldSeed, saveId: save.saveId, ...resumeRect });
       this.actionRects.push({ type: 'delete', worldSeed: save.worldSeed, saveId: save.saveId, ...deleteRect });
 
-      if (
-        this.pendingDelete?.worldSeed === save.worldSeed &&
-        this.pendingDelete?.saveId === save.saveId
-      ) {
-        const overlayY = cardY + 96;
+      if (hasConfirm) {
+        const confirmRowY = cardY + 92;
         ctx.fillStyle = COLOURS.WARNING;
-        ctx.textAlign = 'left';
-        ctx.fillText('ARE YOU SURE?', cardX + 12, overlayY);
-        const yesRect = { x: cardX + 150, y: overlayY - 4, width: 60, height: 20 };
-        const noRect = { x: cardX + 220, y: overlayY - 4, width: 60, height: 20 };
+        ctx.font = "11px 'Courier New', monospace";
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Delete this career?', deleteRect.x + deleteRect.width, confirmRowY);
+        const btnW = 48;
+        const btnH = 22;
+        const btnGap = 6;
+        const btnY = confirmRowY + 14;
+        const noRect = {
+          x: deleteRect.x + deleteRect.width - btnW,
+          y: btnY,
+          width: btnW,
+          height: btnH
+        };
+        const yesRect = {
+          x: noRect.x - btnGap - btnW,
+          y: btnY,
+          width: btnW,
+          height: btnH
+        };
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.strokeStyle = COLOURS.DANGER;
         ctx.strokeRect(yesRect.x, yesRect.y, yesRect.width, yesRect.height);
+        ctx.fillStyle = COLOURS.DANGER;
+        ctx.fillText('YES', yesRect.x + yesRect.width / 2, yesRect.y + yesRect.height / 2);
         ctx.strokeStyle = COLOURS.UI_SECONDARY;
         ctx.strokeRect(noRect.x, noRect.y, noRect.width, noRect.height);
-        ctx.fillStyle = COLOURS.DANGER;
-        ctx.fillText('YES', yesRect.x + 18, yesRect.y + 3);
         ctx.fillStyle = COLOURS.UI_PRIMARY;
-        ctx.fillText('NO', noRect.x + 22, noRect.y + 3);
+        ctx.fillText('NO', noRect.x + noRect.width / 2, noRect.y + noRect.height / 2);
         this.confirmRects.push({ yes: true, ...yesRect });
         this.confirmRects.push({ yes: false, ...noRect });
+        ctx.textBaseline = 'top';
       }
 
-      cardY += 132;
+      cardY += hasConfirm ? 152 : 132;
     }
 
     if (this.errorMessage) {
