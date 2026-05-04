@@ -51,24 +51,6 @@ Jump to any **visible** sector on the galaxy map, skipping intermediate sectors.
 
 ---
 
-## Persistence and portable saves (planned)
-
-**Goal:** Same **`PersistedWorldState`** the game already writes to **`localStorage`** (keyed by world **`metadata.seed`**) should also be representable as a **JSON file** tied to that world, so players can **move saves between devices** (backup, USB, cloud folder) without relying on browser storage alone.
-
-**Two-tier model**
-
-- **`localStorage`** — keep **frequent** writes for same-session and same-browser resilience (existing call sites; may add a thin internal helper so all paths share one serializer).
-- **Disk (JSON file)** — **same payload** (plus a small **envelope**: format version, seed, optional world name / `savedAt`) with **fewer** flush points: e.g. **sector change**, **landable enter and exit**, **credit-changing** transactions, **equipment / shipyard / fuel / repair / insurance** mutations, **galaxy map hyperspace target** change, **return to main menu**, and **`beforeunload`** / **`visibilitychange`** best-effort where allowed. Optional **debounced** file write (e.g. 30–60 s) only when a **File System Access** handle is active.
-
-**Platform notes**
-
-- **Export / import** — always viable: download JSON + file-picker import on load/new-game flows; validate seed matches selected **`WorldFile`**.
-- **Silent periodic disk sync** — requires user-granted **File System Access** (Chromium) or a future desktop wrapper; document fallback when unavailable.
-
-**Ordering:** Can ship **export/import** before or in parallel with Session 6; file-handle autosave is a follow-up. Design detail: **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves); tasks: **`plan/VOID_RUNNER_Backlog.md`**.
-
----
-
 ## Economy and missions (depth)
 
 **Cargo model upgrade (prerequisite for trade and richer missions)**  
@@ -138,6 +120,24 @@ Spiral density, faction/landable/equipment/mission text passes, validation, expo
 
 **Pre-trained memory cards**  
 Headless sim + TF.js training in generator; embed weights in world file.
+
+---
+
+## Persistence and portable saves (planned)
+
+**Goal:** Same **`PersistedWorldState`** the game already writes to **`localStorage`** (keyed by world **`metadata.seed`**) should also be representable as a **JSON file** tied to that world, so players can **move saves between devices** (backup, USB, cloud folder) without relying on browser storage alone.
+
+**Two-tier model**
+
+- **`localStorage`** — keep **frequent** writes for same-session and same-browser resilience (existing call sites; may add a thin internal helper so all paths share one serializer).
+- **Disk (JSON file)** — **same payload** (plus a small **envelope**: format version, seed, optional world name / `savedAt`) with **fewer** flush points: e.g. **sector change**, **landable enter and exit**, **credit-changing** transactions, **equipment / shipyard / fuel / repair / insurance** mutations, **galaxy map hyperspace target** change, **return to main menu**, and **`beforeunload`** / **`visibilitychange`** best-effort where allowed. Optional **debounced** file write (e.g. 30–60 s) only when a **File System Access** handle is active.
+
+**Platform notes**
+
+- **Export / import** — always viable: download JSON + file-picker import on load/new-game flows; validate seed matches selected **`WorldFile`**.
+- **Silent periodic disk sync** — requires user-granted **File System Access** (Chromium) or a future desktop wrapper; document fallback when unavailable.
+
+**Ordering:** **Backlog:** ship **after offline world generator**; **export/import** can follow that slice or overlap late in it; **file-handle autosave** remains a follow-up. Design detail: **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves); tasks: **`plan/VOID_RUNNER_Backlog.md`**.
 
 ---
 

@@ -139,7 +139,8 @@ Authoritative detail lives in the checklist below (historical handoff content fr
 **Remaining near-term (from live checklist):**
 
 - **Session 6:** hyperspace drive — jump to map-visible sectors, fuel cost, cooldown, range tier, alignment / animation, fleet rules.  
-- **Portable saves (JSON file, world-linked):** export/import and optional file-handle autosave to disk on coarser milestones than `localStorage` — see roadmap, GDD persistence section, and backlog.  
+- **World generator (offline):** main-menu entry, pipeline per WorldGen doc, pre-trained memory cards — **`plan/VOID_RUNNER_Backlog.md`**.  
+- **Portable saves (JSON file, world-linked):** backlog order is **after** world generator; export/import and optional file-handle autosave — roadmap, GDD persistence section, **`plan/VOID_RUNNER_Backlog.md`**.  
 - **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change.
 
 See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.

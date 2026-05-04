@@ -43,19 +43,6 @@ Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Shipped
 
 ---
 
-## Persistence — portable JSON saves (world-linked)
-
-From roadmap **Persistence and portable saves** and **`plan/VOID_RUNNER_GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
-
-- [ ] **Single serializer** — one code path builds the save JSON object (and parses/validates on load) used by both **`localStorage`** and file I/O; avoid drift between formats.  
-- [ ] **Export save** — main menu or load-game UI: download a **`.json`** (envelope + `PersistedWorldState`); filename encodes seed (and optional pilot/world name).  
-- [ ] **Import save** — file picker: validate JSON, **seed matches** loaded / selected world, then **`WorldState`** hydrate + write **`localStorage`** so the existing resume path keeps working.  
-- [ ] **Conflict policy** — define behaviour when both imported file and **`localStorage`** exist (e.g. compare envelope **`savedAt`**, or “import overwrites”). Document in code comment + GDD.  
-- [ ] **Coarser disk writes** — when user has granted a **File System Access** file handle (or after export path TBD), flush file on: **sector transition**, **landable `onEnter` / exit to flight**, **credits / equipment / fuel / repair / insurance** mutations that already call save, **galaxy map hyperspace target** set/clear, **exit to main menu**, **`beforeunload`** / **`visibilitychange`** (best-effort); **not** every `localStorage` call.  
-- [ ] **Tests** — round-trip fixture: serialize → parse → `loadFromLocalStorage`-equivalent apply; reject wrong-seed import.  
-
----
-
 ## Phase 4 Session 6 — Hyperspace drive
 
 From roadmap **Navigation slice** and context **Session 6**.
@@ -123,6 +110,19 @@ Roadmap **World generator**; pipeline detail in **`plan/VOID_RUNNER_WorldGen.md`
 - [ ] Generator entry from main menu: new / load / import / export world JSON; progress UI for long runs  
 - [ ] Implement pipeline (spiral density, text passes, validation, export) per WorldGen doc  
 - [ ] Pre-trained memory cards: headless sim + TF.js in generator; embed weights in world file  
+
+---
+
+## Persistence — portable JSON saves (world-linked)
+
+From roadmap **Persistence and portable saves** and **`plan/VOID_RUNNER_GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
+
+- [ ] **Single serializer** — one code path builds the save JSON object (and parses/validates on load) used by both **`localStorage`** and file I/O; avoid drift between formats.  
+- [ ] **Export save** — main menu or load-game UI: download a **`.json`** (envelope + `PersistedWorldState`); filename encodes seed (and optional pilot/world name).  
+- [ ] **Import save** — file picker: validate JSON, **seed matches** loaded / selected world, then **`WorldState`** hydrate + write **`localStorage`** so the existing resume path keeps working.  
+- [ ] **Conflict policy** — define behaviour when both imported file and **`localStorage`** exist (e.g. compare envelope **`savedAt`**, or “import overwrites”). Document in code comment + GDD.  
+- [ ] **Coarser disk writes** — when user has granted a **File System Access** file handle (or after export path TBD), flush file on: **sector transition**, **landable `onEnter` / exit to flight**, **credits / equipment / fuel / repair / insurance** mutations that already call save, **galaxy map hyperspace target** set/clear, **exit to main menu**, **`beforeunload`** / **`visibilitychange`** (best-effort); **not** every `localStorage` call.  
+- [ ] **Tests** — round-trip fixture: serialize → parse → `loadFromLocalStorage`-equivalent apply; reject wrong-seed import.  
 
 ---
 
