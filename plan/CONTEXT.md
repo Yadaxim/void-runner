@@ -133,13 +133,13 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 Authoritative detail lives in the checklist below (historical handoff content from older context docs was merged into this file; keep this section current as you ship).
 
-**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** rejects legacy **`seeking` / `turnRatio`** on bullet specs; **Vitest** coverage for Newtonian helpers, shield reboot / no-reactor joules, and bullet-ability validation cases.
+**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** rejects legacy **`seeking` / `turnRatio`** on bullet specs; **Phase 4 Session 4 Vitest pass** — expanded **`damage.test.ts`**, **`shipEnergyShield.test.ts`** (reactor/shield edge cases and `tickShipEnergyAndShield` return value), **`physics.test.ts`** (Newtonian edges + **`SplitMix64`**), **`world-validation.test.ts`** (bullet **`abilities`** shape and error paths alongside **`validateWorldFile`**).
 
 **Remaining near-term (from live checklist):**
 
-- Phase 4 Session 4 **remaining:** extend damage / energy / physics tests as systems grow; keep **`validateWorldFile`** current (including **`bulletSpecs.abilities`** rules).  
 - **Session 5:** galaxy map — visited sectors, factions, radiation zone, hyperspace target selection UI.  
-- **Session 6:** hyperspace drive — jump cost, cooldown, alignment, animation.
+- **Session 6:** hyperspace drive — jump cost, cooldown, alignment, animation.  
+- **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change.
 
 See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.
 

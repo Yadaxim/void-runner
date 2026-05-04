@@ -6,15 +6,16 @@
 
 ## Now (complete before large new features)
 
-**Automated tests (Phase 4 Session 4 remainder)**  
-- Layered damage + plasma DoT: `src/combat/damage.test.ts` (player and NPC `ShipState` flags).  
-- Reactor + shield regen: `src/sim/shipEnergyShield.test.ts` (mock `WorldState`, player vs NPC id flags).  
-- Physics unit tests (forces, momentum, critical constants).  
-- Keep world validation tests current as schemas evolve.
+**Phase 4 Session 4 — automated tests (shipped)**  
+Coverage passes are in **`damage.test.ts`**, **`shipEnergyShield.test.ts`** (reactor cap, fuel gate, regen delay, joule cost gate, `maxShieldHP` sync, offline shield clamp, `updated` return), **`physics.test.ts`** (angular clamp edge, damping at ω=0, diagonal `applyForce`, **`SplitMix64`** `nextInt` / `nextBool`), and **`world-validation.test.ts`** (bullet **`abilities`** array shape, unknown type, negative `turnRatio`, invalid entries, missing `type`). Extend these files again when combat, energy, physics, or world schema behaviour changes.
 
 ---
 
-*Recently shipped:* seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`** (`{ type: 'seeking', turnRatio }`); `getBulletSeekingAbility` in `src/types/bullet.ts`; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs.
+**Next default engineering focus:** Phase 4 Session 5 — galaxy map (see **Navigation slice** below and **`plan/VOID_RUNNER_Backlog.md`**).
+
+---
+
+*Recently shipped:* Session 4 test pass above; seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`**; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs.
 
 ## AI control bus (keypress / pre-neural)
 

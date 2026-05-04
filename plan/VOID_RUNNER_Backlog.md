@@ -4,14 +4,14 @@
 
 ---
 
-## Ongoing (Phase 4 Session 4+)
+## Phase 4 Session 4 — automated tests (complete)
 
-Maintenance and expansion called out in context and roadmap **Now** section.
+Shipped checklist from roadmap **Now**; extend these tests again when combat, energy, physics, or world schema changes land in the same PR.
 
-- [ ] Extend **`damage.test.ts`** (layered damage, plasma DoT) as combat rules grow  
-- [ ] Extend **`shipEnergyShield.test.ts`** as reactor/shield rules grow  
-- [ ] Extend **`physics.test.ts`** (Newtonian / PRNG) as physics touchpoints grow  
-- [ ] Keep **`validateWorldFile`** and **`world-validation*.test.ts`** aligned with schema changes (including **`bulletSpecs.abilities`**)  
+- [x] Extend **`damage.test.ts`** (layered damage, plasma DoT) as combat rules grow  
+- [x] Extend **`shipEnergyShield.test.ts`** as reactor/shield rules grow  
+- [x] Extend **`physics.test.ts`** (Newtonian / PRNG) as physics touchpoints grow  
+- [x] Keep **`validateWorldFile`** and **`world-validation*.test.ts`** aligned with schema changes (including **`bulletSpecs.abilities`**)  
 
 ---
 

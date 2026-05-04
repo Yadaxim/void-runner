@@ -153,4 +153,139 @@ describe('tickShipEnergyAndShield (player and NPC ship state)', () => {
     expect(ship.currentShieldHP).toBe(0);
     vi.useRealTimers();
   });
+
+  it('does not charge reactor when battery already at capacity', () => {
+    const reactor = makeReactor({ id: 'r_cap', capacityJoules: 200, chargeRate: 50, fuelPerJoule: 0.01 });
+    const cat = new Map<string, EquipmentItem>([['r_cap', reactor]]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      currentJoules: 200,
+      fuel: 100,
+      equipmentSlots: [{ slotType: 'reactor', itemId: 'r_cap' }]
+    });
+    tickShipEnergyAndShield(ship, ws, 1, Date.now());
+    expect(ship.currentJoules).toBe(200);
+    expect(ship.fuel).toBe(100);
+  });
+
+  it('does not charge reactor when fuel is insufficient for the joule chunk', () => {
+    const reactor = makeReactor({ id: 'r_lowf', capacityJoules: 1000, chargeRate: 500, fuelPerJoule: 0.01 });
+    const cat = new Map<string, EquipmentItem>([['r_lowf', reactor]]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      currentJoules: 0,
+      fuel: 0.5,
+      equipmentSlots: [{ slotType: 'reactor', itemId: 'r_lowf' }]
+    });
+    tickShipEnergyAndShield(ship, ws, 1, Date.now());
+    expect(ship.currentJoules).toBe(0);
+    expect(ship.fuel).toBe(0.5);
+  });
+
+  it('syncs maxShieldHP from equipped shield item while shield path runs', () => {
+    const shield = makeShield({ id: 's_sync', capacity: 120 });
+    const cat = new Map<string, EquipmentItem>([['s_sync', shield]]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      currentShieldHP: 40,
+      maxShieldHP: 10,
+      shieldRebooting: false,
+      lastHitTime: 0,
+      currentJoules: 0,
+      equipmentSlots: [{ slotType: 'shield', itemId: 's_sync' }]
+    });
+    tickShipEnergyAndShield(ship, ws, 0.016, Date.now());
+    expect(ship.maxShieldHP).toBe(120);
+  });
+
+  it('does not regen shield until regenDelay elapsed since lastHitTime', () => {
+    vi.useFakeTimers();
+    const t0 = 30_000_000;
+    vi.setSystemTime(new Date(t0));
+    const reactor = makeReactor({ id: 'r_del' });
+    const shield = makeShield({ id: 's_del', capacity: 50, regenDelay: 3, joulesPerHPRegen: 1, regenRateHPPerSecond: 100 });
+    const cat = new Map<string, EquipmentItem>([
+      ['r_del', reactor],
+      ['s_del', shield]
+    ]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      currentShieldHP: 0,
+      maxShieldHP: 50,
+      shieldRebooting: false,
+      lastHitTime: t0 - 1000,
+      currentJoules: 500,
+      fuel: 50,
+      equipmentSlots: [
+        { slotType: 'reactor', itemId: 'r_del' },
+        { slotType: 'shield', itemId: 's_del' }
+      ]
+    });
+    tickShipEnergyAndShield(ship, ws, 1, t0);
+    expect(ship.currentShieldHP).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('does not spend joules on shield regen when joules below full tick cost', () => {
+    vi.useFakeTimers();
+    const t0 = 40_000_000;
+    vi.setSystemTime(new Date(t0));
+    const reactor = makeReactor({ id: 'r_j' });
+    const shield = makeShield({
+      id: 's_j',
+      capacity: 100,
+      regenDelay: 0,
+      joulesPerHPRegen: 100,
+      regenRateHPPerSecond: 50
+    });
+    const cat = new Map<string, EquipmentItem>([
+      ['r_j', reactor],
+      ['s_j', shield]
+    ]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      currentShieldHP: 0,
+      maxShieldHP: 100,
+      shieldRebooting: false,
+      lastHitTime: t0 - 60_000,
+      currentJoules: 30,
+      fuel: 0,
+      equipmentSlots: [
+        { slotType: 'reactor', itemId: 'r_j' },
+        { slotType: 'shield', itemId: 's_j' }
+      ]
+    });
+    tickShipEnergyAndShield(ship, ws, 1, t0);
+    expect(ship.currentShieldHP).toBe(0);
+    expect(ship.currentJoules).toBe(30);
+    vi.useRealTimers();
+  });
+
+  it('clamps currentShieldHP to max when shield is offline', () => {
+    const ws = mockWorldState(new Map(), false);
+    const ship = makeShipState({
+      currentShieldHP: 90,
+      maxShieldHP: 40,
+      equipmentSlots: [{ slotType: 'shield', itemId: 's_x' }]
+    });
+    tickShipEnergyAndShield(ship, ws, 0.1, Date.now());
+    expect(ship.currentShieldHP).toBe(40);
+  });
+
+  it.each([
+    [true, 'player'],
+    [false, 'npc_upd']
+  ])('returns true when reactor mutates state (isPlayerControlled=%s)', (isPlayer, id) => {
+    const reactor = makeReactor({ id: 'r_u', capacityJoules: 300, chargeRate: 200, fuelPerJoule: 0.001 });
+    const cat = new Map<string, EquipmentItem>([['r_u', reactor]]);
+    const ws = mockWorldState(cat, true);
+    const ship = makeShipState({
+      id,
+      isPlayerControlled: isPlayer,
+      currentJoules: 0,
+      fuel: 100,
+      equipmentSlots: [{ slotType: 'reactor', itemId: 'r_u' }]
+    });
+    expect(tickShipEnergyAndShield(ship, ws, 0.5, Date.now())).toBe(true);
+  });
 });

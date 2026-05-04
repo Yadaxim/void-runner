@@ -266,6 +266,76 @@ describe('resolveShipBulletDamage', () => {
     expect(ship.shieldRebooting).toBe(true);
     expect(ship.shieldRebootTimer).toBe(12);
   });
+
+  it('shield online but 0 HP: damage skips shield and hits armour', () => {
+    const ship = makeShipState({
+      currentShieldHP: 0,
+      shieldRebooting: false,
+      armourLayers: [{ itemId: 'ar', currentHP: 40, maxHP: 40 }],
+      equipmentSlots: [
+        { slotType: 'shield', itemId: 'sh' },
+        { slotType: 'armour', itemId: 'ar' }
+      ]
+    });
+    resolveShipBulletDamage(makeBullet({ damage: 12 }) as BulletSpec, ship, viewShieldOnline(true, cat()));
+    expect(ship.currentShieldHP).toBe(0);
+    expect(ship.armourLayers[0].currentHP).toBe(28);
+  });
+
+  it('uses damage-type key for armour reduction (laser vs kinetic)', () => {
+    const mixed = makeArmour({ id: 'mix', layers: { kinetic: 8, laser: 100 } });
+    const m = new Map<string, EquipmentItem>([
+      ['sh', shield],
+      ['mix', mixed]
+    ]);
+    const ship = makeShipState({
+      currentShieldHP: 0,
+      shieldRebooting: true,
+      armourLayers: [{ itemId: 'mix', currentHP: 30, maxHP: 30 }],
+      equipmentSlots: [
+        { slotType: 'shield', itemId: 'sh' },
+        { slotType: 'armour', itemId: 'mix' }
+      ]
+    });
+    resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, ship, viewShieldOnline(false, m));
+    expect(ship.armourLayers[0].currentHP).toBe(28);
+    const laser = resolveShipBulletDamage(
+      makeBullet({ damage: 10, damageType: { category: 'laser', matter: 'normal' } }) as BulletSpec,
+      makeShipState({
+        ...ship,
+        armourLayers: [{ itemId: 'mix', currentHP: 30, maxHP: 30 }]
+      }),
+      viewShieldOnline(false, m)
+    );
+    expect(laser.effectiveDamage).toBe(0);
+    expect(laser.totalReduction).toBe(100);
+  });
+
+  it('returns effectiveDamage and totalReduction for shield and armour paths', () => {
+    const shipShield = makeShipState({
+      currentShieldHP: 30,
+      armourLayers: [{ itemId: 'ar', currentHP: 50, maxHP: 50 }],
+      equipmentSlots: [
+        { slotType: 'shield', itemId: 'sh' },
+        { slotType: 'armour', itemId: 'ar' }
+      ]
+    });
+    const rShield = resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, shipShield, viewShieldOnline(true, cat()));
+    expect(rShield).toEqual({ effectiveDamage: 10, totalReduction: 0 });
+
+    const shipArmour = makeShipState({
+      currentShieldHP: 0,
+      shieldRebooting: true,
+      armourLayers: [{ itemId: 'ar', currentHP: 50, maxHP: 50 }],
+      equipmentSlots: [
+        { slotType: 'shield', itemId: 'sh' },
+        { slotType: 'armour', itemId: 'ar' }
+      ]
+    });
+    const rArmour = resolveShipBulletDamage(makeBullet({ damage: 10 }) as BulletSpec, shipArmour, viewShieldOnline(false, cat()));
+    expect(rArmour.effectiveDamage).toBe(10);
+    expect(rArmour.totalReduction).toBe(0);
+  });
 });
 
 describe('applyPlasmaDotToShip', () => {
@@ -314,5 +384,42 @@ describe('applyPlasmaDotToShip', () => {
     applyPlasmaDotToShip(state, 2, () => a1);
     expect(state.currentShieldHP).toBe(100);
     expect(state.armourLayers[0].currentHP).toBe(2);
+  });
+
+  it('plasma DoT negative reduction increases damage to armour', () => {
+    const a1 = makeArmour({ id: 'x1', layers: { plasma: -3 } });
+    const state = makeShipState({
+      currentHullHP: 100,
+      armourLayers: [{ itemId: 'x1', currentHP: 20, maxHP: 20 }]
+    });
+    applyPlasmaDotToShip(state, 5, () => a1);
+    expect(state.armourLayers[0].currentHP).toBe(12);
+  });
+
+  it('plasma DoT on a tick discards excess over current layer HP (no spill in one tick)', () => {
+    const a1 = makeArmour({ id: 'x1', layers: { plasma: 0 } });
+    const a2 = makeArmour({ id: 'x2', layers: { plasma: 0 } });
+    const catMap = new Map([
+      ['x1', a1],
+      ['x2', a2]
+    ]);
+    const state = makeShipState({
+      armourLayers: [
+        { itemId: 'x1', currentHP: 3, maxHP: 10 },
+        { itemId: 'x2', currentHP: 10, maxHP: 10 }
+      ]
+    });
+    applyPlasmaDotToShip(state, 50, (id) => catMap.get(id) ?? null);
+    expect(state.armourLayers[0].currentHP).toBe(0);
+    expect(state.armourLayers[1].currentHP).toBe(10);
+  });
+
+  it('plasma DoT treats missing armour catalog entry as zero reduction', () => {
+    const state = makeShipState({
+      currentHullHP: 100,
+      armourLayers: [{ itemId: 'missing_id', currentHP: 10, maxHP: 10 }]
+    });
+    applyPlasmaDotToShip(state, 4, () => null);
+    expect(state.armourLayers[0].currentHP).toBe(6);
   });
 });

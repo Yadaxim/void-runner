@@ -330,4 +330,44 @@ describe('validateWorldFile', () => {
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('at most one seeking'))).toBe(true);
   });
+
+  it('flags bullet abilities when not an array', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
+    (spec as { abilities: unknown }).abilities = { type: 'seeking', turnRatio: 1 } as unknown;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('abilities must be an array'))).toBe(true);
+  });
+
+  it('flags unknown bullet ability type', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
+    spec.abilities = [{ type: 'cloak', turnRatio: 1 } as { type: 'seeking'; turnRatio: number }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('unknown type') && e.includes('cloak'))).toBe(true);
+  });
+
+  it('flags seeking ability with negative turnRatio', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'seeker_missile')!;
+    spec.abilities = [{ type: 'seeking', turnRatio: -0.1 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('finite turnRatio') && e.includes('>='))).toBe(true);
+  });
+
+  it('flags invalid bullet abilities entry', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
+    spec.abilities = [null as unknown as { type: 'seeking'; turnRatio: number }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('abilities[0] is invalid'))).toBe(true);
+  });
+
+  it('flags seeking ability missing type string', () => {
+    const w = structuredClone(loadWorld());
+    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
+    spec.abilities = [{ turnRatio: 2 } as { type: 'seeking'; turnRatio: number }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('missing type'))).toBe(true);
+  });
 });

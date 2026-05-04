@@ -10,7 +10,7 @@ import {
   integratePosition
 } from './newtonian';
 import { Vector2 } from './vector2';
-import { childPRNG } from '../core/prng';
+import { childPRNG, SplitMix64 } from '../core/prng';
 
 describe('newtonian helpers', () => {
   it('applyForce integrates v += (F/m)*dt', () => {
@@ -127,6 +127,23 @@ describe('newtonian helpers', () => {
     expect(clampAngularVelocity(-5, 2)).toBe(-2);
     expect(clampAngularVelocity(1, 2)).toBe(1);
   });
+
+  it('clampAngularVelocity returns 0 when topAngularSpeed <= 0', () => {
+    expect(clampAngularVelocity(3, 0)).toBe(0);
+    expect(clampAngularVelocity(-3, -1)).toBe(0);
+  });
+
+  it('applyAngularDamping returns unchanged when angular velocity is zero', () => {
+    expect(applyAngularDamping(0, 5, 0.5)).toBe(0);
+  });
+
+  it('applyForce works on diagonal force', () => {
+    const v = new Vector2(0, 0);
+    const f = new Vector2(3, 4);
+    const v1 = applyForce(v, f, 2, 1);
+    expect(v1.x).toBeCloseTo(1.5);
+    expect(v1.y).toBeCloseTo(2);
+  });
 });
 
 describe('childPRNG', () => {
@@ -155,5 +172,25 @@ describe('childPRNG', () => {
     ]).toEqual([
       0.263838976217456, 0.16113862098931442, 0.7502437870293518, 0.5688963323948197, 0.11081895266801478
     ]);
+  });
+
+  it('SplitMix64 nextInt throws when max < min', () => {
+    const r = new SplitMix64(1);
+    expect(() => r.nextInt(5, 2)).toThrow(/max must be >= min/);
+  });
+
+  it('SplitMix64 nextInt is inclusive on both ends', () => {
+    const r = new SplitMix64(777);
+    for (let i = 0; i < 30; i += 1) {
+      const v = r.nextInt(2, 4);
+      expect(v).toBeGreaterThanOrEqual(2);
+      expect(v).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it('SplitMix64 nextBool is deterministic for fixed seed', () => {
+    const a = new SplitMix64(4242);
+    const b = new SplitMix64(4242);
+    expect([a.nextBool(), a.nextBool(), a.nextBool()]).toEqual([b.nextBool(), b.nextBool(), b.nextBool()]);
   });
 });
