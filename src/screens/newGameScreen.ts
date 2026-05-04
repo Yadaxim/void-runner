@@ -243,17 +243,17 @@ export class NewGameScreen implements Screen {
 
     const selectedWorld = this.getSelectedWorld();
     if (selectedWorld) {
-      const existingSave = WorldState.listSaves().find((save) => save.worldSeed === selectedWorld.seed);
-      if (existingSave) {
-        ctx.textAlign = 'left';
-        ctx.fillStyle = COLOURS.WARNING;
-        ctx.font = "12px 'Courier New', monospace";
-        ctx.fillText(
-          'A save already exists for this world. Starting a new game will overwrite it.',
-          contentX,
-          panelY + panelHeight - 22
-        );
-      }
+      const careers = WorldState.listSaves().filter((save) => save.worldSeed === selectedWorld.seed);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "12px 'Courier New', monospace";
+      ctx.fillText(
+        careers.length > 0
+          ? `${careers.length} saved career(s) for this world — use Load Game to continue one.`
+          : 'No careers yet for this world — Start creates a new save slot.',
+        contentX,
+        panelY + panelHeight - 22
+      );
     }
     if (this.importJsonError) {
       ctx.textAlign = 'left';
@@ -287,46 +287,51 @@ export class NewGameScreen implements Screen {
     this.isStarting = true;
     this.errorMessage = '';
     try {
-      WorldState.deleteSave(world.seed);
       const worldFile = await loadWorldForEntry(world);
       const startSector = worldFile.startingConditions.sectorCoord;
       const startHullSpecId = worldFile.startingConditions.hullSpecId;
-      const worldState = new WorldState(worldFile, startSector, {
-        id: 'player',
-        hullSpecId: startHullSpecId,
-        factionId: null,
-        position: { x: 0, y: 0 },
-        velocity: { x: 0, y: 0 },
-        angle: 0,
-        angularVelocity: 0,
-        currentHullHP: 100,
-        maxHullHP: 100,
-        armourLayers: [],
-        currentShieldHP: 0,
-        maxShieldHP: 0,
-        shieldRebooting: false,
-        shieldRebootTimer: 0,
-        lastHitTime: 0,
-        currentJoules: 0,
-        fuel: 100,
-        credits: 0,
-        cargo: [],
-        equipmentSlots: [],
-        weaponLoadout: [],
-        activeMissions: [],
-        brain: null,
-        memoryCards: [],
-        activeCardId: null,
-        activeMode: null,
-        guardMode: false,
-        autoBrakeLinearEnabled: false,
-        autoBrakeRotationEnabled: false,
-        fleetRole: 'lead',
-        targets: {},
-        isPlayerControlled: true,
-        insuranceActive: true,
-        lastLandedLandableId: null
-      });
+      const careerSaveId = WorldState.newCareerSaveId();
+      const worldState = new WorldState(
+        worldFile,
+        startSector,
+        {
+          id: 'player',
+          hullSpecId: startHullSpecId,
+          factionId: null,
+          position: { x: 0, y: 0 },
+          velocity: { x: 0, y: 0 },
+          angle: 0,
+          angularVelocity: 0,
+          currentHullHP: 100,
+          maxHullHP: 100,
+          armourLayers: [],
+          currentShieldHP: 0,
+          maxShieldHP: 0,
+          shieldRebooting: false,
+          shieldRebootTimer: 0,
+          lastHitTime: 0,
+          currentJoules: 0,
+          fuel: 100,
+          credits: 0,
+          cargo: [],
+          equipmentSlots: [],
+          weaponLoadout: [],
+          activeMissions: [],
+          brain: null,
+          memoryCards: [],
+          activeCardId: null,
+          activeMode: null,
+          guardMode: false,
+          autoBrakeLinearEnabled: false,
+          autoBrakeRotationEnabled: false,
+          fleetRole: 'lead',
+          targets: {},
+          isPlayerControlled: true,
+          insuranceActive: true,
+          lastLandedLandableId: null
+        },
+        { activeSaveId: careerSaveId }
+      );
       worldState.updatePlayerShipState(buildStarterShipState(worldState));
       worldState.setPilotName(this.pilotName.trim());
       worldState.saveToLocalStorage();

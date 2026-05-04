@@ -74,8 +74,6 @@ export interface HullSpec {
   /** Base trade-in value when selling the bare hull at a shipyard (before hostile halving). */
   sellValue: number;
   slotCounts?: Partial<Record<EquipmentSlot['slotType'], number>>;
-  /** @deprecated Prefer {@link HullSpec.defaultLoadouts}. Kept for tooling; should match `basic` when both exist. */
-  equipmentLoadout?: EquipmentSlot[];
   defaultLoadouts: HullDefaultLoadouts;
 }
 

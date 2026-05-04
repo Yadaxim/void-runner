@@ -15,7 +15,7 @@ Coverage passes are in **`damage.test.ts`**, **`shipEnergyShield.test.ts`** (rea
 
 ---
 
-*Recently shipped:* Session 4 test pass above; seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`**; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs. **Session 5:** **`GalaxyMapScreen`** (K in flight), full grid, visited dimming, faction cell colours, radiation tint via **`getRadiationIntensityAtCoord`** + sector flags, persisted **`hyperspaceTargetCoord`**, HUD **`HS→x:y`** hint; jump mechanics deferred to Session 6.
+*Recently shipped:* Session 4 test pass above; seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`** with validation on the **`abilities`** array. **Session 5:** **`GalaxyMapScreen`** (K in flight), full grid, visited dimming, faction cell colours, radiation tint via **`getRadiationIntensityAtCoord`** + sector flags, persisted **`hyperspaceTargetCoord`**, HUD **`HS→x:y`** hint; jump mechanics deferred to Session 6.
 
 ## AI control bus (keypress / pre-neural)
 
@@ -48,6 +48,24 @@ Square grid cells (centered in map slot), visited empty vs visited-with-ports + 
 
 **Hyperspace drive (Phase 4 Session 6)**  
 Jump to any **visible** sector on the galaxy map, skipping intermediate sectors. Fuel cost, cooldown between jumps, jump range by drive tier, alignment / jump animation. **Fleet:** all ships align heading before jump; weakest drive limits range (see Fleet section).
+
+---
+
+## Persistence and portable saves (planned)
+
+**Goal:** Same **`PersistedWorldState`** the game already writes to **`localStorage`** (keyed by world **`metadata.seed`**) should also be representable as a **JSON file** tied to that world, so players can **move saves between devices** (backup, USB, cloud folder) without relying on browser storage alone.
+
+**Two-tier model**
+
+- **`localStorage`** — keep **frequent** writes for same-session and same-browser resilience (existing call sites; may add a thin internal helper so all paths share one serializer).
+- **Disk (JSON file)** — **same payload** (plus a small **envelope**: format version, seed, optional world name / `savedAt`) with **fewer** flush points: e.g. **sector change**, **landable enter and exit**, **credit-changing** transactions, **equipment / shipyard / fuel / repair / insurance** mutations, **galaxy map hyperspace target** change, **return to main menu**, and **`beforeunload`** / **`visibilitychange`** best-effort where allowed. Optional **debounced** file write (e.g. 30–60 s) only when a **File System Access** handle is active.
+
+**Platform notes**
+
+- **Export / import** — always viable: download JSON + file-picker import on load/new-game flows; validate seed matches selected **`WorldFile`**.
+- **Silent periodic disk sync** — requires user-granted **File System Access** (Chromium) or a future desktop wrapper; document fallback when unavailable.
+
+**Ordering:** Can ship **export/import** before or in parallel with Session 6; file-handle autosave is a follow-up. Design detail: **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves); tasks: **`plan/VOID_RUNNER_Backlog.md`**.
 
 ---
 
@@ -147,7 +165,7 @@ Separate entry point: single combat sector, no transitions / landing / player sh
 - **Sound** — Web Audio API (engines, weapons, UI).  
 - **Visual variety** — distinct hull silhouettes per class (per art guidelines).  
 - **Engine glow / damage VFX** — readability.  
-- **World sharing UX** — export/import discoverability.
+- **World sharing UX** — export/import discoverability (align messaging with **portable save JSON** in Persistence slice).
 
 ---
 

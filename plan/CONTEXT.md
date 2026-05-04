@@ -29,7 +29,7 @@ A 2D browser-based space trading and combat game inspired by Escape Velocity (Am
 | Language / build | TypeScript (strict), Vite |
 | Rendering | HTML5 Canvas 2D, layered pipeline |
 | Physics | Custom Newtonian (`src/physics/newtonian.ts`) |
-| Persistence | `localStorage` (save + world selection) |
+| Persistence | `localStorage` (frequent); **planned:** same snapshot as JSON file (portable / device change) with coarser disk writes — see **Persistence (two-tier)** below |
 | Neural net (planned) | TensorFlow.js |
 | World text generation (planned) | Claude API in generator only |
 
@@ -42,7 +42,7 @@ Vanilla DOM — no React/Vue.
 | File | Contents |
 |------|----------|
 | `plan/CONTEXT.md` | This document — paste for new sessions; runtime architecture and priorities |
-| `plan/VOID_RUNNER_GDD.md` | Full game design |
+| `plan/VOID_RUNNER_GDD.md` | Game design (persistence section live; expand other topics as needed) |
 | `plan/VOID_RUNNER_WorldGen.md` | Generator pipeline, PRNG domains, export format |
 | `plan/VOID_RUNNER_Art_Guidelines_v1.0.md` | Visual design, renderer spec |
 | `plan/VOID_RUNNER_Roadmap.md` | Delivery order, deferred type sketches, and world-gen guidelines |
@@ -55,6 +55,7 @@ Vanilla DOM — no React/Vue.
 
 - **`WorldState`** — single source of truth for runtime data. Screens and systems read/write through it; nothing should read the raw world JSON except loaders/validation.  
 - **`WorldFile`** — full galaxy JSON loaded at startup (`public/testWorld.json` in development).  
+- **Persistence (two-tier — planned)** — today, `WorldState.saveToLocalStorage` / `loadFromLocalStorage` persist **`PersistedWorldState`** keyed by world **`metadata.seed`**. **Roadmap / GDD / backlog:** add **JSON file** export/import (and optionally **File System Access** file-handle writes) using the **same blob**, with **disk** flushed on **fewer** events than `localStorage` (sector change, landable enter/exit, credit/equipment/fuel/hull–changing actions, hyperspace target on map, menu/quit best-effort). See **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves) and **`plan/VOID_RUNNER_Backlog.md`**.  
 - **`SectorSimulation`** — current sector entities, physics integration, bullets, NPCs, burns, **per-frame energy/shield/reactor tick for the player and every NPC** (`tickShipEnergyAndShield`).  
 - **`ShipEntity`** — wraps `ShipState`; equipment drives effective masses, thrust, fuel use, etc. NPC flight uses **`NPCController`** output as a **boolean control frame** (thrusters + weapon keys), same shape the player uses conceptually (see **AI / control bus**).  
 - **`ScreenManager`** — stack-based screens (main menu, flight, landable, …).  
@@ -110,10 +111,10 @@ These rules avoid brittle coupling to `testWorld.json`:
 - **`npcSpawnRules`** must set **`hullSpecId`** present in **`hullSpecs`** (`validateWorldFile` enforces this). Sector NPC build does not infer hull from `factionId` alone.  
 - Pirate landable/mission UI uses **`FactionDefinition.isPirate`** and the station’s real **`factionId`**.  
 - Bullet muzzle offset uses **`HullSpec.hullClass`** via **`hullLengthForHullClass`** in `constants.ts`, not string hacks on `hullSpecId`.  
-- **`bulletSpecs`:** homing uses **`abilities`** with **`{ "type": "seeking", "turnRatio": <rad/s> }`** (optional **`"abilities": []`** when none). Top-level **`seeking` / `turnRatio`** on a bullet spec are invalid and fail **`validateWorldFile`**.  
+- **`bulletSpecs`:** homing uses **`abilities`** with **`{ "type": "seeking", "turnRatio": <rad/s> }`** (optional **`"abilities": []`** when none). Runtime reads homing only from **`abilities`**.  
 - Tests should use ids from a loaded **`WorldFile`** or synthetic **`__fixture_*`** ids.
 
-**Equipment catalog:** every catalog item needs a positive **`price`** (credits). Buy/sell use that field; sell uses **`Math.round(price × EQUIPMENT_SELL_FRACTION)`** — legacy mass×tier formulas were removed from constants.
+**Equipment catalog:** every catalog item needs a positive **`price`** (credits). Buy/sell use that field; sell uses **`Math.round(price × EQUIPMENT_SELL_FRACTION)`**.
 
 **Copy:** landable Overview prefers **`landable.description`**; pirate stations fall back to faction **`description`** / **`missionFlavour`** from the world file — avoid hardcoded faction names in `landableScreen.ts`.
 
@@ -133,11 +134,12 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 Authoritative detail lives in the checklist below (historical handoff content from older context docs was merged into this file; keep this section current as you ship).
 
-**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** rejects legacy **`seeking` / `turnRatio`** on bullet specs; **Phase 4 Session 4 Vitest pass** — expanded **`damage.test.ts`**, **`shipEnergyShield.test.ts`**, **`physics.test.ts`**, **`world-validation.test.ts`**; **Phase 4 Session 5 galaxy map** — **`GalaxyMapScreen`** (**K** in flight, Esc/K closes), square grid, visited dimming + visited-empty vs ports (interior dots), faction colours, radiation tint, legend **You/Cursor/Target**, **sector summary** pane for cursor, persisted **`hyperspaceTargetCoord`**, flight **target strip** third row for hyperspace (jump execution is Session 6).
+**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** for bullet **`abilities`** shape; **Phase 4 Session 4 Vitest pass** — expanded **`damage.test.ts`**, **`shipEnergyShield.test.ts`**, **`physics.test.ts`**, **`world-validation.test.ts`**; **Phase 4 Session 5 galaxy map** — **`GalaxyMapScreen`** (**K** in flight, Esc/K closes), square grid, visited dimming + visited-empty vs ports (interior dots), faction colours, radiation tint, legend **You/Cursor/Target**, **sector summary** pane for cursor, persisted **`hyperspaceTargetCoord`**, flight **target strip** third row for hyperspace (jump execution is Session 6).
 
 **Remaining near-term (from live checklist):**
 
 - **Session 6:** hyperspace drive — jump to map-visible sectors, fuel cost, cooldown, range tier, alignment / animation, fleet rules.  
+- **Portable saves (JSON file, world-linked):** export/import and optional file-handle autosave to disk on coarser milestones than `localStorage` — see roadmap, GDD persistence section, and backlog.  
 - **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change.
 
 See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.

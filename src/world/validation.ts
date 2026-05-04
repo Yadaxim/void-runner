@@ -213,13 +213,6 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
 
   const knownBulletAbilityTypes = new Set(['seeking']);
   for (const spec of world.bulletSpecs) {
-    const legacy = spec as unknown as Record<string, unknown>;
-    if ('seeking' in legacy || 'turnRatio' in legacy) {
-      push(
-        `Bullet "${spec.id}" uses removed fields seeking/turnRatio; use abilities: [{ "type": "seeking", "turnRatio": <rad/s> }]`
-      );
-    }
-
     const abilities = spec.abilities;
     if (abilities === undefined) {
       continue;
@@ -413,10 +406,6 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
         }
       }
     };
-
-    if (hull.equipmentLoadout?.length) {
-      checkLoadout(hull.equipmentLoadout, 'equipmentLoadout');
-    }
 
     if (!hull.defaultLoadouts) {
       push(`Hull "${hull.id}" must define defaultLoadouts (raw, basic, advanced)`);

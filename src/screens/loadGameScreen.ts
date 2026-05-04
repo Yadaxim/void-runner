@@ -14,33 +14,44 @@ export class LoadGameScreen implements Screen {
   private static readonly HEADER_HEIGHT = 46;
   private gameLoop: GameLoop | null = null;
   private saves: SaveMetadata[] = [];
-  private actionRects: Array<{ type: 'resume' | 'delete'; seed: number; x: number; y: number; width: number; height: number }> =
-    [];
+  private actionRects: Array<{
+    type: 'resume' | 'delete';
+    worldSeed: number;
+    saveId: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> = [];
   private backRect: { x: number; y: number; width: number; height: number } | null = null;
-  private pendingDeleteSeed: number | null = null;
+  private pendingDelete: { worldSeed: number; saveId: string } | null = null;
   private confirmRects: Array<{ yes: boolean; x: number; y: number; width: number; height: number }> = [];
   private selectedSaveIndex = 0;
-  private hoveredAction: { seed: number; type: 'resume' | 'delete' } | null = null;
+  private hoveredAction: { worldSeed: number; saveId: string; type: 'resume' | 'delete' } | null = null;
   private errorMessage = '';
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Escape') {
       event.preventDefault();
+      if (this.pendingDelete) {
+        this.pendingDelete = null;
+        return;
+      }
       this.goBack();
       return;
     }
     if (this.saves.length === 0) {
       return;
     }
-    if (this.pendingDeleteSeed !== null) {
+    if (this.pendingDelete) {
       if (event.code === 'ArrowLeft' || event.code === 'ArrowRight' || event.code === 'Tab') {
         event.preventDefault();
         return;
       }
       if (event.code === 'Enter') {
         event.preventDefault();
-        WorldState.deleteSave(this.pendingDeleteSeed);
-        this.pendingDeleteSeed = null;
+        WorldState.deleteSave(this.pendingDelete.worldSeed, this.pendingDelete.saveId);
+        this.pendingDelete = null;
         this.refreshSaves();
       }
       return;
@@ -56,7 +67,7 @@ export class LoadGameScreen implements Screen {
       event.preventDefault();
       const save = this.saves[this.selectedSaveIndex];
       if (save) {
-        this.pendingDeleteSeed = save.worldSeed;
+        this.pendingDelete = { worldSeed: save.worldSeed, saveId: save.saveId };
       }
       return;
     }
@@ -64,7 +75,7 @@ export class LoadGameScreen implements Screen {
       event.preventDefault();
       const save = this.saves[this.selectedSaveIndex];
       if (save) {
-        void this.resumeSave(save.worldSeed);
+        void this.resumeSave(save.worldSeed, save.saveId);
       }
     }
   };
@@ -78,7 +89,7 @@ export class LoadGameScreen implements Screen {
     this.hoveredAction = null;
     for (const action of this.actionRects) {
       if (this.inRect(point.x, point.y, action)) {
-        this.hoveredAction = { seed: action.seed, type: action.type };
+        this.hoveredAction = { worldSeed: action.worldSeed, saveId: action.saveId, type: action.type };
         break;
       }
     }
@@ -93,12 +104,12 @@ export class LoadGameScreen implements Screen {
     }
     for (const confirm of this.confirmRects) {
       if (this.inRect(point.x, point.y, confirm)) {
-        if (confirm.yes && this.pendingDeleteSeed !== null) {
-          WorldState.deleteSave(this.pendingDeleteSeed);
-          this.pendingDeleteSeed = null;
+        if (confirm.yes && this.pendingDelete) {
+          WorldState.deleteSave(this.pendingDelete.worldSeed, this.pendingDelete.saveId);
+          this.pendingDelete = null;
           this.refreshSaves();
         } else {
-          this.pendingDeleteSeed = null;
+          this.pendingDelete = null;
         }
         return;
       }
@@ -106,9 +117,9 @@ export class LoadGameScreen implements Screen {
     for (const action of this.actionRects) {
       if (!this.inRect(point.x, point.y, action)) continue;
       if (action.type === 'resume') {
-        void this.resumeSave(action.seed);
+        void this.resumeSave(action.worldSeed, action.saveId);
       } else {
-        this.pendingDeleteSeed = action.seed;
+        this.pendingDelete = { worldSeed: action.worldSeed, saveId: action.saveId };
       }
       return;
     }
@@ -166,7 +177,7 @@ export class LoadGameScreen implements Screen {
     ctx.textBaseline = 'top';
     ctx.fillText('<- BACK', this.backRect.x, this.backRect.y + 2);
     ctx.textAlign = 'center';
-    ctx.fillText('LOAD GAME', panelX + panelWidth / 2, panelY + 14);
+    ctx.fillText('LOAD GAME — careers', panelX + panelWidth / 2, panelY + 14);
 
     this.actionRects = [];
     this.confirmRects = [];
@@ -181,8 +192,9 @@ export class LoadGameScreen implements Screen {
     const cardX = panelX + 28;
     let cardY = panelY + LoadGameScreen.HEADER_HEIGHT + 18;
     const cardWidth = panelWidth - 56;
-    for (const save of this.saves) {
-      const selected = this.saves[this.selectedSaveIndex]?.worldSeed === save.worldSeed;
+    for (let si = 0; si < this.saves.length; si += 1) {
+      const save = this.saves[si];
+      const selected = si === this.selectedSaveIndex;
       ctx.strokeStyle = selected ? COLOURS.UI_ACCENT : COLOURS.UI_SECONDARY;
       if (selected) {
         ctx.fillStyle = 'rgba(64, 192, 255, 0.07)';
@@ -195,17 +207,24 @@ export class LoadGameScreen implements Screen {
       ctx.fillText(save.worldName, cardX + 12, cardY + 10);
       ctx.font = "13px 'Courier New', monospace";
       ctx.fillText(`Pilot: ${save.pilotName}`, cardX + 12, cardY + 33);
-      ctx.fillText(`Sector: ${save.currentSectorCoord.x} : ${save.currentSectorCoord.y}`, cardX + 12, cardY + 52);
-      ctx.fillText(`Credits: ${Math.round(save.credits)} C`, cardX + 250, cardY + 52);
-      ctx.fillText(`Ship: ${save.shipHullName}`, cardX + 12, cardY + 71);
+      ctx.fillText(`Seed ${save.worldSeed} · slot ${this.shortSaveId(save.saveId)}`, cardX + 12, cardY + 48);
+      ctx.fillText(`Sector: ${save.currentSectorCoord.x} : ${save.currentSectorCoord.y}`, cardX + 12, cardY + 62);
+      ctx.fillText(`Credits: ${Math.round(save.credits)} C`, cardX + 250, cardY + 62);
+      ctx.fillText(`Ship: ${save.shipHullName}`, cardX + 12, cardY + 81);
       ctx.fillStyle = COLOURS.UI_SECONDARY;
-      ctx.fillText(`Play time: ${this.formatPlayTime(save.playTimeSeconds)}`, cardX + 12, cardY + 90);
-      ctx.fillText(`Last played: ${this.formatRelative(save.savedAt)}`, cardX + 250, cardY + 90);
+      ctx.fillText(`Play time: ${this.formatPlayTime(save.playTimeSeconds)}`, cardX + 12, cardY + 100);
+      ctx.fillText(`Last played: ${this.formatRelative(save.savedAt)}`, cardX + 250, cardY + 100);
 
       const resumeRect = { x: cardX + cardWidth - 130, y: cardY + 24, width: 100, height: 28 };
       const deleteRect = { x: cardX + cardWidth - 130, y: cardY + 60, width: 100, height: 28 };
-      const hoverResume = this.hoveredAction?.seed === save.worldSeed && this.hoveredAction.type === 'resume';
-      const hoverDelete = this.hoveredAction?.seed === save.worldSeed && this.hoveredAction.type === 'delete';
+      const hoverResume =
+        this.hoveredAction?.worldSeed === save.worldSeed &&
+        this.hoveredAction?.saveId === save.saveId &&
+        this.hoveredAction.type === 'resume';
+      const hoverDelete =
+        this.hoveredAction?.worldSeed === save.worldSeed &&
+        this.hoveredAction?.saveId === save.saveId &&
+        this.hoveredAction.type === 'delete';
       ctx.strokeStyle = hoverResume ? COLOURS.UI_PRIMARY : COLOURS.UI_ACCENT;
       ctx.strokeRect(resumeRect.x, resumeRect.y, resumeRect.width, resumeRect.height);
       ctx.fillStyle = COLOURS.UI_PRIMARY;
@@ -216,10 +235,13 @@ export class LoadGameScreen implements Screen {
       ctx.fillStyle = hoverDelete ? COLOURS.WARNING : COLOURS.DANGER;
       ctx.fillText('[DELETE]', deleteRect.x + deleteRect.width / 2, deleteRect.y + 8);
 
-      this.actionRects.push({ type: 'resume', seed: save.worldSeed, ...resumeRect });
-      this.actionRects.push({ type: 'delete', seed: save.worldSeed, ...deleteRect });
+      this.actionRects.push({ type: 'resume', worldSeed: save.worldSeed, saveId: save.saveId, ...resumeRect });
+      this.actionRects.push({ type: 'delete', worldSeed: save.worldSeed, saveId: save.saveId, ...deleteRect });
 
-      if (this.pendingDeleteSeed === save.worldSeed) {
+      if (
+        this.pendingDelete?.worldSeed === save.worldSeed &&
+        this.pendingDelete?.saveId === save.saveId
+      ) {
         const overlayY = cardY + 96;
         ctx.fillStyle = COLOURS.WARNING;
         ctx.textAlign = 'left';
@@ -249,23 +271,37 @@ export class LoadGameScreen implements Screen {
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.textAlign = 'left';
     ctx.font = "11px 'Courier New', monospace";
-    ctx.fillText('Arrow keys: select save - Enter: resume - Delete: remove', panelX + 28, panelY + panelHeight - 12);
+    ctx.fillText(
+      'Arrow keys: select career - Enter: resume - Delete: remove - Esc: cancel / back',
+      panelX + 28,
+      panelY + panelHeight - 12
+    );
+  }
+
+  private shortSaveId(saveId: string): string {
+    if (saveId.length <= 10) {
+      return saveId;
+    }
+    return `${saveId.slice(0, 4)}…${saveId.slice(-4)}`;
   }
 
   private refreshSaves(): void {
     this.saves = WorldState.listSaves();
+    if (this.selectedSaveIndex >= this.saves.length) {
+      this.selectedSaveIndex = Math.max(0, this.saves.length - 1);
+    }
   }
 
-  private async resumeSave(seed: number): Promise<void> {
+  private async resumeSave(worldSeed: number, saveId: string): Promise<void> {
     this.errorMessage = '';
-    const worldEntry = getWorldBySeed(seed);
+    const worldEntry = getWorldBySeed(worldSeed);
     if (!worldEntry) {
-      this.errorMessage = `World for save seed ${seed} not found.`;
+      this.errorMessage = `World for save seed ${worldSeed} not found.`;
       return;
     }
     try {
       const worldFile = await loadWorldForEntry(worldEntry);
-      const worldState = WorldState.loadFromLocalStorage(worldFile);
+      const worldState = WorldState.loadFromLocalStorage(worldFile, saveId);
       if (!worldState) {
         throw new Error('Save data could not be loaded.');
       }

@@ -169,7 +169,7 @@ export class MainMenuScreen implements Screen {
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.font = "12px 'Courier New', monospace";
     ctx.textBaseline = 'alphabetic';
-    const saveLabel = this.hasSaves ? `${WorldState.listSaves().length} save(s) found` : 'no saves found';
+    const saveLabel = this.hasSaves ? `${WorldState.listSaves().length} career(s) saved` : 'no careers saved';
     ctx.fillText(`v0.1 - Test Galaxy loaded - ${saveLabel}`, this.canvas.width / 2, panelY + panelHeight - 28);
     ctx.fillText('Arrow keys: navigate - Enter: select', this.canvas.width / 2, panelY + panelHeight - 14);
   }
@@ -184,7 +184,7 @@ export class MainMenuScreen implements Screen {
         }
       },
       {
-        label: this.hasSaves ? '[ LOAD GAME ]' : '[ LOAD GAME ] (no saves)',
+        label: this.hasSaves ? '[ LOAD GAME ]' : '[ LOAD GAME ] (none)',
         disabled: !this.hasSaves,
         onClick: () => {
           if (!this.hasSaves) {

@@ -6,6 +6,7 @@ import type { Screen, ScreenManager } from './screenManager';
 interface MapLayout {
   mapAreaW: number;
   mapAreaH: number;
+  mapColumnX: number;
   gridOffsetX: number;
   gridOffsetY: number;
   cellSize: number;
@@ -16,10 +17,16 @@ interface MapLayout {
   hh: number;
   mapPixelW: number;
   mapPixelH: number;
-  legendX: number;
-  legendY: number;
-  legendW: number;
-  legendH: number;
+  leftPaneX: number;
+  leftPaneY: number;
+  leftPaneW: number;
+  leftPaneH: number;
+  rightPaneX: number;
+  rightPaneY: number;
+  rightPaneW: number;
+  rightPaneH: number;
+  rightKeybindsH: number;
+  rightPositionsH: number;
   margin: number;
   titleBand: number;
 }
@@ -113,9 +120,9 @@ export class GalaxyMapScreen implements Screen {
 
     ctx.fillStyle = COLOURS.UI_PRIMARY;
     ctx.font = "20px 'Courier New', monospace";
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('GALAXY MAP', margin, margin - 8);
+    ctx.fillText('GALAXY MAP', layout.mapColumnX + layout.mapAreaW / 2, margin - 8);
 
     ctx.strokeStyle = COLOURS.UI_SECONDARY;
     ctx.strokeRect(gridOffsetX - 2, gridOffsetY - 2, mapPixelW + 4, mapPixelH + 4);
@@ -145,7 +152,9 @@ export class GalaxyMapScreen implements Screen {
       this.drawCellOutline(ctx, target, layout, COLOURS.WARNING, 1.5, [6, 4]);
     }
 
-    this.renderLegendPanel(ctx, layout);
+    this.renderColorLegendPanel(ctx, layout);
+    this.renderRightKeybindsPanel(ctx, layout);
+    this.renderRightPositionsPanel(ctx, layout);
     this.renderSectorSummary(ctx, layout);
     ctx.restore();
   }
@@ -153,12 +162,25 @@ export class GalaxyMapScreen implements Screen {
   private computeMapLayout(canvasW: number, canvasH: number): MapLayout {
     const margin = 48;
     const titleBand = 36;
-    const legendW = 280;
+    const interGap = 14;
     const gap = 1;
-    const mapAreaW = canvasW - margin * 2 - legendW - 16;
-    const mapAreaH = canvasH - margin * 2 - titleBand;
-    const mapX = margin;
+    let leftPaneW = 216;
+    let rightPaneW = 272;
     const mapY = margin + titleBand;
+    const mapAreaH = canvasH - margin - mapY;
+    const innerW = canvasW - margin * 2 - interGap * 2;
+    let mapAreaW = innerW - leftPaneW - rightPaneW;
+    const minMap = 120;
+    if (mapAreaW < minMap) {
+      const deficit = minMap - mapAreaW;
+      const trim = Math.ceil(deficit / 2);
+      leftPaneW = Math.max(152, leftPaneW - trim);
+      rightPaneW = Math.max(200, rightPaneW - trim);
+      mapAreaW = innerW - leftPaneW - rightPaneW;
+    }
+    const leftPaneX = margin;
+    const mapColumnX = margin + leftPaneW + interGap;
+    const rightPaneX = mapColumnX + mapAreaW + interGap;
     const gw = this.worldState.getGridWidth();
     const gh = this.worldState.getGridHeight();
     const hw = gw / 2;
@@ -168,11 +190,16 @@ export class GalaxyMapScreen implements Screen {
     );
     const mapPixelW = gw * cellSize + (gw - 1) * gap;
     const mapPixelH = gh * cellSize + (gh - 1) * gap;
-    const gridOffsetX = mapX + (mapAreaW - mapPixelW) / 2;
+    const gridOffsetX = mapColumnX + (mapAreaW - mapPixelW) / 2;
     const gridOffsetY = mapY + (mapAreaH - mapPixelH) / 2;
+    const leftPaneH = mapAreaH;
+    const rightPaneH = mapAreaH;
+    const rightKeybindsH = Math.min(200, Math.max(112, Math.floor(rightPaneH * 0.34)));
+    const rightPositionsH = Math.min(120, Math.max(76, Math.floor(rightPaneH * 0.2)));
     return {
       mapAreaW,
       mapAreaH,
+      mapColumnX,
       gridOffsetX,
       gridOffsetY,
       cellSize,
@@ -183,10 +210,16 @@ export class GalaxyMapScreen implements Screen {
       hh,
       mapPixelW,
       mapPixelH,
-      legendX: canvasW - margin - legendW,
-      legendY: mapY,
-      legendW,
-      legendH: mapAreaH,
+      leftPaneX,
+      leftPaneY: mapY,
+      leftPaneW,
+      leftPaneH,
+      rightPaneX,
+      rightPaneY: mapY,
+      rightPaneW,
+      rightPaneH,
+      rightKeybindsH,
+      rightPositionsH,
       margin,
       titleBand
     };
@@ -234,14 +267,20 @@ export class GalaxyMapScreen implements Screen {
     ch: number,
     count: number
   ): void {
+    const radius = Math.max(1.2, Math.min(cw, ch) * 0.07);
+    ctx.fillStyle = 'rgba(220, 235, 255, 0.85)';
+    if (count === 1) {
+      ctx.beginPath();
+      ctx.arc(x + cw / 2, y + ch / 2, radius, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     const n = Math.min(count, 9);
     const pad = Math.max(2, Math.min(cw, ch) * 0.12);
     const innerW = Math.max(1, cw - pad * 2);
     const innerH = Math.max(1, ch - pad * 2);
     const cols = n <= 4 ? 2 : 3;
     const rows = Math.ceil(n / cols);
-    ctx.fillStyle = 'rgba(220, 235, 255, 0.85)';
-    const radius = Math.max(1.2, Math.min(cw, ch) * 0.07);
     for (let i = 0; i < n; i += 1) {
       const c = i % cols;
       const r = Math.floor(i / cols);
@@ -276,64 +315,155 @@ export class GalaxyMapScreen implements Screen {
     ctx.setLineDash([]);
   }
 
-  private renderLegendPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {
-    const { legendX, legendY, legendW, legendH } = layout;
-    const splitY = legendY + Math.min(200, Math.floor(legendH * 0.42));
+  private renderColorLegendPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {
+    const { leftPaneX, leftPaneY, leftPaneW, leftPaneH } = layout;
+    const pad = 8;
     ctx.fillStyle = 'rgba(12, 14, 24, 0.92)';
     ctx.strokeStyle = COLOURS.UI_SECONDARY;
-    ctx.fillRect(legendX, legendY, legendW, splitY - legendY);
-    ctx.strokeRect(legendX, legendY, legendW, splitY - legendY);
+    ctx.fillRect(leftPaneX, leftPaneY, leftPaneW, leftPaneH);
+    ctx.strokeRect(leftPaneX, leftPaneY, leftPaneW, leftPaneH);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "12px 'Courier New', monospace";
+    let y = leftPaneY + pad;
+    ctx.fillText('MAP KEY', leftPaneX + pad, y);
+    y += 22;
+    ctx.font = "11px 'Courier New', monospace";
+
+    const sw = 14;
+    const swatch = (fill: string, stroke: string | null, label: string) => {
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke ?? COLOURS.UI_SECONDARY;
+      ctx.lineWidth = 1;
+      ctx.fillRect(leftPaneX + pad, y, sw, sw);
+      if (stroke) {
+        ctx.strokeRect(leftPaneX + pad, y, sw, sw);
+      }
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.fillText(fitSummaryLine(ctx, label, leftPaneW - pad * 2 - sw - 6), leftPaneX + pad + sw + 6, y + 1);
+      y += sw + 8;
+    };
+
+    swatch('rgba(52, 58, 74, 0.95)', COLOURS.UI_SECONDARY, 'No faction (base tile)');
+    swatch('rgba(0, 0, 0, 0.55)', COLOURS.UI_SECONDARY, 'Unvisited (dim veil)');
+    swatch('rgba(22, 28, 42, 0.55)', COLOURS.UI_SECONDARY, 'Visited, no ports');
+    swatch('rgba(255, 90, 40, 0.45)', null, 'Radiation (overlay)');
+    ctx.fillStyle = 'rgba(220, 235, 255, 0.85)';
+    ctx.beginPath();
+    ctx.arc(leftPaneX + pad + sw / 2, y + sw / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText('Dots = landables (visited)', leftPaneX + pad + sw + 6, y + 3);
+    y += sw + 10;
+
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillText('Faction tint = tile fill', leftPaneX + pad, y);
+    y += 14;
+    ctx.fillText('(before veil / rad)', leftPaneX + pad, y);
+    y += 16;
+
+    ctx.font = "11px 'Courier New', monospace";
+    const factions = this.worldState.getFactions().slice(0, 6);
+    for (const f of factions) {
+      const col = this.worldState.getFactionVisual(f.id).primaryColour;
+      swatch(col, COLOURS.UI_SECONDARY, fitSummaryLine(ctx, f.name, leftPaneW - pad * 2 - sw - 6));
+    }
+    if (this.worldState.getFactions().length > 6) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "10px 'Courier New', monospace";
+      ctx.fillText('… + more factions', leftPaneX + pad, y);
+      y += 14;
+    }
+
+    y += 4;
+    const outlineSample = (stroke: string, lineWidth: number, dash: [number, number] | null, label: string) => {
+      ctx.fillStyle = 'rgba(18, 20, 32, 0.98)';
+      ctx.fillRect(leftPaneX + pad, y, sw, sw);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.setLineDash(dash ?? []);
+      ctx.strokeRect(leftPaneX + pad, y, sw, sw);
+      ctx.setLineDash([]);
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "11px 'Courier New', monospace";
+      ctx.fillText(label, leftPaneX + pad + sw + 6, y + 1);
+      y += sw + 8;
+    };
+    outlineSample(COLOURS.UI_ACCENT, 2, null, 'Outline: you (here)');
+    outlineSample(COLOURS.CREDITS, 1.5, null, 'Outline: cursor');
+    outlineSample(COLOURS.WARNING, 1.5, [6, 4], 'Outline: hyperspace tgt');
+  }
+
+  private renderRightKeybindsPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {
+    const { rightPaneX, rightPaneY, rightPaneW, rightKeybindsH } = layout;
+    ctx.fillStyle = 'rgba(12, 14, 24, 0.92)';
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.fillRect(rightPaneX, rightPaneY, rightPaneW, rightKeybindsH);
+    ctx.strokeRect(rightPaneX, rightPaneY, rightPaneW, rightKeybindsH);
     ctx.fillStyle = COLOURS.UI_PRIMARY;
     ctx.font = "12px 'Courier New', monospace";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    let y = legendY + 10;
+    let y = rightPaneY + 10;
     const line = (s: string) => {
-      ctx.fillText(s, legendX + 8, y);
-      y += 18;
+      ctx.fillText(s, rightPaneX + 8, y);
+      y += 17;
     };
-    line('Arrows: move cursor');
-    line('Click: select sector');
-    line('Enter: set hyperspace');
-    line('        target (saved)');
-    line('Backspace: clear target');
-    line('K / Esc: close map');
-    y += 6;
+    line('CONTROLS');
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.font = "11px 'Courier New', monospace";
-    line('— Positions —');
-    const you = this.worldState.getCurrentSectorCoord();
-    ctx.fillStyle = COLOURS.UI_ACCENT;
-    line(`You     ${you.x} : ${you.y}`);
-    ctx.fillStyle = COLOURS.CREDITS;
-    line(`Cursor  ${this.cursor.x} : ${this.cursor.y}`);
-    const t = this.worldState.getHyperspaceTargetCoord();
-    ctx.fillStyle = t ? COLOURS.WARNING : COLOURS.UI_SECONDARY;
-    line(t ? `Target  ${t.x} : ${t.y}` : 'Target  (none)');
-    y += 8;
-    ctx.fillStyle = COLOURS.UI_SECONDARY;
-    line('Square grid · dots = ports');
-    line('(visited, max 9 shown)');
-    y += 10;
+    line('Arrows — move cursor');
+    line('Click — select sector');
+    line('Enter — set hyperspace');
+    line('        target (saved)');
+    line('Backspace — clear target');
+    line('K / Esc — close map');
+    y += 4;
     ctx.fillStyle = COLOURS.WARNING;
     ctx.font = "10px 'Courier New', monospace";
-    ctx.fillText('Jump in a later build', legendX + 8, y);
-    y += 14;
-    ctx.fillText('(fuel / range / CD).', legendX + 8, y);
+    line('Jump: fuel / range / CD');
+    line('in a later build.');
+  }
+
+  private renderRightPositionsPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {
+    const { rightPaneX, rightPaneY, rightPaneW, rightKeybindsH, rightPositionsH } = layout;
+    const py = rightPaneY + rightKeybindsH;
+    ctx.fillStyle = 'rgba(14, 16, 28, 0.94)';
+    ctx.strokeStyle = COLOURS.UI_SECONDARY;
+    ctx.fillRect(rightPaneX, py, rightPaneW, rightPositionsH);
+    ctx.strokeRect(rightPaneX, py, rightPaneW, rightPositionsH);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    let y = py + 8;
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.font = "11px 'Courier New', monospace";
+    ctx.fillText('POSITIONS', rightPaneX + 8, y);
+    y += 18;
+    const you = this.worldState.getCurrentSectorCoord();
+    ctx.fillStyle = COLOURS.UI_ACCENT;
+    ctx.fillText(`You     ${you.x} : ${you.y}`, rightPaneX + 8, y);
+    y += 16;
+    ctx.fillStyle = COLOURS.CREDITS;
+    ctx.fillText(`Cursor  ${this.cursor.x} : ${this.cursor.y}`, rightPaneX + 8, y);
+    y += 16;
+    const t = this.worldState.getHyperspaceTargetCoord();
+    ctx.fillStyle = t ? COLOURS.WARNING : COLOURS.UI_SECONDARY;
+    ctx.fillText(t ? `Target  ${t.x} : ${t.y}` : 'Target  (none)', rightPaneX + 8, y);
   }
 
   private renderSectorSummary(ctx: CanvasRenderingContext2D, layout: MapLayout): void {
-    const { legendX, legendY, legendW, legendH } = layout;
-    const splitY = legendY + Math.min(200, Math.floor(legendH * 0.42));
-    const bottomH = legendY + legendH - splitY;
+    const { rightPaneX, rightPaneY, rightPaneW, rightPaneH, rightKeybindsH, rightPositionsH } = layout;
+    const sy = rightPaneY + rightKeybindsH + rightPositionsH;
+    const bottomH = rightPaneH - rightKeybindsH - rightPositionsH;
     if (bottomH < 48) {
       return;
     }
-    const sy = splitY;
     ctx.fillStyle = 'rgba(10, 12, 22, 0.94)';
     ctx.strokeStyle = COLOURS.UI_SECONDARY;
-    ctx.fillRect(legendX, sy, legendW, bottomH);
-    ctx.strokeRect(legendX, sy, legendW, bottomH);
+    ctx.fillRect(rightPaneX, sy, rightPaneW, bottomH);
+    ctx.strokeRect(rightPaneX, sy, rightPaneW, bottomH);
 
     const sector = this.worldState.getSector(this.cursor);
     const c = this.cursor;
@@ -342,41 +472,41 @@ export class GalaxyMapScreen implements Screen {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     let y = sy + 8;
-    ctx.fillText('SELECTED SECTOR', legendX + 8, y);
+    ctx.fillText('SELECTED SECTOR', rightPaneX + 8, y);
     y += 20;
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.font = "11px 'Courier New', monospace";
-    ctx.fillText(`Coord  ${c.x} : ${c.y}`, legendX + 8, y);
+    ctx.fillText(`Coord  ${c.x} : ${c.y}`, rightPaneX + 8, y);
     y += 18;
     if (!sector) {
-      ctx.fillText('(no catalog entry)', legendX + 8, y);
+      ctx.fillText('(no catalog entry)', rightPaneX + 8, y);
       return;
     }
     const fac = sector.factionId ? this.worldState.getFaction(sector.factionId) : null;
     const facLine = fac ? fac.name : 'No controlling faction';
-    ctx.fillText(fitSummaryLine(ctx, `Faction  ${facLine}`, legendW - 16), legendX + 8, y);
+    ctx.fillText(fitSummaryLine(ctx, `Faction  ${facLine}`, rightPaneW - 16), rightPaneX + 8, y);
     y += 18;
-    ctx.fillText(`Ports    ${sector.landables.length}`, legendX + 8, y);
+    ctx.fillText(`Ports    ${sector.landables.length}`, rightPaneX + 8, y);
     y += 16;
     if (sector.landables.length === 0) {
       ctx.fillStyle = COLOURS.UI_SECONDARY;
-      ctx.fillText('— No landables —', legendX + 8, y);
+      ctx.fillText('— No landables —', rightPaneX + 8, y);
       return;
     }
     ctx.fillStyle = COLOURS.UI_PRIMARY;
-    ctx.fillText('Landables:', legendX + 8, y);
+    ctx.fillText('Landables:', rightPaneX + 8, y);
     y += 16;
     const maxY = sy + bottomH - 10;
     const maxLines = Math.max(1, Math.floor((maxY - y) / 14));
     for (let i = 0; i < Math.min(sector.landables.length, maxLines); i += 1) {
       const name = sector.landables[i].name.toUpperCase();
       ctx.fillStyle = COLOURS.UI_SECONDARY;
-      ctx.fillText(fitSummaryLine(ctx, `· ${name}`, legendW - 16), legendX + 8, y);
+      ctx.fillText(fitSummaryLine(ctx, `· ${name}`, rightPaneW - 16), rightPaneX + 8, y);
       y += 14;
     }
     if (sector.landables.length > maxLines) {
       ctx.fillStyle = COLOURS.WARNING;
-      ctx.fillText(`+${sector.landables.length - maxLines} more`, legendX + 8, y);
+      ctx.fillText(`+${sector.landables.length - maxLines} more`, rightPaneX + 8, y);
     }
   }
 

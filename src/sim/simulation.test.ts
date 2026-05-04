@@ -326,7 +326,7 @@ describe('headless SectorSimulation', () => {
     ws.updatePlayerShipState(buildStarterShipState(ws));
     ws.updatePlayerShipState({ credits: 12345 });
     ws.saveToLocalStorage();
-    const loaded = WorldState.loadFromLocalStorage(wf);
+    const loaded = WorldState.loadFromLocalStorage(wf, ws.getActiveSaveId());
     expect(loaded).not.toBeNull();
     expect(loaded!.getPlayerShipState().credits).toBe(12345);
     expect(loaded!.getPlayerShipState().hullSpecId).toBe(ws.getPlayerShipState().hullSpecId);
@@ -363,8 +363,57 @@ describe('headless SectorSimulation', () => {
     const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
     ws.setHyperspaceTargetCoord({ x: 3, y: -2 });
     ws.saveToLocalStorage();
-    const loaded = WorldState.loadFromLocalStorage(wf);
+    const loaded = WorldState.loadFromLocalStorage(wf, ws.getActiveSaveId());
     expect(loaded?.getHyperspaceTargetCoord()).toEqual({ x: 3, y: -2 });
+    vi.unstubAllGlobals();
+  });
+
+  it('two careers for the same world keep independent save slots', () => {
+    const store: Record<string, string> = {};
+    const ls = {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
+      removeItem: (k: string) => {
+        delete store[k];
+      },
+      clear: () => {
+        for (const k of Object.keys(store)) delete store[k];
+      },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+      get length() {
+        return Object.keys(store).length;
+      }
+    };
+    vi.stubGlobal('localStorage', ls as Storage);
+    const wf = loadWorld();
+    const coord = wf.startingConditions.sectorCoord;
+    const wsA = new WorldState(wf, coord, makeShipState({ id: 'player' }) as ShipState, {
+      activeSaveId: 'career-a'
+    });
+    wsA.updatePlayerShipState(buildStarterShipState(wsA));
+    wsA.updatePlayerShipState({ credits: 111 });
+    wsA.setPilotName('Alpha');
+    wsA.saveToLocalStorage();
+    const wsB = new WorldState(wf, coord, makeShipState({ id: 'player' }) as ShipState, {
+      activeSaveId: 'career-b'
+    });
+    wsB.updatePlayerShipState(buildStarterShipState(wsB));
+    wsB.updatePlayerShipState({ credits: 222 });
+    wsB.setPilotName('Beta');
+    wsB.saveToLocalStorage();
+    const list = WorldState.listSaves().filter((s) => s.worldSeed === wf.metadata.seed);
+    expect(list.length).toBe(2);
+    const loadedA = WorldState.loadFromLocalStorage(wf, 'career-a');
+    const loadedB = WorldState.loadFromLocalStorage(wf, 'career-b');
+    expect(loadedA?.getPlayerShipState().credits).toBe(111);
+    expect(loadedB?.getPlayerShipState().credits).toBe(222);
+    expect(loadedA?.getPilotName()).toBe('Alpha');
+    expect(loadedB?.getPilotName()).toBe('Beta');
+    WorldState.deleteSave(wf.metadata.seed, 'career-a');
+    expect(WorldState.loadFromLocalStorage(wf, 'career-a')).toBeNull();
+    expect(WorldState.loadFromLocalStorage(wf, 'career-b')).not.toBeNull();
     vi.unstubAllGlobals();
   });
 

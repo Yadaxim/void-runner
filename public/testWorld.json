@@ -178,32 +178,6 @@
         "reactor": 1,
         "shield": 1
       },
-      "equipmentLoadout": [
-        {
-          "slotType": "thruster_forward",
-          "itemId": "fwd_thruster_standard"
-        },
-        {
-          "slotType": "thruster_rotate",
-          "itemId": "rot_thruster_fighter"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": "pulse_cannon_t1"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
-        },
-        {
-          "slotType": "reactor",
-          "itemId": "reactor_standard"
-        },
-        {
-          "slotType": "shield",
-          "itemId": "shield_standard"
-        }
-      ],
       "price": 18000,
       "sellValue": 10800,
       "defaultLoadouts": {
@@ -331,24 +305,6 @@
         "autoBrake": 1,
         "fuelTank": 1
       },
-      "equipmentLoadout": [
-        {
-          "slotType": "thruster_forward",
-          "itemId": "fwd_thruster_standard"
-        },
-        {
-          "slotType": "thruster_rotate",
-          "itemId": "rot_thruster_fighter"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": "pulse_cannon_t1"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
-        }
-      ],
       "price": 14000,
       "sellValue": 8400,
       "defaultLoadouts": {
@@ -455,36 +411,6 @@
         "reactor": 1,
         "shield": 1
       },
-      "equipmentLoadout": [
-        {
-          "slotType": "thruster_forward",
-          "itemId": "fwd_thruster_standard"
-        },
-        {
-          "slotType": "thruster_reverse",
-          "itemId": "rev_thruster_standard"
-        },
-        {
-          "slotType": "thruster_rotate",
-          "itemId": "rot_thruster_standard"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": "pulse_cannon_t1"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
-        },
-        {
-          "slotType": "reactor",
-          "itemId": "reactor_standard"
-        },
-        {
-          "slotType": "shield",
-          "itemId": "shield_standard"
-        }
-      ],
       "price": 32000,
       "sellValue": 19200,
       "defaultLoadouts": {
@@ -639,44 +565,6 @@
         "reactor": 1,
         "shield": 1
       },
-      "equipmentLoadout": [
-        {
-          "slotType": "thruster_forward",
-          "itemId": "fwd_thruster_heavy"
-        },
-        {
-          "slotType": "thruster_reverse",
-          "itemId": "rev_thruster_heavy"
-        },
-        {
-          "slotType": "thruster_rotate",
-          "itemId": "rot_thruster_heavy"
-        },
-        {
-          "slotType": "autoBrake",
-          "itemId": "auto_brake_t1"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": "pulse_cannon_t1"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": null
-        },
-        {
-          "slotType": "reactor",
-          "itemId": "reactor_standard"
-        },
-        {
-          "slotType": "shield",
-          "itemId": "shield_standard"
-        }
-      ],
       "price": 52000,
       "sellValue": 28000,
       "defaultLoadouts": {
@@ -842,60 +730,6 @@
         "reactor": 1,
         "shield": 1
       },
-      "equipmentLoadout": [
-        {
-          "slotType": "thruster_forward",
-          "itemId": "fwd_thruster_standard"
-        },
-        {
-          "slotType": "thruster_forward",
-          "itemId": null
-        },
-        {
-          "slotType": "thruster_rotate",
-          "itemId": "rot_thruster_standard"
-        },
-        {
-          "slotType": "armour",
-          "itemId": "light_plating_t1"
-        },
-        {
-          "slotType": "armour",
-          "itemId": "heavy_plating_t1"
-        },
-        {
-          "slotType": "reactor",
-          "itemId": "reactor_standard"
-        },
-        {
-          "slotType": "shield",
-          "itemId": "shield_standard"
-        },
-        {
-          "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": "pulse_cannon_t1"
-        },
-        {
-          "slotType": "weapon",
-          "itemId": null
-        },
-        {
-          "slotType": "weapon",
-          "itemId": null
-        },
-        {
-          "slotType": "weapon",
-          "itemId": null
-        },
-        {
-          "slotType": "weapon",
-          "itemId": null
-        }
-      ],
       "price": 24000,
       "sellValue": 14400,
       "defaultLoadouts": {
@@ -1119,7 +953,12 @@
       "damageCategory": "explosive",
       "matterType": "normal",
       "attractedByGravity": false,
-      "abilities": [{ "type": "seeking", "turnRatio": 2.5 }],
+      "abilities": [
+        {
+          "type": "seeking",
+          "turnRatio": 2.5
+        }
+      ],
       "infinite": false,
       "lifespan": 5,
       "visualType": "missile",
@@ -2088,7 +1927,7 @@
           "id": "derelict_platform",
           "name": "Derelict Platform",
           "type": "station",
-          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line — it works, barely.",
+          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line \u2014 it works, barely.",
           "atmosphere": "eerie and abandoned",
           "factionId": null,
           "mass": 0,
@@ -2288,7 +2127,7 @@
           "id": "clan_home",
           "name": "Rig Tharkan",
           "type": "planet",
-          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
+          "description": "The Frontier Clans' de facto capital \u2014 a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
           "factionId": "frontier_clans",
           "mass": 120000,
@@ -2582,7 +2421,7 @@
           "id": "outpost_sigma",
           "name": "Outpost Sigma",
           "type": "station",
-          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
+          "description": "Nobody built this station with intention. It just accumulated over decades \u2014 modules bolted on as needed, never taken off.",
           "atmosphere": "improvised and weathered",
           "factionId": null,
           "mass": 0,
@@ -2847,7 +2686,7 @@
         }
       ],
       "price": 18740,
-      "name": "Fighter — Raw",
+      "name": "Fighter \u2014 Raw",
       "description": "raw factory fit for Fighter Mk I."
     },
     {
@@ -2888,7 +2727,7 @@
         }
       ],
       "price": 20380,
-      "name": "Fighter — Basic",
+      "name": "Fighter \u2014 Basic",
       "description": "basic factory fit for Fighter Mk I."
     },
     {
@@ -2929,7 +2768,7 @@
         }
       ],
       "price": 21740,
-      "name": "Fighter — Advanced",
+      "name": "Fighter \u2014 Advanced",
       "description": "advanced factory fit for Fighter Mk I."
     },
     {
@@ -2962,7 +2801,7 @@
         }
       ],
       "price": 14740,
-      "name": "Raider — Raw",
+      "name": "Raider \u2014 Raw",
       "description": "raw factory fit for Raider Mk I."
     },
     {
@@ -2995,7 +2834,7 @@
         }
       ],
       "price": 15440,
-      "name": "Raider — Basic",
+      "name": "Raider \u2014 Basic",
       "description": "basic factory fit for Raider Mk I."
     },
     {
@@ -3028,7 +2867,7 @@
         }
       ],
       "price": 16360,
-      "name": "Raider — Advanced",
+      "name": "Raider \u2014 Advanced",
       "description": "advanced factory fit for Raider Mk I."
     },
     {
@@ -3077,7 +2916,7 @@
         }
       ],
       "price": 32800,
-      "name": "Courier — Raw",
+      "name": "Courier \u2014 Raw",
       "description": "raw factory fit for Courier Mk I."
     },
     {
@@ -3126,7 +2965,7 @@
         }
       ],
       "price": 34760,
-      "name": "Courier — Basic",
+      "name": "Courier \u2014 Basic",
       "description": "basic factory fit for Courier Mk I."
     },
     {
@@ -3175,7 +3014,7 @@
         }
       ],
       "price": 35640,
-      "name": "Courier — Advanced",
+      "name": "Courier \u2014 Advanced",
       "description": "advanced factory fit for Courier Mk I."
     },
     {
@@ -3228,7 +3067,7 @@
         }
       ],
       "price": 53460,
-      "name": "Freighter — Raw",
+      "name": "Freighter \u2014 Raw",
       "description": "raw factory fit for Freighter Mk I."
     },
     {
@@ -3281,7 +3120,7 @@
         }
       ],
       "price": 56200,
-      "name": "Freighter — Basic",
+      "name": "Freighter \u2014 Basic",
       "description": "basic factory fit for Freighter Mk I."
     },
     {
@@ -3334,7 +3173,7 @@
         }
       ],
       "price": 57920,
-      "name": "Freighter — Advanced",
+      "name": "Freighter \u2014 Advanced",
       "description": "advanced factory fit for Freighter Mk I."
     },
     {
@@ -3399,7 +3238,7 @@
         }
       ],
       "price": 24800,
-      "name": "Store — Raw",
+      "name": "Store \u2014 Raw",
       "description": "raw factory fit for Store Test Rig."
     },
     {
@@ -3464,7 +3303,7 @@
         }
       ],
       "price": 27140,
-      "name": "Store — Basic",
+      "name": "Store \u2014 Basic",
       "description": "basic factory fit for Store Test Rig."
     },
     {
@@ -3529,7 +3368,7 @@
         }
       ],
       "price": 29440,
-      "name": "Store — Advanced",
+      "name": "Store \u2014 Advanced",
       "description": "advanced factory fit for Store Test Rig."
     }
   ]

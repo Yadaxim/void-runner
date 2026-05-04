@@ -62,6 +62,8 @@ interface PersistedWorldState {
 }
 
 export interface SaveMetadata {
+  /** Per-world career slot (UUID or other unique string). */
+  saveId: string;
   worldSeed: number;
   worldName: string;
   pilotName: string;
@@ -91,6 +93,54 @@ function toVector2(value: { x: number; y: number }): Vector2 {
 
 function coordKey(coord: GridCoord): string {
   return `${coord.x}:${coord.y}`;
+}
+
+function generateSaveId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `s${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function persistKeys(worldSeed: number, saveId: string): { saveKey: string; metaKey: string } {
+  return {
+    saveKey: `voidrunner_save_${worldSeed}_${saveId}`,
+    metaKey: `voidrunner_meta_${worldSeed}_${saveId}`
+  };
+}
+
+function parseSaveMetadata(raw: string, seedFromKey: number, saveIdFromKey: string): SaveMetadata | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<SaveMetadata>;
+    const worldSeed = typeof parsed.worldSeed === 'number' ? parsed.worldSeed : seedFromKey;
+    const saveId = typeof parsed.saveId === 'string' ? parsed.saveId : saveIdFromKey;
+    if (
+      typeof parsed.worldName !== 'string' ||
+      typeof parsed.pilotName !== 'string' ||
+      typeof parsed.savedAt !== 'number' ||
+      typeof parsed.playTimeSeconds !== 'number' ||
+      !parsed.currentSectorCoord ||
+      typeof parsed.currentSectorCoord.x !== 'number' ||
+      typeof parsed.currentSectorCoord.y !== 'number' ||
+      typeof parsed.credits !== 'number' ||
+      typeof parsed.shipHullName !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      saveId,
+      worldSeed,
+      worldName: parsed.worldName,
+      pilotName: parsed.pilotName,
+      savedAt: parsed.savedAt,
+      playTimeSeconds: parsed.playTimeSeconds,
+      currentSectorCoord: parsed.currentSectorCoord,
+      credits: parsed.credits,
+      shipHullName: parsed.shipHullName
+    };
+  } catch {
+    return null;
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -140,9 +190,8 @@ function normaliseWorldFile(worldFile: WorldFile): WorldFile {
 }
 
 function normaliseShipState(shipState: ShipState): ShipState {
-  const legacy = shipState as unknown as { currentHP?: number; maxHP?: number };
-  const maxHullHP = shipState.maxHullHP ?? legacy.maxHP ?? 100;
-  const currentHullHP = shipState.currentHullHP ?? legacy.currentHP ?? maxHullHP;
+  const maxHullHP = shipState.maxHullHP ?? 100;
+  const currentHullHP = shipState.currentHullHP ?? maxHullHP;
   return {
     ...shipState,
     currentHullHP,
@@ -216,10 +265,11 @@ export function buildStarterShipState(worldState: WorldState): ShipState {
     throw new Error(`Starting hull spec not found: ${sc.hullSpecId}`);
   }
 
+  if (!hullSpec.defaultLoadouts) {
+    throw new Error(`Hull "${hullSpec.id}" must define defaultLoadouts`);
+  }
   const fallbackSlots =
-    sc.equipmentSlots.length > 0
-      ? sc.equipmentSlots
-      : hullSpec.defaultLoadouts?.basic ?? hullSpec.equipmentLoadout ?? [];
+    sc.equipmentSlots.length > 0 ? sc.equipmentSlots : hullSpec.defaultLoadouts.basic;
   const baseEquipmentSlots = fallbackSlots.map((slot) => ({ ...slot }));
   const desired = worldState.getDesiredEquipmentSlotCounts(hullSpec);
   for (const [slotType, countRaw] of Object.entries(desired)) {
@@ -305,8 +355,15 @@ export class WorldState {
   private readonly sectorIndex: Map<string, SectorMetadata>;
   private pilotName = 'Pilot';
   private playTimeSeconds = 0;
+  /** localStorage slot for this career (multiple saves per `worldFile.metadata.seed`). */
+  private readonly activeSaveId: string;
 
-  constructor(worldFile: WorldFile, startSector: GridCoord, playerShipState: ShipState) {
+  constructor(
+    worldFile: WorldFile,
+    startSector: GridCoord,
+    playerShipState: ShipState,
+    options?: { activeSaveId?: string }
+  ) {
     const normalisedWorldFile = normaliseWorldFile(worldFile);
     const indexedWorld: WorldFile = {
       ...normalisedWorldFile,
@@ -317,6 +374,7 @@ export class WorldState {
     };
 
     this.worldFile = indexedWorld;
+    this.activeSaveId = options?.activeSaveId ?? generateSaveId();
     this.currentSectorCoord = { ...startSector };
     this.visitedSectors = new Set<string>([coordKey(startSector)]);
     this.playerShipState = normaliseShipState(playerShipState);
@@ -327,6 +385,11 @@ export class WorldState {
     for (const sector of this.worldFile.sectors) {
       this.sectorIndex.set(coordKey(sector.coord), sector);
     }
+  }
+
+  /** New UUID (or fallback) for a **new** career when starting a game — pass as `options.activeSaveId`. */
+  static newCareerSaveId(): string {
+    return generateSaveId();
   }
 
   /** Slot counts the hull supports (matches how equipment slots are provisioned). */
@@ -486,10 +549,10 @@ export class WorldState {
       this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass && candidate.defaultLoadouts) ??
       this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass) ??
       null;
-    if (!hull) {
+    if (!hull || !hull.defaultLoadouts) {
       return { equipmentSlots: [], weaponLoadout: [] };
     }
-    const preset = hull.defaultLoadouts?.basic ?? hull.equipmentLoadout ?? [];
+    const preset = hull.defaultLoadouts.basic;
     const equipmentSlots = expandSlotsToFullHull(hull, preset.map((slot) => ({ ...slot })));
     const weaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(equipmentSlots, hull.weaponSlots);
     return {
@@ -1136,6 +1199,10 @@ export class WorldState {
     return { ...this.currentSectorCoord };
   }
 
+  getActiveSaveId(): string {
+    return this.activeSaveId;
+  }
+
   getGridWidth(): number {
     return this.worldFile.galaxy.gridWidth;
   }
@@ -1224,9 +1291,11 @@ export class WorldState {
       hyperspaceTargetCoord: this.hyperspaceTargetCoord
     };
     const worldSeed = this.worldFile.metadata.seed;
-    localStorage.setItem(`voidrunner_save_${worldSeed}`, JSON.stringify(payload));
+    const { saveKey, metaKey } = persistKeys(worldSeed, this.activeSaveId);
+    localStorage.setItem(saveKey, JSON.stringify(payload));
     const shipHull = this.getHullSpec(this.playerShipState.hullSpecId);
     const metadata: SaveMetadata = {
+      saveId: this.activeSaveId,
       worldSeed,
       worldName: this.worldFile.metadata.name,
       pilotName: this.pilotName,
@@ -1236,20 +1305,23 @@ export class WorldState {
       credits: this.playerShipState.credits,
       shipHullName: shipHull?.name ?? this.playerShipState.hullSpecId
     };
-    localStorage.setItem(`voidrunner_meta_${worldSeed}`, JSON.stringify(metadata));
+    localStorage.setItem(metaKey, JSON.stringify(metadata));
   }
 
-  static loadFromLocalStorage(worldFile: WorldFile): WorldState | null {
+  static loadFromLocalStorage(worldFile: WorldFile, saveId: string): WorldState | null {
     throwIfWorldFileInvalidForGame(worldFile);
 
-    const raw = localStorage.getItem(`voidrunner_save_${worldFile.metadata.seed}`);
+    const { saveKey } = persistKeys(worldFile.metadata.seed, saveId);
+    const raw = localStorage.getItem(saveKey);
     if (!raw) {
       return null;
     }
 
     try {
       const parsed = JSON.parse(raw) as PersistedWorldState;
-      const state = new WorldState(worldFile, parsed.currentSectorCoord, normaliseShipState(parsed.playerShipState));
+      const state = new WorldState(worldFile, parsed.currentSectorCoord, normaliseShipState(parsed.playerShipState), {
+        activeSaveId: saveId
+      });
       state.setCurrentSector(parsed.currentSectorCoord);
       state.visitedSectors = new Set(parsed.visitedSectors);
       state.factionReputations = { ...defaultFactionReputations(worldFile), ...parsed.factionReputations };
@@ -1276,19 +1348,28 @@ export class WorldState {
   }
 
   static listSaves(): SaveMetadata[] {
+    const metaSlotRe = /^voidrunner_meta_(\d+)_(.+)$/;
     const saves: SaveMetadata[] = [];
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key?.startsWith('voidrunner_meta_')) {
+      if (!key) {
         continue;
       }
+      const m = key.match(metaSlotRe);
+      if (!m) {
+        continue;
+      }
+      const seedFromKey = Number(m[1]);
+      const saveIdFromKey = m[2];
       try {
         const raw = localStorage.getItem(key);
         if (!raw) {
           continue;
         }
-        const meta = JSON.parse(raw) as SaveMetadata;
-        saves.push(meta);
+        const meta = parseSaveMetadata(raw, seedFromKey, saveIdFromKey);
+        if (meta) {
+          saves.push(meta);
+        }
       } catch {
         // Skip corrupted metadata entries.
       }
@@ -1296,9 +1377,10 @@ export class WorldState {
     return saves.sort((a, b) => b.savedAt - a.savedAt);
   }
 
-  static deleteSave(worldSeed: number): void {
-    localStorage.removeItem(`voidrunner_save_${worldSeed}`);
-    localStorage.removeItem(`voidrunner_meta_${worldSeed}`);
+  static deleteSave(worldSeed: number, saveId: string): void {
+    const { saveKey, metaKey } = persistKeys(worldSeed, saveId);
+    localStorage.removeItem(saveKey);
+    localStorage.removeItem(metaKey);
   }
 
   private getEquipmentValue(item: EquipmentItem): number {

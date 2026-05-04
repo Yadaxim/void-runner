@@ -88,7 +88,7 @@ describe('validation boundaries', () => {
   describe('load / WorldState', () => {
     it('does not construct WorldState when the world file fails validation', () => {
       const wf = invalidWorldMissingHullSlots();
-      expect(() => WorldState.loadFromLocalStorage(wf)).toThrow(WorldFileValidationError);
+      expect(() => WorldState.loadFromLocalStorage(wf, 'any-slot')).toThrow(WorldFileValidationError);
     });
 
     it('initialises WorldState from localStorage when the world file is valid', () => {
@@ -114,7 +114,7 @@ describe('validation boundaries', () => {
       const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
       ws.updatePlayerShipState(buildStarterShipState(ws));
       ws.saveToLocalStorage();
-      const loaded = WorldState.loadFromLocalStorage(wf);
+      const loaded = WorldState.loadFromLocalStorage(wf, ws.getActiveSaveId());
       expect(loaded).not.toBeNull();
       vi.unstubAllGlobals();
     });

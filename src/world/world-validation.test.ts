@@ -154,11 +154,11 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('rebootTime > regenDelay'))).toBe(true);
   });
 
-  it('flags slot/item type mismatch in hull equipmentLoadout', () => {
+  it('flags slot/item type mismatch in hull defaultLoadouts.basic', () => {
     const w = structuredClone(loadWorld());
-    const hull = w.hullSpecs.find((h) => h.equipmentLoadout?.length);
-    expect(hull?.equipmentLoadout?.length).toBeTruthy();
-    const slot = hull!.equipmentLoadout!.find((s) => s.slotType === 'weapon');
+    const hull = w.hullSpecs.find((h) => h.defaultLoadouts?.basic?.length);
+    expect(hull?.defaultLoadouts?.basic?.length).toBeTruthy();
+    const slot = hull!.defaultLoadouts!.basic!.find((s) => s.slotType === 'weapon');
     expect(slot?.itemId).toBeTruthy();
     slot!.slotType = 'armour';
     const r = validateWorldFile(w);
@@ -302,14 +302,6 @@ describe('validateWorldFile', () => {
     (w.sectors[0].npcSpawnRules[0] as { hullSpecId: string }).hullSpecId = '   ';
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('non-empty hullSpecId'))).toBe(true);
-  });
-
-  it('flags bullet legacy seeking/turnRatio fields', () => {
-    const w = structuredClone(loadWorld());
-    const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
-    (spec as { seeking?: boolean }).seeking = true;
-    const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('removed fields seeking'))).toBe(true);
   });
 
   it('flags bullet seeking ability with invalid turnRatio', () => {

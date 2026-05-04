@@ -36,6 +36,23 @@ Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Shipped
 - [x] **Legend: current / cursor / target** — show **current sector**, **cursor**, and **hyperspace target** coordinates explicitly in the legend (not only outlines on the grid).  
 - [x] **Right pane: sector summary** — for the **selected** (cursor) sector, show a short summary: coordinates, controlling faction, list of **landable names** (scroll if needed).  
 - [x] **Flight HUD: hyperspace near targets** — show hyperspace target alongside **ship target** and **landable target** in the main flight UI (target strip / HUD), not only in the sector telemetry line.  
+- [x] **Visited sectors + landable dots** — every visited sector **with** landables shows one dot per port (up to nine); single port is centered; none when count is zero.  
+- [x] **Color legend — left pane** — **left** pane **map key**: neutral tile, unvisited veil, visited empty, radiation overlay, landable dots, sample faction tints, outline meanings (you / cursor / hyperspace target).  
+- [x] **Layout — map centered, two side panes** — **center column** grid with **left** (color key) and **right** (controls + positions + sector summary); narrow canvas trims pane widths to keep a minimum map width.  
+- [x] **Right pane — keybinds vs positions** — **CONTROLS** block separate from **POSITIONS** block; **SELECTED SECTOR** remains below.  
+
+---
+
+## Persistence — portable JSON saves (world-linked)
+
+From roadmap **Persistence and portable saves** and **`plan/VOID_RUNNER_GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
+
+- [ ] **Single serializer** — one code path builds the save JSON object (and parses/validates on load) used by both **`localStorage`** and file I/O; avoid drift between formats.  
+- [ ] **Export save** — main menu or load-game UI: download a **`.json`** (envelope + `PersistedWorldState`); filename encodes seed (and optional pilot/world name).  
+- [ ] **Import save** — file picker: validate JSON, **seed matches** loaded / selected world, then **`WorldState`** hydrate + write **`localStorage`** so the existing resume path keeps working.  
+- [ ] **Conflict policy** — define behaviour when both imported file and **`localStorage`** exist (e.g. compare envelope **`savedAt`**, or “import overwrites”). Document in code comment + GDD.  
+- [ ] **Coarser disk writes** — when user has granted a **File System Access** file handle (or after export path TBD), flush file on: **sector transition**, **landable `onEnter` / exit to flight**, **credits / equipment / fuel / repair / insurance** mutations that already call save, **galaxy map hyperspace target** set/clear, **exit to main menu**, **`beforeunload`** / **`visibilitychange`** (best-effort); **not** every `localStorage` call.  
+- [ ] **Tests** — round-trip fixture: serialize → parse → `loadFromLocalStorage`-equivalent apply; reject wrong-seed import.  
 
 ---
 
