@@ -19,6 +19,10 @@ export const REP_PENALTY_KILL = -15;
 // Flight gameplay and interactions
 export const MAX_RADIATION_DAMAGE_PER_SECOND = 15;
 export const LANDING_SPEED_THRESHOLD = 100;
+/** Hyperspace jump: hull speed must stay below this (same order of magnitude as landing). */
+export const HYPERSPACE_MAX_SPEED = LANDING_SPEED_THRESHOLD;
+/** Max angle (rad) between ship nose and jump vector for a hyper jump to arm. */
+export const HYPERSPACE_ALIGN_MAX_ANGLE_RAD = (14 * Math.PI) / 180;
 export const LANDING_RADIUS_MULTIPLIER = 2.5;
 export const TAKEOFF_VELOCITY = 30;
 export const AUTOSAVE_INTERVAL_SECONDS = 1.5;

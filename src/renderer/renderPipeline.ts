@@ -1,5 +1,6 @@
 import { COLOURS } from '../constants';
 import type { WorldState } from '../core/worldState';
+import type { Vector2 } from '../physics/vector2';
 import type { Landable, WeaponFireKey } from '../types';
 import type { Camera } from './camera';
 import { BackgroundLayer } from './layers/backgroundLayer';
@@ -39,6 +40,7 @@ interface RenderPipelineState {
   spawnRuleDebugLines: string[];
   activeBurns: BurnEffect[];
   missionsPanelExpanded: boolean;
+  hyperspaceAssist: { jumpDir: Vector2; showJumpPrompt: boolean } | null;
 }
 
 export class RenderPipeline {
@@ -168,7 +170,8 @@ export class RenderPipeline {
       state.activeBurns.find((burn) => burn.targetId === state.playerShip.state.id)?.remainingDuration ?? null
       ,
       state.playerShip.state.activeMissions,
-      state.missionsPanelExpanded
+      state.missionsPanelExpanded,
+      state.hyperspaceAssist
     );
     this.minimapRenderer.render(
       state.worldState,

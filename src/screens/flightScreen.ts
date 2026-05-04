@@ -19,6 +19,8 @@ import {
   HYPERSPACE_OFFSCREEN_METRES,
   INSURANCE_PAYOUT_FRACTION,
   INSURANCE_REPAIR_COST_FRACTION,
+  HYPERSPACE_ALIGN_MAX_ANGLE_RAD,
+  HYPERSPACE_MAX_SPEED,
   LANDING_RADIUS_MULTIPLIER,
   LANDING_SPEED_THRESHOLD,
   MAX_RADIATION_DAMAGE_PER_SECOND,
@@ -30,7 +32,7 @@ import {
 import { LandableScreen } from './landableScreen';
 import { GalaxyMapScreen } from './galaxyMapScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
-import { computeHyperspaceLandingSector } from '../sim/hyperspaceJump';
+import { computeHyperspaceLandingSector, getHyperspaceHopWorldDirection } from '../sim/hyperspaceJump';
 import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from '../sim/sectorNav';
 import { ScreenManager, type Screen } from './screenManager';
 
@@ -447,6 +449,17 @@ export class FlightScreen implements Screen {
     if (galaxyOverlay instanceof GalaxyMapScreen) {
       galaxyOverlay.render(this.ctx);
     } else {
+    const assist = this.computeHyperspaceAssist();
+    const drive = this.worldState.getPlayerHyperspaceDrive();
+    const fuelOk = drive ? this.playerShip.state.fuel >= drive.fuelCostPerJump : false;
+    const cdOk = this.worldState.isHyperspaceJumpOffCooldown();
+    const hyperspaceAssist =
+      assist && drive
+        ? {
+            jumpDir: assist.jumpDir,
+            showJumpPrompt: assist.jumpReady && fuelOk && cdOk
+          }
+        : null;
     this.pipeline.render({
       playerShip: this.playerShip,
       otherShips: this.sectorSimulation?.getNPCShips() ?? [],
@@ -469,7 +482,8 @@ export class FlightScreen implements Screen {
       spawnRuleDebugLines: (this.sectorSimulation?.getSpawnRuleDebugRows() ?? []).map((row) => {
         const next = row.nextArrivalIn.toFixed(1).padStart(5, ' ');
         return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;
-      })
+      }),
+      hyperspaceAssist
     });
     this.drawHyperspaceFlashOverlay(this.ctx);
     this.drawFlightBanner(this.ctx);
@@ -552,7 +566,7 @@ export class FlightScreen implements Screen {
       'Q: linear auto-brake, E: rotation auto-brake',
       'L: land when landing prompt appears',
       'M: toggle active missions panel',
-      'K: galaxy map (hyperspace target), J: hyper jump toward target',
+      'K: galaxy map target, J: hyper jump when beacon + prompt (slow, aligned)',
       'Tab: cycle ship target, G: cycle landable target',
       'Z/X/C/V/B: fire weapon groups',
       'Esc: pause'
@@ -917,6 +931,42 @@ export class FlightScreen implements Screen {
     this.flightBannerUntilMs = performance.now() + 3200;
   }
 
+  /** When a hop is possible, reports world jump direction and whether speed + nose align for arming J. */
+  private computeHyperspaceAssist():
+    | { jumpDir: Vector2; speedOk: boolean; angleOk: boolean; jumpReady: boolean }
+    | null {
+    if (!this.playerShip) {
+      return null;
+    }
+    const drive = this.worldState.getPlayerHyperspaceDrive();
+    const target = this.worldState.getHyperspaceTargetCoord();
+    if (!drive || !target) {
+      return null;
+    }
+    const from = this.worldState.getCurrentSectorCoord();
+    const landing = computeHyperspaceLandingSector(
+      from,
+      target,
+      drive.jumpRange,
+      this.worldState.getGridWidth(),
+      this.worldState.getGridHeight()
+    );
+    if (!landing || (landing.x === from.x && landing.y === from.y)) {
+      return null;
+    }
+    const jumpDir = getHyperspaceHopWorldDirection(from, landing);
+    if (!jumpDir) {
+      return null;
+    }
+    const speed = (this.playerShip.state.velocity as Vector2).magnitude();
+    const speedOk = speed < HYPERSPACE_MAX_SPEED;
+    const forward = Vector2.fromAngle(this.playerShip.state.angle);
+    const dot = Math.max(-1, Math.min(1, forward.dot(jumpDir)));
+    const angleDiff = Math.acos(dot);
+    const angleOk = angleDiff <= HYPERSPACE_ALIGN_MAX_ANGLE_RAD;
+    return { jumpDir, speedOk, angleOk, jumpReady: speedOk && angleOk };
+  }
+
   private tryBeginHyperspaceJump(): void {
     if (this.hyperspaceJump || this.isTransitioning || !this.playerShip) {
       return;
@@ -957,10 +1007,18 @@ export class FlightScreen implements Screen {
       this.showFlightBanner('INSUFFICIENT FUEL FOR HYPER');
       return;
     }
-    const gdx = landing.x - from.x;
-    const gdy = landing.y - from.y;
-    const gmag = Math.hypot(gdx, gdy);
-    const dir = gmag < 1e-9 ? new Vector2(1, 0) : new Vector2(gdx, -gdy).normalise();
+    const assist = this.computeHyperspaceAssist();
+    if (!assist || !assist.jumpReady) {
+      if (assist && !assist.speedOk) {
+        this.showFlightBanner('HYPER: SLOW BELOW THRESHOLD');
+      } else if (assist && !assist.angleOk) {
+        this.showFlightBanner('HYPER: POINT NOSE AT BEACON');
+      } else {
+        this.showFlightBanner('HYPER: ALIGN FOR JUMP');
+      }
+      return;
+    }
+    const dir = assist.jumpDir;
     const newFuel = ship.fuel - drive.fuelCostPerJump;
     this.playerShip.state = {
       ...ship,

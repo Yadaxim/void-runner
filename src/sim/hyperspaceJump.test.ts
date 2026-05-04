@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { Vector2 } from '../physics/vector2';
 import {
   clampSectorCoordToGalaxy,
   computeHyperspaceLandingSector,
+  getHyperspaceHopWorldDirection,
   sectorGridDistance
 } from './hyperspaceJump';
 
@@ -22,6 +24,12 @@ describe('hyperspaceJump', () => {
 
   it('returns null when target equals current', () => {
     expect(computeHyperspaceLandingSector({ x: 5, y: 5 }, { x: 5, y: 5 }, 2, 30, 30)).toBeNull();
+  });
+
+  it('getHyperspaceHopWorldDirection is unit east for +x hop', () => {
+    const d = getHyperspaceHopWorldDirection({ x: 0, y: 0 }, { x: 3, y: 0 });
+    expect(d).not.toBeNull();
+    expect(Vector2.distance(d!, new Vector2(1, 0))).toBeLessThan(0.001);
   });
 
   it('clampSectorCoordToGalaxy matches half-open bounds', () => {

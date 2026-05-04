@@ -1,5 +1,6 @@
 import { COLOURS, RADIATION_VIGNETTE_MAX_OPACITY } from '../constants';
 import type { WorldState } from '../core/worldState';
+import { sectorGridDistance } from '../sim/hyperspaceJump';
 import type { GridCoord } from '../types';
 import type { Screen, ScreenManager } from './screenManager';
 
@@ -139,6 +140,8 @@ export class GalaxyMapScreen implements Screen {
     }
 
     const cur = this.worldState.getCurrentSectorCoord();
+    this.drawHyperspaceDriveRangeOverlay(ctx, layout, cur, cellSize, gap, gw, gh, hw, hh, gridOffsetX, gridOffsetY);
+
     this.drawCellOutline(ctx, cur, layout, COLOURS.UI_ACCENT, 2);
 
     const pulse = 0.65 + Math.sin(this.pulseMs * 0.006) * 0.35;
@@ -222,6 +225,66 @@ export class GalaxyMapScreen implements Screen {
       rightPositionsH,
       margin,
       titleBand
+    };
+  }
+
+  private drawHyperspaceDriveRangeOverlay(
+    ctx: CanvasRenderingContext2D,
+    layout: MapLayout,
+    current: GridCoord,
+    cellSize: number,
+    gap: number,
+    gw: number,
+    gh: number,
+    hw: number,
+    hh: number,
+    gridOffsetX: number,
+    gridOffsetY: number
+  ): void {
+    const drive = this.worldState.getPlayerHyperspaceDrive();
+    if (!drive) {
+      return;
+    }
+    const range = drive.jumpRange;
+    for (let row = 0; row < gh; row += 1) {
+      const sy = hh - 1 - row;
+      for (let col = 0; col < gw; col += 1) {
+        const sx = -hw + col;
+        const coord: GridCoord = { x: sx, y: sy };
+        if (sectorGridDistance(current, coord) <= range + 1e-6) {
+          const cx = gridOffsetX + col * (cellSize + gap);
+          const cy = gridOffsetY + row * (cellSize + gap);
+          ctx.fillStyle = 'rgba(255, 220, 120, 0.12)';
+          ctx.fillRect(cx, cy, cellSize, cellSize);
+        }
+      }
+    }
+    const center = this.cellCenterPx(current, layout);
+    if (!center) {
+      return;
+    }
+    const radiusPx = range * (cellSize + gap);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 200, 70, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  private cellCenterPx(coord: GridCoord, layout: MapLayout): { x: number; y: number } | null {
+    const { cellSize, gap, hw, hh, gridOffsetX, gridOffsetY, gw, gh } = layout;
+    const col = coord.x + hw;
+    const row = hh - 1 - coord.y;
+    if (col < 0 || col >= gw || row < 0 || row >= gh) {
+      return null;
+    }
+    return {
+      x: gridOffsetX + col * (cellSize + gap) + cellSize / 2,
+      y: gridOffsetY + row * (cellSize + gap) + cellSize / 2
     };
   }
 
@@ -394,6 +457,14 @@ export class GalaxyMapScreen implements Screen {
     outlineSample(COLOURS.UI_ACCENT, 2, null, 'Outline: you (here)');
     outlineSample(COLOURS.CREDITS, 1.5, null, 'Outline: cursor');
     outlineSample(COLOURS.WARNING, 1.5, [6, 4], 'Outline: hyperspace tgt');
+    ctx.fillStyle = 'rgba(255, 210, 120, 0.35)';
+    ctx.fillRect(leftPaneX + pad, y, sw, sw);
+    ctx.strokeStyle = COLOURS.WARNING;
+    ctx.strokeRect(leftPaneX + pad, y, sw, sw);
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.font = "11px 'Courier New', monospace";
+    ctx.fillText('Tint + ring = hop range', leftPaneX + pad + sw + 6, y + 1);
+    y += sw + 8;
   }
 
   private renderRightKeybindsPanel(ctx: CanvasRenderingContext2D, layout: MapLayout): void {

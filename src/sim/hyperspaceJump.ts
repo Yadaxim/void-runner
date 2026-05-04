@@ -1,3 +1,4 @@
+import { Vector2 } from '../physics/vector2';
 import type { GridCoord } from '../types';
 
 /** Euclidean distance between sector grid coordinates (continuous). */
@@ -45,4 +46,17 @@ export function computeHyperspaceLandingSector(
   const fx = current.x + (dx / dist) * step;
   const fy = current.y + (dy / dist) * step;
   return clampSectorCoordToGalaxy({ x: fx, y: fy }, gridWidth, gridHeight);
+}
+
+/**
+ * World-space unit vector for a hop from `from` toward `landing` (grid delta mapped to match ship thrust: +y is screen-up style).
+ */
+export function getHyperspaceHopWorldDirection(from: GridCoord, landing: GridCoord): Vector2 | null {
+  const gdx = landing.x - from.x;
+  const gdy = landing.y - from.y;
+  const m = Math.hypot(gdx, gdy);
+  if (m < 1e-9) {
+    return null;
+  }
+  return new Vector2(gdx, -gdy).normalise();
 }

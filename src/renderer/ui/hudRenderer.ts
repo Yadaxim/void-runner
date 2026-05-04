@@ -1,6 +1,7 @@
 import { COLOURS } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
 import type { WorldState } from '../../core/worldState';
+import { Vector2 } from '../../physics/vector2';
 import type { ShipEntity } from '../../simulation/shipEntity';
 import type { GridCoord, Landable, Mission, WeaponFireKey, WeaponSlot } from '../../types';
 import { WeaponStripRenderer } from './weaponStripRenderer';
@@ -50,7 +51,8 @@ export class HudRenderer {
     heldFireKeys: Record<WeaponFireKey, boolean>,
     playerBurnRemainingSeconds: number | null,
     activeMissions: Mission[],
-    missionsPanelExpanded: boolean
+    missionsPanelExpanded: boolean,
+    hyperspaceAssist: { jumpDir: Vector2; showJumpPrompt: boolean } | null
   ): void {
     const speed = Math.round(Math.hypot(playerShip.state.velocity.x, playerShip.state.velocity.y));
     const fuelCurrent = Math.max(0, playerShip.state.fuel);
@@ -173,6 +175,8 @@ export class HudRenderer {
     this.ctx.lineTo(cx, cy + 6);
     this.ctx.stroke();
 
+    this.renderHyperspaceJumpAssist(hyperspaceAssist);
+
     if (landingCandidate && speed < LANDING_SPEED_THRESHOLD) {
       const pulse = 0.65 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.125;
       this.ctx.font = "14px 'Courier New', monospace";
@@ -203,6 +207,36 @@ export class HudRenderer {
       this.ctx.fillText(promptText, x + paddingX, y + height / 2);
       this.ctx.restore();
     }
+
+    if (hyperspaceAssist?.showJumpPrompt) {
+      const pulse = 0.65 + (Math.sin(performance.now() * (Math.PI * 2 / 1000)) + 1) * 0.125;
+      const landingShowing = !!(landingCandidate && speed < LANDING_SPEED_THRESHOLD);
+      const paddingX = 14;
+      const maxWidth = this.ctx.canvas.width - 32;
+      const promptText = '[ J ]  HYPER JUMP (TARGET LOCKED)';
+      const textWidth = this.ctx.measureText(promptText).width;
+      const width = Math.min(maxWidth, textWidth + paddingX * 2);
+      const height = 30;
+      const x = (this.ctx.canvas.width - width) / 2;
+      const y = this.ctx.canvas.height - (landingShowing ? 130 : 96);
+
+      this.ctx.save();
+      this.ctx.globalAlpha = pulse;
+      this.ctx.fillStyle = COLOURS.SPACE_BLACK;
+      this.ctx.strokeStyle = COLOURS.WARNING;
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.roundRect(x, y, width, height, 14);
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.fillStyle = COLOURS.WARNING;
+      this.ctx.font = "14px 'Courier New', monospace";
+      this.ctx.textBaseline = 'middle';
+      this.ctx.textAlign = 'left';
+      this.ctx.fillText(promptText, x + paddingX, y + height / 2);
+      this.ctx.restore();
+    }
+
     if (
       activeMissions.some(
         (mission) => mission.destinationSectorCoord.x === sectorCoord.x && mission.destinationSectorCoord.y === sectorCoord.y
@@ -216,6 +250,79 @@ export class HudRenderer {
       this.ctx.fillText('★ LAND TO DELIVER', this.ctx.canvas.width / 2, this.ctx.canvas.height - 18);
       this.ctx.restore();
     }
+  }
+
+  private static rayExitToAabbMargin(
+    cx: number,
+    cy: number,
+    ux: number,
+    uy: number,
+    w: number,
+    h: number,
+    margin: number
+  ): { ex: number; ey: number } | null {
+    const minX = margin;
+    const minY = margin;
+    const maxX = w - margin;
+    const maxY = h - margin;
+    let tMin = Infinity;
+    const consider = (t: number) => {
+      if (t > 0 && t < tMin) {
+        tMin = t;
+      }
+    };
+    if (ux > 1e-9) {
+      consider((maxX - cx) / ux);
+    }
+    if (ux < -1e-9) {
+      consider((minX - cx) / ux);
+    }
+    if (uy > 1e-9) {
+      consider((maxY - cy) / uy);
+    }
+    if (uy < -1e-9) {
+      consider((minY - cy) / uy);
+    }
+    if (!Number.isFinite(tMin) || tMin <= 0) {
+      return null;
+    }
+    return { ex: cx + ux * tMin, ey: cy + uy * tMin };
+  }
+
+  private renderHyperspaceJumpAssist(hyperspaceAssist: { jumpDir: Vector2; showJumpPrompt: boolean } | null): void {
+    if (!hyperspaceAssist) {
+      return;
+    }
+    const { jumpDir, showJumpPrompt } = hyperspaceAssist;
+    const w = this.ctx.canvas.width;
+    const h = this.ctx.canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const edge = HudRenderer.rayExitToAabbMargin(cx, cy, jumpDir.x, jumpDir.y, w, h, 28);
+    if (!edge) {
+      return;
+    }
+    const inward = new Vector2(cx - edge.ex, cy - edge.ey).normalise();
+    const pulse = 0.5 + (Math.sin(performance.now() * 0.0035) + 1) * 0.22;
+    this.ctx.save();
+    this.ctx.globalAlpha = showJumpPrompt ? pulse : pulse * 0.42;
+    const tipX = edge.ex;
+    const tipY = edge.ey;
+    const baseX = edge.ex - inward.x * 26;
+    const baseY = edge.ey - inward.y * 26;
+    const px = -inward.y * 12;
+    const py = inward.x * 12;
+    this.ctx.fillStyle = COLOURS.WARNING;
+    this.ctx.beginPath();
+    this.ctx.moveTo(tipX, tipY);
+    this.ctx.lineTo(baseX - px, baseY - py);
+    this.ctx.lineTo(baseX + px, baseY + py);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.strokeStyle = COLOURS.UI_PRIMARY;
+    this.ctx.lineWidth = 1;
+    this.ctx.stroke();
+    this.ctx.restore();
   }
 
   renderActiveMissions(missions: Mission[], currentSectorCoord: GridCoord, expanded: boolean): void {
