@@ -19,11 +19,11 @@ Shipped checklist from roadmap **Now**; extend these tests again when combat, en
 
 From roadmap **Navigation slice** and context **Session 5**.
 
-- [ ] Galaxy map screen (full-sector view)  
-- [ ] Visited-sector state on the map  
-- [ ] Faction colouring on the map  
-- [ ] Radiation zone overlay  
-- [ ] Hyperspace **target selection** UI (jump rules may stay stubbed until Session 6)  
+- [x] Galaxy map screen (full-sector view)  
+- [x] Visited-sector state on the map  
+- [x] Faction colouring on the map  
+- [x] Radiation zone overlay  
+- [x] Hyperspace **target selection** UI (jump rules may stay stubbed until Session 6)  
 
 ---
 

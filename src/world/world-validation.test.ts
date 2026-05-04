@@ -342,7 +342,7 @@ describe('validateWorldFile', () => {
   it('flags unknown bullet ability type', () => {
     const w = structuredClone(loadWorld());
     const spec = w.bulletSpecs.find((b) => b.id === 'pulse_bolt')!;
-    spec.abilities = [{ type: 'cloak', turnRatio: 1 } as { type: 'seeking'; turnRatio: number }];
+    spec.abilities = [{ type: 'cloak', turnRatio: 1 }] as unknown as typeof spec.abilities;
     const r = validateWorldFile(w);
     expect(r.errors.some((e) => e.includes('unknown type') && e.includes('cloak'))).toBe(true);
   });

@@ -15,6 +15,7 @@ interface TargetInputs {
   cycleShipTarget: boolean;
   cycleLandableTarget: boolean;
   toggleMissionsPanel: boolean;
+  toggleGalaxyMap: boolean;
 }
 
 export class PlayerController {
@@ -26,6 +27,7 @@ export class PlayerController {
   private cycleShipTargetQueued = false;
   private cycleLandableTargetQueued = false;
   private toggleMissionsPanelQueued = false;
+  private toggleGalaxyMapQueued = false;
   private readonly controlledKeys = new Set<string>([
     'ArrowUp',
     'ArrowDown',
@@ -38,6 +40,7 @@ export class PlayerController {
     'Tab',
     'KeyG',
     'KeyM',
+    'KeyK',
     'KeyZ',
     'KeyX',
     'KeyC',
@@ -69,6 +72,9 @@ export class PlayerController {
     }
     if (!event.repeat && event.code === 'KeyM') {
       this.toggleMissionsPanelQueued = true;
+    }
+    if (!event.repeat && event.code === 'KeyK') {
+      this.toggleGalaxyMapQueued = true;
     }
     this.pressedKeys.add(event.code);
   };
@@ -114,11 +120,13 @@ export class PlayerController {
     const inputs = {
       cycleShipTarget: this.cycleShipTargetQueued,
       cycleLandableTarget: this.cycleLandableTargetQueued,
-      toggleMissionsPanel: this.toggleMissionsPanelQueued
+      toggleMissionsPanel: this.toggleMissionsPanelQueued,
+      toggleGalaxyMap: this.toggleGalaxyMapQueued
     };
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
+    this.toggleGalaxyMapQueued = false;
     return inputs;
   }
 
@@ -143,5 +151,6 @@ export class PlayerController {
     this.cycleShipTargetQueued = false;
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
+    this.toggleGalaxyMapQueued = false;
   }
 }

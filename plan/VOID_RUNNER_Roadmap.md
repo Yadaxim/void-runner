@@ -11,11 +11,11 @@ Coverage passes are in **`damage.test.ts`**, **`shipEnergyShield.test.ts`** (rea
 
 ---
 
-**Next default engineering focus:** Phase 4 Session 5 — galaxy map (see **Navigation slice** below and **`plan/VOID_RUNNER_Backlog.md`**).
+**Next default engineering focus:** Phase 4 Session 6 — hyperspace drive execution (see **Navigation slice** below and **`plan/VOID_RUNNER_Backlog.md`**).
 
 ---
 
-*Recently shipped:* Session 4 test pass above; seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`**; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs.
+*Recently shipped:* Session 4 test pass above; seeking homing is **`SeekingAbility`** on **`BulletSpec.abilities`**; **`validateWorldFile`** rejects legacy `seeking` / `turnRatio` on bullet specs. **Session 5:** **`GalaxyMapScreen`** (K in flight), full grid, visited dimming, faction cell colours, radiation tint via **`getRadiationIntensityAtCoord`** + sector flags, persisted **`hyperspaceTargetCoord`**, HUD **`HS→x:y`** hint; jump mechanics deferred to Session 6.
 
 ## AI control bus (keypress / pre-neural)
 
@@ -40,8 +40,8 @@ Output layer dimension = `ShipControlFrame`; debounce/threshold to booleans; equ
 
 ## Navigation slice (galaxy + hyperspace)
 
-**Galaxy map screen (Phase 4 Session 5)**  
-Full-sector map: visited state, faction colouring, radiation zone overlay. Hyperspace **target selection** UI (even if jump rules are stubbed until the hyperspace milestone).
+**Galaxy map screen (Phase 4 Session 5)** — *shipped*  
+Full-sector map: visited dimming, faction cell colours, radiation overlay, hyperspace target selection + save (**`GalaxyMapScreen`**, **`WorldState.hyperspaceTargetCoord`**). Hyperspace **jump execution** is Session 6.
 
 **Hyperspace drive (Phase 4 Session 6)**  
 Jump to any **visible** sector on the galaxy map, skipping intermediate sectors. Fuel cost, cooldown between jumps, jump range by drive tier, alignment / jump animation. **Fleet:** all ships align heading before jump; weakest drive limits range (see Fleet section).

@@ -57,6 +57,8 @@ interface PersistedWorldState {
   repLog: RepEvent[];
   pilotName: string;
   playTimeSeconds: number;
+  /** Hyperspace jump target (Session 5 UI; jump rules in Session 6). */
+  hyperspaceTargetCoord?: GridCoord | null;
 }
 
 export interface SaveMetadata {
@@ -296,6 +298,7 @@ export class WorldState {
   private readonly worldFile: WorldFile;
   private currentSectorCoord: GridCoord;
   private visitedSectors: Set<string>;
+  private hyperspaceTargetCoord: GridCoord | null = null;
   private playerShipState: ShipState;
   private factionReputations: Record<string, number>;
   private repLog: RepEvent[] = [];
@@ -1173,15 +1176,40 @@ export class WorldState {
     return Math.sqrt(coord.x ** 2 + coord.y ** 2);
   }
 
-  getRadiationIntensity(): number {
-    const coord = this.currentSectorCoord;
-    const dist = Math.sqrt(coord.x ** 2 + coord.y ** 2);
+  /** Radiation falloff 0…1 by distance from galactic centre (same formula as hull damage zone). */
+  getRadiationIntensityAtCoord(coord: GridCoord): number {
+    const dist = this.getDistanceFromCentre(coord);
     const t = (RADIATION_OUTER_RADIUS - dist) / (RADIATION_OUTER_RADIUS - RADIATION_INNER_RADIUS);
     return Math.pow(Math.max(0, Math.min(1, t)), 2);
   }
 
+  getRadiationIntensity(): number {
+    return this.getRadiationIntensityAtCoord(this.currentSectorCoord);
+  }
+
   isInRadiationZone(): boolean {
     return this.getRadiationIntensity() > 0;
+  }
+
+  isSectorCoordInGalaxyBounds(coord: GridCoord): boolean {
+    const hw = this.getGridWidth() / 2;
+    const hh = this.getGridHeight() / 2;
+    return coord.x >= -hw && coord.x < hw && coord.y >= -hh && coord.y < hh;
+  }
+
+  getHyperspaceTargetCoord(): GridCoord | null {
+    return this.hyperspaceTargetCoord ? { ...this.hyperspaceTargetCoord } : null;
+  }
+
+  setHyperspaceTargetCoord(coord: GridCoord | null): void {
+    if (coord === null) {
+      this.hyperspaceTargetCoord = null;
+      return;
+    }
+    if (!this.isSectorCoordInGalaxyBounds(coord)) {
+      return;
+    }
+    this.hyperspaceTargetCoord = { ...coord };
   }
 
   saveToLocalStorage(): void {
@@ -1192,7 +1220,8 @@ export class WorldState {
       factionReputations: this.factionReputations,
       repLog: this.repLog,
       pilotName: this.pilotName,
-      playTimeSeconds: this.playTimeSeconds
+      playTimeSeconds: this.playTimeSeconds,
+      hyperspaceTargetCoord: this.hyperspaceTargetCoord
     };
     const worldSeed = this.worldFile.metadata.seed;
     localStorage.setItem(`voidrunner_save_${worldSeed}`, JSON.stringify(payload));
@@ -1227,6 +1256,16 @@ export class WorldState {
       state.repLog = Array.isArray(parsed.repLog) ? parsed.repLog.slice(-8) : [];
       state.pilotName = typeof parsed.pilotName === 'string' ? parsed.pilotName : 'Pilot';
       state.playTimeSeconds = Number.isFinite(parsed.playTimeSeconds) ? Math.max(0, parsed.playTimeSeconds) : 0;
+      const ht = parsed.hyperspaceTargetCoord;
+      if (
+        ht &&
+        typeof ht.x === 'number' &&
+        typeof ht.y === 'number' &&
+        Number.isFinite(ht.x) &&
+        Number.isFinite(ht.y)
+      ) {
+        state.setHyperspaceTargetCoord({ x: ht.x, y: ht.y });
+      }
       return state;
     } catch (e) {
       if (e instanceof WorldFileValidationError) {

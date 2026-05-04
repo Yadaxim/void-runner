@@ -333,6 +333,41 @@ describe('headless SectorSimulation', () => {
     vi.unstubAllGlobals();
   });
 
+  it('getRadiationIntensityAtCoord matches current sector intensity', () => {
+    const wf = loadWorld();
+    const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
+    const c = ws.getCurrentSectorCoord();
+    expect(ws.getRadiationIntensityAtCoord(c)).toBe(ws.getRadiationIntensity());
+  });
+
+  it('save → load preserves hyperspace target coord', () => {
+    const store: Record<string, string> = {};
+    const ls = {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
+      removeItem: (k: string) => {
+        delete store[k];
+      },
+      clear: () => {
+        for (const k of Object.keys(store)) delete store[k];
+      },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+      get length() {
+        return Object.keys(store).length;
+      }
+    };
+    vi.stubGlobal('localStorage', ls as Storage);
+    const wf = loadWorld();
+    const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
+    ws.setHyperspaceTargetCoord({ x: 3, y: -2 });
+    ws.saveToLocalStorage();
+    const loaded = WorldState.loadFromLocalStorage(wf);
+    expect(loaded?.getHyperspaceTargetCoord()).toEqual({ x: 3, y: -2 });
+    vi.unstubAllGlobals();
+  });
+
   it('sector edge crossing updates coord and position for all 4 directions', () => {
     const wf = loadWorld();
     const start = { x: 5, y: 5 };

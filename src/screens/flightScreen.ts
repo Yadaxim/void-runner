@@ -25,6 +25,7 @@ import {
   TAKEOFF_VELOCITY
 } from '../constants';
 import { LandableScreen } from './landableScreen';
+import { GalaxyMapScreen } from './galaxyMapScreen';
 import { InsuranceScreen, type InsuranceChoice } from './insuranceScreen';
 import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEdge } from '../sim/sectorNav';
 import { ScreenManager, type Screen } from './screenManager';
@@ -260,6 +261,11 @@ export class FlightScreen implements Screen {
       this.insuranceScreen.update(dt);
       return;
     }
+    const galaxyTop = this.screenManager.top();
+    if (galaxyTop instanceof GalaxyMapScreen) {
+      galaxyTop.update(dt);
+      return;
+    }
     if (this.destructionPending) {
       this.pendingInsuranceSeconds = Math.max(0, this.pendingInsuranceSeconds - dt);
       if (this.pendingInsuranceSeconds <= 0) {
@@ -334,6 +340,9 @@ export class FlightScreen implements Screen {
     if (targetInputs.toggleMissionsPanel) {
       this.missionsPanelExpanded = !this.missionsPanelExpanded;
     }
+    if (targetInputs.toggleGalaxyMap && !(this.screenManager.top() instanceof GalaxyMapScreen)) {
+      this.screenManager.push(new GalaxyMapScreen(this.canvas, this.worldState, this.screenManager));
+    }
     this.sectorSimulation?.getWeaponSystem().update(
       dt,
       this.playerShip.state,
@@ -403,6 +412,10 @@ export class FlightScreen implements Screen {
       canvasHeight: this.canvas.height
     };
 
+    const galaxyOverlay = this.screenManager.top();
+    if (galaxyOverlay instanceof GalaxyMapScreen) {
+      galaxyOverlay.render(this.ctx);
+    } else {
     this.pipeline.render({
       playerShip: this.playerShip,
       otherShips: this.sectorSimulation?.getNPCShips() ?? [],
@@ -427,6 +440,7 @@ export class FlightScreen implements Screen {
         return `RULE ${row.factionId.slice(0, 5)} ${row.behaviourType.slice(0, 4)} ${row.currentCount}/${row.maxPresent} t:${next}s`;
       })
     });
+    }
     this.landableScreen?.render(this.ctx);
     this.insuranceScreen?.render(this.ctx);
     if (this.isPaused) {
@@ -505,6 +519,7 @@ export class FlightScreen implements Screen {
       'Q: linear auto-brake, E: rotation auto-brake',
       'L: land when landing prompt appears',
       'M: toggle active missions panel',
+      'K: galaxy map (hyperspace target)',
       'Tab: cycle ship target, G: cycle landable target',
       'Z/X/C/V/B: fire weapon groups',
       'Esc: pause'

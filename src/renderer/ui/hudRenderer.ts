@@ -73,7 +73,11 @@ export class HudRenderer {
     const reactorMax = worldState.getMaxJoules();
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
     const creditsText = `CR: ${credits.toString()}`;
-    const sectorText = `SEC ${sectorCoord.x}:${sectorCoord.y}`;
+    const hs = worldState.getHyperspaceTargetCoord();
+    const sectorText =
+      hs === null
+        ? `SEC ${sectorCoord.x}:${sectorCoord.y}`
+        : `SEC ${sectorCoord.x}:${sectorCoord.y}  HS→${hs.x}:${hs.y}`;
     // Draw target strips before HUD chrome so expanded HUD remains on top.
     this.renderTargets(shipTarget, landableTarget);
     this.renderShipTelemetryPanel({
@@ -320,7 +324,11 @@ export class HudRenderer {
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'top';
     this.ctx.fillStyle = COLOURS.UI_SECONDARY;
-    this.ctx.fillText(config.sectorText, panelX + panelWidth / 2, headerY);
+    this.ctx.fillText(
+      fitTextToWidth(this.ctx, config.sectorText, panelWidth - 100),
+      panelX + panelWidth / 2,
+      headerY
+    );
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.fillText(config.creditsText, panelX + panelWidth - 8, headerY);
