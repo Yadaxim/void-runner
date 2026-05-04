@@ -1020,13 +1020,21 @@ export class FlightScreen implements Screen {
     }
     const dir = assist.jumpDir;
     const newFuel = ship.fuel - drive.fuelCostPerJump;
+    /** Matches `Vector2.fromAngle`: forward = (sin θ, −cos θ) ⇒ θ = atan2(fx, −fy). */
+    const jumpAngle = Math.atan2(dir.x, -dir.y);
     this.playerShip.state = {
       ...ship,
       fuel: newFuel,
+      angle: jumpAngle,
       velocity: Vector2.zero(),
       angularVelocity: 0
     };
-    this.worldState.updatePlayerShipState({ fuel: newFuel, velocity: Vector2.zero(), angularVelocity: 0 });
+    this.worldState.updatePlayerShipState({
+      fuel: newFuel,
+      angle: jumpAngle,
+      velocity: Vector2.zero(),
+      angularVelocity: 0
+    });
     this.hyperspaceJump = {
       phase: 'out',
       elapsed: 0,
