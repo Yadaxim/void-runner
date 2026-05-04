@@ -340,6 +340,17 @@ describe('headless SectorSimulation', () => {
     expect(ws.getRadiationIntensityAtCoord(c)).toBe(ws.getRadiationIntensity());
   });
 
+  it('armHyperspaceCooldownFromEquippedDrive uses equipped drive cooldown seconds', () => {
+    const wf = loadWorld();
+    const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
+    ws.updatePlayerShipState(buildStarterShipState(ws));
+    const drive = ws.getPlayerHyperspaceDrive();
+    expect(drive).not.toBeNull();
+    ws.addPlayTime(50);
+    ws.armHyperspaceCooldownFromEquippedDrive();
+    expect(ws.getHyperspaceCooldownRemainingSeconds()).toBeCloseTo(drive!.cooldown, 5);
+  });
+
   it('save → load preserves hyperspace cooldown until play time', () => {
     const store: Record<string, string> = {};
     const ls = {

@@ -65,7 +65,6 @@ export class FlightScreen implements Screen {
     inDuration: number;
     dir: Vector2;
     landingCoord: { x: number; y: number };
-    cooldownSeconds: number;
   } | null = null;
   private flightBannerUntilMs = 0;
   private flightBannerText = '';
@@ -1041,8 +1040,7 @@ export class FlightScreen implements Screen {
       outDuration: HYPERSPACE_JUMP_OUT_SECONDS,
       inDuration: HYPERSPACE_JUMP_IN_SECONDS,
       dir,
-      landingCoord: { ...landing },
-      cooldownSeconds: drive.cooldown
+      landingCoord: { ...landing }
     };
   }
 
@@ -1119,7 +1117,7 @@ export class FlightScreen implements Screen {
       velocity: Vector2.zero(),
       angularVelocity: 0
     });
-    this.worldState.armHyperspaceCooldown(j.cooldownSeconds);
+    this.worldState.armHyperspaceCooldownFromEquippedDrive();
     this.hyperspaceJump = null;
     this.worldState.saveToLocalStorage();
   }

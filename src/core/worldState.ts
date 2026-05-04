@@ -1308,6 +1308,15 @@ export class WorldState {
     this.hyperspaceCooldownUntilPlayTime = this.playTimeSeconds + add;
   }
 
+  /** Applies jump cooldown from the **equipped** hyperspace drive’s `cooldown` field; no-op if none. */
+  armHyperspaceCooldownFromEquippedDrive(): void {
+    const drive = this.getPlayerHyperspaceDrive();
+    if (!drive) {
+      return;
+    }
+    this.armHyperspaceCooldown(drive.cooldown);
+  }
+
   private applyLoadedHyperspaceCooldown(t: number): void {
     this.hyperspaceCooldownUntilPlayTime = Math.max(0, t);
   }

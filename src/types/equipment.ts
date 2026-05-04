@@ -98,6 +98,7 @@ export interface HyperspaceDriveItem extends BaseEquipment {
   type: 'hyperspaceDrive';
   jumpRange: number;
   fuelCostPerJump: number;
+  /** Seconds of career play time before another hyperspace jump is allowed (per drive). */
   cooldown: number;
 }
 
