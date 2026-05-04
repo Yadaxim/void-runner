@@ -10,7 +10,7 @@ Path: **`plan/CONSTANTS_BALANCE_TREE.md`**
 
 Work top to bottom; each step assumes the ones above are settled. Sub-bullets are world JSON unless labelled `constants`.
 
-- [ ] **1. Sector scale** — `SECTOR_SIZE`, `SECTOR_EDGE_THRESHOLD` (`constants`; edge threshold = 1% of size)
+- [x] **1. Sector scale** — `SECTOR_SIZE`, `SECTOR_EDGE_THRESHOLD` (`constants`; edge threshold = 1% of size) — **done** (unified `SECTOR_SIZE`, world landable positions aligned).
 - [ ] **2. Gravity** — `GRAVITY_CONSTANT`, `MIN_GRAVITY_DISTANCE` (`constants`); landable **`mass`** tiers (world)
 - [ ] **3. Landing / jump / pad UX** — `LANDING_SPEED_THRESHOLD`, `HYPERSPACE_MAX_SPEED` (tied), `TAKEOFF_VELOCITY`, `HYPERSPACE_ALIGN_MAX_ANGLE_RAD`, `LANDING_RADIUS_MULTIPLIER` (`constants`); landable **`radius`** (world)
 - [ ] **4. Hull speed clamps** — `HullSpec.topSpeed`, `topAngularSpeed` per archetype (world)
