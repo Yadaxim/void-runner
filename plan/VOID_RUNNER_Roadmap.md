@@ -43,8 +43,8 @@ Output layer dimension = `ShipControlFrame`; debounce/threshold to booleans; equ
 **Galaxy map screen (Phase 4 Session 5)** — *shipped*  
 Full-sector map: visited dimming, faction cell colours, radiation overlay, hyperspace target selection + save (**`GalaxyMapScreen`**, **`WorldState.hyperspaceTargetCoord`**). Hyperspace **jump execution** is Session 6.
 
-**Galaxy map — UI polish (queued)**  
-Square grid cells, visited + landable density (dots in cell), clearer legend for current/cursor/target coords, right-hand **sector summary** pane for selection, hyperspace target surfaced next to ship/landable targets in flight HUD. Checklist: **`plan/VOID_RUNNER_Backlog.md`** → *Galaxy map — UI polish*.
+**Galaxy map — UI polish** — *shipped*  
+Square grid cells (centered in map slot), visited empty vs visited-with-ports + interior dots, legend lines for you/cursor/target, lower-right **sector summary** for cursor selection, third **hyperspace** row in flight target strip (**`HudRenderer`**).
 
 **Hyperspace drive (Phase 4 Session 6)**  
 Jump to any **visible** sector on the galaxy map, skipping intermediate sectors. Fuel cost, cooldown between jumps, jump range by drive tier, alignment / jump animation. **Fleet:** all ships align heading before jump; weakest drive limits range (see Fleet section).

@@ -73,13 +73,10 @@ export class HudRenderer {
     const reactorMax = worldState.getMaxJoules();
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
     const creditsText = `CR: ${credits.toString()}`;
-    const hs = worldState.getHyperspaceTargetCoord();
-    const sectorText =
-      hs === null
-        ? `SEC ${sectorCoord.x}:${sectorCoord.y}`
-        : `SEC ${sectorCoord.x}:${sectorCoord.y}  HS→${hs.x}:${hs.y}`;
+    const sectorText = `SEC ${sectorCoord.x}:${sectorCoord.y}`;
+    const hyperspaceCoord = worldState.getHyperspaceTargetCoord();
     // Draw target strips before HUD chrome so expanded HUD remains on top.
-    this.renderTargets(shipTarget, landableTarget);
+    this.renderTargets(shipTarget, landableTarget, hyperspaceCoord);
     this.renderShipTelemetryPanel({
       speed,
       sectorText,
@@ -573,7 +570,8 @@ export class HudRenderer {
 
   private renderTargets(
     shipTarget: { name: string; hpRatio: number; hostility: 'none' | 'toPlayer' | 'toOther' } | null,
-    landableTarget: { name: string } | null
+    landableTarget: { name: string } | null,
+    hyperspaceCoord: GridCoord | null
   ): void {
     const leftMargin = 12;
     const hudPanelY = 12;
@@ -586,6 +584,7 @@ export class HudRenderer {
     const centerX = boxX + boxWidth / 2;
     const shipBoxY = topY;
     const landBoxY = shipBoxY + boxHeight + gap;
+    const hsBoxY = landBoxY + boxHeight + gap;
     this.ctx.save();
     this.ctx.font = "11px 'Courier New', monospace";
     this.ctx.textAlign = 'center';
@@ -600,6 +599,10 @@ export class HudRenderer {
     this.ctx.stroke();
     this.ctx.beginPath();
     this.ctx.roundRect(boxX, landBoxY, boxWidth, boxHeight, 6);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.beginPath();
+    this.ctx.roundRect(boxX, hsBoxY, boxWidth, boxHeight, 6);
     this.ctx.fill();
     this.ctx.stroke();
 
@@ -634,6 +637,12 @@ export class HudRenderer {
     const landLine = landableTarget ? landableTarget.name : 'NO LAND TARGET';
     this.ctx.fillStyle = landableTarget ? COLOURS.UI_PRIMARY : COLOURS.UI_SECONDARY;
     this.ctx.fillText(landLine, centerX, landBoxY + boxHeight / 2);
+
+    const hsLine = hyperspaceCoord
+      ? `HS TARGET  ${hyperspaceCoord.x} : ${hyperspaceCoord.y}`
+      : 'NO HYPERSPACE TARGET';
+    this.ctx.fillStyle = hyperspaceCoord ? COLOURS.WARNING : COLOURS.UI_SECONDARY;
+    this.ctx.fillText(hsLine, centerX, hsBoxY + boxHeight / 2);
     this.ctx.restore();
   }
 

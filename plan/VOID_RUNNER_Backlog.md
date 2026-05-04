@@ -27,15 +27,15 @@ From roadmap **Navigation slice** and context **Session 5**.
 
 ---
 
-## Galaxy map — UI polish (next)
+## Galaxy map — UI polish (complete)
 
-Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Implement in **`GalaxyMapScreen`** / **`HudRenderer`** / target strip as noted; order is suggestion only.
+Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Shipped in **`GalaxyMapScreen`** / **`HudRenderer`**.
 
-- [ ] **Square cells** — keep sector tiles square (letterbox or pad the map region so grid cells are not stretched rectangles).  
-- [ ] **Visited + landables** — when visited, visually separate sectors **with** vs **without** landables; optional **per-landable dots** inside the cell so corridor density reads at a glance.  
-- [ ] **Legend: current / cursor / target** — show **current sector**, **cursor**, and **hyperspace target** coordinates explicitly in the legend (not only outlines on the grid).  
-- [ ] **Right pane: sector summary** — for the **selected** (cursor) sector, show a short summary: coordinates, controlling faction, list of **landable names** (scroll if needed).  
-- [ ] **Flight HUD: hyperspace near targets** — show hyperspace target alongside **ship target** and **landable target** in the main flight UI (target strip / HUD), not only in the sector telemetry line.  
+- [x] **Square cells** — keep sector tiles square (letterbox or pad the map region so grid cells are not stretched rectangles).  
+- [x] **Visited + landables** — when visited, visually separate sectors **with** vs **without** landables; optional **per-landable dots** inside the cell so corridor density reads at a glance.  
+- [x] **Legend: current / cursor / target** — show **current sector**, **cursor**, and **hyperspace target** coordinates explicitly in the legend (not only outlines on the grid).  
+- [x] **Right pane: sector summary** — for the **selected** (cursor) sector, show a short summary: coordinates, controlling faction, list of **landable names** (scroll if needed).  
+- [x] **Flight HUD: hyperspace near targets** — show hyperspace target alongside **ship target** and **landable target** in the main flight UI (target strip / HUD), not only in the sector telemetry line.  
 
 ---
 
