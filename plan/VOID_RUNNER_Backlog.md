@@ -65,10 +65,10 @@ Roadmap steps A–E; aligns with context **AI / control bus**.
 - [x] **Step A —** Canonical **`ShipControlFrame`** (or rename **`NPCInputs`**); **`NPCController.update`** return type; **`FlightScreen`** maps keys → same struct  
 - [x] **Step B —** **`applyShipControlFrame(ship, frame, worldState, dt)`** for player and NPC paths  
 - [x] **Step C —** **`Pilot` / `getControlFrame`**: **`HumanPilot`**, **`ScriptedNPCPilot`** (wraps NPC controller); stub path for future **`NeuralPilot`**  
-- [ ] **Step D —** Record/replay: ring buffer or export **`(timestamp, frame[, sensor])`**; headless replay for determinism / datasets  
-- [ ] **Step E —** Neural adapter: output dim = control frame; threshold to booleans; loadout staleness; training simulator uses same frame format  
+- [x] **Step D —** Record/replay: ring buffer or export **`(timestamp, frame[, sensor])`**; headless replay for determinism / datasets  
+- [x] **Step E —** Neural adapter: output dim = control frame; threshold to booleans; loadout staleness; training simulator uses same frame format  
 
-*Partial toward Step D:* **`ControlFrameRecorder`** + **`replayControlFramesHeadless`** stub in **`src/simulation/controlFrameRecorder.ts`** (not wired to flight loop yet).
+*Steps D–E shipped:* **D** — recording + sensor + headless replay; **E** — **`shipControlNeural.ts`** (`encode` / `decode`, **`OUTPUT_VECTOR_SIZE` 11**), **`NeuralPilot`**, **`NEURAL_LOADOUT_STALE_SECONDS`**, **`trainingLabelsFromRecording`** (re-exported from `controlFrameReplay.ts` for dataset pipelines).
 
 ---
 
@@ -164,6 +164,63 @@ From roadmap; **not** backlog tasks — do not implement unless design explicitl
 - NPC fleets (until fleet tech)  
 - Reputation decay (unless design revisits)  
 - Energy/void exotic **content** (types exist; content when balancing needs it)  
+
+---
+
+## Parked ideas (from idea backlog)
+
+These are intentionally not active checklist items. Promote them when trigger conditions are met.
+
+### Combat and ship systems
+
+- Creature ecology (predator/prey shifts based on player impact) — pull in after wildlife factions + stable disposition behavior.
+- Pre-trained AI cards as loot — pull in after neural AI (Phase 8) stabilizes.
+- Energy weapons as primary equipment (laser/plasma families) — pull in when equipment variety feels thin.
+- Anti-matter and dark-matter weapons — pull in when armor archetypes need stronger counters.
+- Voidtype weapons as ruin/shimmer rewards — pull in with ruins expansion.
+- Equipment-only inventory locker — pull in with fleet ownership friction.
+- Active mission expiry — pull in once in-game clock/time pressure is desired.
+- Reputation decay — pull in only if high-rep gameplay becomes static.
+
+### World and worldgen
+
+- Faction language/glyph generation — pull in when ruins have deeper lore artifacts.
+- Cultural drift over time — pull in for long-lived persistent worlds.
+- Trade economy depth pass — pull in when economy needs stronger sinks/loops.
+- Player-editable post-generation worlds — pull in when tuning generated worlds beats rerolling.
+- LLM response caching by seed/step/input hash — pull in as soon as generator iteration cost matters.
+- Shared-seed world discovery loops — pull in with world sharing UX.
+- Multi-shape composite galaxies — pull in if shape variety feels limited.
+- Faction projects requiring player participation to complete — pull in with faction-project tuning.
+- Procedural hull aesthetics by tech archetype — pull in during art/style refresh.
+
+### UI and UX
+
+- Settings screen (time rate, bindings, audio, text size) — pull in during polish.
+- Save format versioning + migration — pull in at first breaking schema evolution.
+- Photo mode — pull in once visuals become showcase-ready.
+- Codex/encyclopedia (species/factions/equipment/ruins discovery) — pull in with ruins/lore accumulation.
+- Tutorial/onboarding — pull in before external player testing.
+- Accessibility pass (palette, keyboard alternatives, scaling, reader hints) — pull in during polish.
+
+### Tech debt and infra
+
+- Coverage reporting gates in CI — pull in when suite stability is high.
+- E2E tests (Playwright) — pull in when unit/integration misses become frequent.
+- Simulation performance profiling — pull in with fleet/busy-sector stress.
+- Renderer optimization (culling, caching, dirty-rect) — pull in if profiling shows render bottlenecks.
+- Build pipeline hardening (prod builds/deploy targets) — pull in when distributing beyond local dev.
+
+### Far future / blue sky
+
+- VR support
+- Mobile touch controls
+- Procedural music generation by sector/faction
+- NPC voice lines (TTS)
+- Mod kits for worldgen prompts
+- Shared persistent world state across players (still not real-time multiplayer)
+- Roguelike mode with permadeath and meta progression
+- Offline-batched LLM faction comms/events (explicitly not during gameplay runtime)
 
 ---
 
