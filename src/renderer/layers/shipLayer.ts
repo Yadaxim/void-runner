@@ -9,6 +9,7 @@ import type { BurnEffect } from '../../simulation/weaponSystem';
 function renderHintForHullName(name: string | undefined): string | undefined {
   if (!name) return undefined;
   const n = name.toLowerCase();
+  if (n.includes('shuttle')) return 'shuttle';
   if (n.includes('interceptor')) return 'interceptor';
   if (n.includes('dogfighter')) return 'dogfighter';
   if (n.includes('courier')) return 'courier';

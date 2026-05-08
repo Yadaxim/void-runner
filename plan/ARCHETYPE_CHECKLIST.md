@@ -16,7 +16,7 @@ Keep entries descriptive first, then attach numeric ranges as each archetype is 
 ## Combat archetypes
 
 - [x] **Interceptor** — very fast, high agility, fragile, short-range strike craft; low sustain and tight equipment budget. *(Baseline closed **2026-05** — see Notes.)*
-- [x] **Dogfighter** — balanced frontline combat baseline; good agility, moderate survivability, versatile weapon fit.
+- [ ] **Dogfighter** — balanced frontline combat baseline; good agility, moderate survivability, versatile weapon fit.
 - [ ] **Heavy Fighter** — slower but tougher fighter with stronger payload and higher survivability focus.
 - [ ] **Strike Bomber** — missile/torpedo-forward attacker designed for high burst on large or defended targets.
 - [ ] **Gunship** — low agility platform with sustained firepower and durable frame for prolonged engagements.

@@ -77,10 +77,12 @@ export class HudRenderer {
     const creditsText = `CR: ${credits.toString()}`;
     const sectorText = `SEC ${sectorCoord.x}:${sectorCoord.y}`;
     const hyperspaceCoord = worldState.getHyperspaceTargetCoord();
+    const speedGaugeMax = Math.max(1, Math.round(playerShip.getTopSpeed(worldState)));
     // Draw target strips before HUD chrome so expanded HUD remains on top.
     this.renderTargets(shipTarget, landableTarget, hyperspaceCoord);
     this.renderShipTelemetryPanel({
       speed,
+      speedGaugeMax,
       sectorText,
       fuelCurrent,
       fuelMax,
@@ -377,6 +379,8 @@ export class HudRenderer {
 
   private renderShipTelemetryPanel(config: {
     speed: number;
+    /** Hull top speed (same basis as simulation clamp); needle full scale at this value. */
+    speedGaugeMax: number;
     sectorText: string;
     fuelCurrent: number;
     fuelMax: number;
@@ -408,7 +412,7 @@ export class HudRenderer {
     const panelWidth = 330;
     const panelHeight = 228;
     const headerY = panelY + 8;
-    const speedGaugeMax = Math.max(LANDING_SPEED_THRESHOLD * 4, 400);
+    const speedGaugeMax = Math.max(1, config.speedGaugeMax);
     const speedRatio = Math.max(0, Math.min(1, config.speed / speedGaugeMax));
     const fuelRatio = Math.max(0, Math.min(1, config.fuelMax > 0 ? config.fuelCurrent / config.fuelMax : 0));
     const speedColour = config.speed > LANDING_SPEED_THRESHOLD ? COLOURS.WARNING : COLOURS.SAFE;
@@ -445,7 +449,7 @@ export class HudRenderer {
       accent: speedColour,
       label: 'SPEED',
       value: config.speed.toString().padStart(3, '0'),
-      subvalue: `SAFE <= ${LANDING_SPEED_THRESHOLD}`
+      subvalue: `MAX ${speedGaugeMax}`
     });
     this.renderGauge({
       centerX: panelX + 194,

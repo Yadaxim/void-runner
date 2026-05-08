@@ -48,6 +48,27 @@ function traceInterceptorPath(
   ctx.closePath();
 }
 
+function traceShuttlePath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  dimensions: { length: number; width: number },
+): void {
+  const halfLength = dimensions.length / 2;
+  const halfWidth = dimensions.width / 2;
+  ctx.beginPath();
+  // Blunt commuter pod: wide mid-body, clipped nose, squared stern with side pods (not a fighter dart).
+  ctx.moveTo(0, -halfLength * 0.52);
+  ctx.lineTo(halfWidth * 0.88, -halfLength * 0.22);
+  ctx.lineTo(halfWidth, halfLength * 0.28);
+  ctx.lineTo(halfWidth * 0.72, halfLength * 0.62);
+  ctx.lineTo(halfWidth * 0.42, halfLength);
+  ctx.lineTo(0, halfLength * 0.88);
+  ctx.lineTo(-halfWidth * 0.42, halfLength);
+  ctx.lineTo(-halfWidth * 0.72, halfLength * 0.62);
+  ctx.lineTo(-halfWidth, halfLength * 0.28);
+  ctx.lineTo(-halfWidth * 0.88, -halfLength * 0.22);
+  ctx.closePath();
+}
+
 function traceCourierPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   dimensions: { length: number; width: number }
@@ -92,6 +113,10 @@ export function traceHullPath(
   renderHint?: string
 ): void {
   if (hullClass === 'fighter') {
+    if (renderHint === 'shuttle') {
+      traceShuttlePath(ctx, dimensions);
+      return;
+    }
     if (renderHint === 'interceptor') {
       traceInterceptorPath(ctx, dimensions);
       return;

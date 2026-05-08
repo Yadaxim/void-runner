@@ -297,6 +297,124 @@
           }
         ]
       }
+    },
+    {
+      "id": "shuttle_mk1",
+      "name": "Shuttle Mk I",
+      "description": "Small civilian runabout. Modest thrust and a tight equipment bay, but enough cargo space for local freight and ferry work\u2014think Escape Velocity starter hauler, not a dogfighter.",
+      "hullClass": "fighter",
+      "hullMass": 20,
+      "cargoCapacity": 15,
+      "equipmentCapacity": 32,
+      "topSpeed": 110,
+      "topAngularSpeed": 1.35,
+      "baseHP": 100,
+      "weaponSlots": 1,
+      "slotCounts": {
+        "thruster_forward": 1,
+        "thruster_rotate": 1,
+        "weapon": 1,
+        "armour": 0,
+        "autoBrake": 1,
+        "fuelTank": 1,
+        "reactor": 1,
+        "shield": 1,
+        "hyperspaceDrive": 0
+      },
+      "price": 9500,
+      "sellValue": 5700,
+      "defaultLoadouts": {
+        "raw": [
+          {
+            "slotType": "autoBrake",
+            "itemId": null
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_xs"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_civilian"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_civilian"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": null
+          }
+        ],
+        "basic": [
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_xs"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_civilian"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_civilian"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
+          }
+        ],
+        "advanced": [
+          {
+            "slotType": "autoBrake",
+            "itemId": "auto_brake_t1"
+          },
+          {
+            "slotType": "fuelTank",
+            "itemId": "fuel_tank_s"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
+          },
+          {
+            "slotType": "thruster_forward",
+            "itemId": "fwd_thruster_civilian"
+          },
+          {
+            "slotType": "thruster_rotate",
+            "itemId": "rot_thruster_civilian"
+          },
+          {
+            "slotType": "weapon",
+            "itemId": "seeker_launcher_t1"
+          }
+        ]
+      }
     }
   ],
   "bulletSpecs": [
@@ -388,6 +506,20 @@
       "mountPosition": "rear"
     },
     {
+      "id": "fwd_thruster_civilian",
+      "type": "thruster",
+      "name": "Forward Thruster (Civilian)",
+      "description": "Low-output main drive for small shuttles and work craft. Cheaper to run than military-spec units, with less forward push.",
+      "mass": 2,
+      "tier": 1,
+      "price": 200,
+      "factionAffinity": "federation",
+      "slotType": "thruster_forward",
+      "force": 4000,
+      "energyPerSecond": 0,
+      "mountPosition": "rear"
+    },
+    {
       "id": "fwd_thruster_heavy",
       "type": "thruster",
       "name": "Forward Thruster (Heavy)",
@@ -440,6 +572,20 @@
       "factionAffinity": "federation",
       "slotType": "thruster_rotate",
       "force": 260,
+      "energyPerSecond": 0,
+      "mountPosition": "forward"
+    },
+    {
+      "id": "rot_thruster_civilian",
+      "type": "thruster",
+      "name": "Rotation Thruster (Civilian)",
+      "description": "Modest reaction control for light civilian hulls. Slower to snap than fighter RCS, with a little more mass on the frame.",
+      "mass": 2,
+      "tier": 1,
+      "price": 90,
+      "factionAffinity": "federation",
+      "slotType": "thruster_rotate",
+      "force": 80,
       "energyPerSecond": 0,
       "mountPosition": "forward"
     },
@@ -746,12 +892,8 @@
       "y": 5
     },
     "credits": 50000,
-    "hullSpecId": "interceptor_mk1",
+    "hullSpecId": "shuttle_mk1",
     "equipmentSlots": [
-      {
-        "slotType": "armour",
-        "itemId": "heavy_plating_t1"
-      },
       {
         "slotType": "autoBrake",
         "itemId": "auto_brake_t1"
@@ -770,19 +912,15 @@
       },
       {
         "slotType": "thruster_forward",
-        "itemId": "fwd_thruster_standard"
+        "itemId": "fwd_thruster_civilian"
       },
       {
         "slotType": "thruster_rotate",
-        "itemId": "rot_thruster_fighter"
+        "itemId": "rot_thruster_civilian"
       },
       {
         "slotType": "weapon",
         "itemId": "seeker_launcher_t1"
-      },
-      {
-        "slotType": "weapon",
-        "itemId": "pulse_cannon_t1"
       }
     ]
   },
@@ -1037,6 +1175,54 @@
             45,
             90
           ]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "trade",
+          "hullSpecId": "shuttle_mk1",
+          "loadoutVariant": "basic",
+          "countRange": [
+            1,
+            2
+          ],
+          "minPresent": 1,
+          "maxPresent": 4,
+          "arrivalIntervalRange": [
+            22,
+            44
+          ]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "transit",
+          "hullSpecId": "shuttle_mk1",
+          "loadoutVariant": "raw",
+          "countRange": [
+            0,
+            2
+          ],
+          "minPresent": 0,
+          "maxPresent": 3,
+          "arrivalIntervalRange": [
+            28,
+            52
+          ]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "transit",
+          "hullSpecId": "shuttle_mk1",
+          "loadoutVariant": "advanced",
+          "countRange": [
+            0,
+            1
+          ],
+          "minPresent": 0,
+          "maxPresent": 2,
+          "arrivalIntervalRange": [
+            35,
+            65
+          ]
         }
       ],
       "inRadiationZone": false,
@@ -1145,7 +1331,10 @@
             "listingIds": [
               "sy_interceptor_mk1_raw",
               "sy_interceptor_mk1_basic",
-              "sy_interceptor_mk1_advanced"
+              "sy_interceptor_mk1_advanced",
+              "sy_shuttle_mk1_raw",
+              "sy_shuttle_mk1_basic",
+              "sy_shuttle_mk1_advanced"
             ]
           }
         }
@@ -2212,6 +2401,117 @@
       "price": 21740,
       "name": "Interceptor \u2014 Advanced",
       "description": "advanced factory fit for Interceptor Mk I."
+    },
+    {
+      "id": "sy_shuttle_mk1_raw",
+      "hullSpecId": "shuttle_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "autoBrake",
+          "itemId": null
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_xs"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_civilian"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_civilian"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
+        }
+      ],
+      "price": 10640,
+      "name": "Shuttle \u2014 Raw",
+      "description": "raw factory fit for Shuttle Mk I."
+    },
+    {
+      "id": "sy_shuttle_mk1_basic",
+      "hullSpecId": "shuttle_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_xs"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_civilian"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_civilian"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
+        }
+      ],
+      "price": 12240,
+      "name": "Shuttle \u2014 Basic",
+      "description": "basic factory fit for Shuttle Mk I."
+    },
+    {
+      "id": "sy_shuttle_mk1_advanced",
+      "hullSpecId": "shuttle_mk1",
+      "equipmentSlots": [
+        {
+          "slotType": "autoBrake",
+          "itemId": "auto_brake_t1"
+        },
+        {
+          "slotType": "fuelTank",
+          "itemId": "fuel_tank_s"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
+        },
+        {
+          "slotType": "thruster_forward",
+          "itemId": "fwd_thruster_civilian"
+        },
+        {
+          "slotType": "thruster_rotate",
+          "itemId": "rot_thruster_civilian"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "seeker_launcher_t1"
+        }
+      ],
+      "price": 13840,
+      "name": "Shuttle \u2014 Advanced",
+      "description": "advanced factory fit for Shuttle Mk I."
     }
   ]
 }
