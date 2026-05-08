@@ -29,6 +29,25 @@ function traceFighterPath(
   ctx.closePath();
 }
 
+function traceInterceptorPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  dimensions: { length: number; width: number },
+): void {
+  const halfLength = dimensions.length / 2;
+  const halfWidth = dimensions.width / 2;
+  ctx.beginPath();
+  // Narrow dart profile: long nose, slim body, swept tail fins.
+  ctx.moveTo(0, -halfLength);
+  ctx.lineTo(halfWidth * 0.45, -halfLength * 0.18);
+  ctx.lineTo(halfWidth * 0.55, halfLength * 0.5);
+  ctx.lineTo(halfWidth * 0.25, halfLength * 0.95);
+  ctx.lineTo(0, halfLength * 0.7);
+  ctx.lineTo(-halfWidth * 0.25, halfLength * 0.95);
+  ctx.lineTo(-halfWidth * 0.55, halfLength * 0.5);
+  ctx.lineTo(-halfWidth * 0.45, -halfLength * 0.18);
+  ctx.closePath();
+}
+
 function traceCourierPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   dimensions: { length: number; width: number }
@@ -69,9 +88,14 @@ function traceFreighterPath(
 export function traceHullPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   hullClass: HullClass,
-  dimensions: { length: number; width: number }
+  dimensions: { length: number; width: number },
+  renderHint?: string
 ): void {
   if (hullClass === 'fighter') {
+    if (renderHint === 'interceptor') {
+      traceInterceptorPath(ctx, dimensions);
+      return;
+    }
     traceFighterPath(ctx, dimensions);
     return;
   }

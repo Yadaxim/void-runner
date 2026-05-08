@@ -3,6 +3,7 @@
 This document maps how values in `src/constants.ts` depend on each other (in code or in gameplay), how they interact with **world data** (`HullSpec`, equipment items, landables, bullets), and a practical order for tuning. It is aimed at ship/equipment balancing and giving the world generator sane defaults per ship type.
 
 Path: **`plan/CONSTANTS_BALANCE_TREE.md`**
+Related archetype tracker: **`plan/ARCHETYPE_CHECKLIST.md`**
 
 ---
 
@@ -12,9 +13,9 @@ Work top to bottom; each step assumes the ones above are settled. Sub-bullets ar
 
 - [x] **1. Sector scale** — `SECTOR_SIZE`, `SECTOR_EDGE_THRESHOLD` (`constants`; edge threshold = 1% of size) — **done** (unified `SECTOR_SIZE`, world landable positions aligned).
 - [ ] **2. Gravity** — `GRAVITY_CONSTANT`, `MIN_GRAVITY_DISTANCE` (`constants`); landable **`mass`** tiers (world)
-- [ ] **3. Landing / jump / pad UX** — `LANDING_SPEED_THRESHOLD`, `HYPERSPACE_MAX_SPEED` (tied), `TAKEOFF_VELOCITY`, `HYPERSPACE_ALIGN_MAX_ANGLE_RAD`, `LANDING_RADIUS_MULTIPLIER` (`constants`); landable **`radius`** (world)
+- [x] **3. Landing / jump / pad UX** — `LANDING_SPEED_THRESHOLD`, `HYPERSPACE_MAX_SPEED` (tied), `TAKEOFF_SPEED_FRACTION` × hull `topSpeed`, `HYPERSPACE_ALIGN_MAX_ANGLE_RAD`, `LANDING_RADIUS_MULTIPLIER` (`constants`); landable **`radius`** (world) — **done**
 - [ ] **4. Hull speed clamps** — `HullSpec.topSpeed`, `topAngularSpeed` per archetype (world)
-- [ ] **5. Mass, thrust, capacity** — `hullMass`, thruster **`force`**, **`equipmentCapacity`**, **`cargoCapacity`**; verify **`raw` / `basic` / `advanced`** loadouts under capacity (world); iterate per hull class before global nudges
+- [ ] **5. Mass, thrust, capacity** — `hullMass`, thruster **`force`**, **`equipmentCapacity`**, **`cargoCapacity`**; verify **`raw` / `basic` / `advanced`** loadouts under capacity (world); iterate per hull class before global nudges — **anchor:** `interceptor_mk1` advanced fit at **`equipmentCapacity`** (see §6.1.1)
 - [ ] **6. Fuel loop** — `FUEL_USE_LINEAR_THRUSTER_PER_SECOND`, `FUEL_USE_ROTATION_THRUSTER_PER_SECOND`, `FUEL_CAPACITY_DEFAULT` (`constants`); fuel tank items and starter fuel (world)
 - [ ] **7. Combat pacing** — bullet specs (damage, mass, speed), `baseHP`, armour/shield items (world); `BULLET_MOMENTUM_TRANSFER_SCALE`, `BULLET_MAX_IMPACT_DELTA_V`, `HULL_DIMENSIONS` if hitbox feel matters (`constants`)
 - [ ] **8. NPC behaviour** — transit/patrol/combat ranges, loiter timers, `NPC_ARRIVAL_SPEED_MIN` / `MAX`, `NPC_EDGE_INSET`, ally alert range, etc. (`constants`); re-check vs sector size and player `topSpeed`
@@ -92,7 +93,7 @@ MIN_GRAVITY_DISTANCE
     (shipMass in force cancels against F/m in integration — heavier ships are not “slower in gravity” from mass alone.)
 ```
 
-Coupling: strong gravity near dense landables changes **typical approach speeds**; compare to **`LANDING_SPEED_THRESHOLD`** and **`TAKEOFF_VELOCITY`** so docking and NPC braking still feel right.
+Coupling: strong gravity near dense landables changes **typical approach speeds**; compare to **`LANDING_SPEED_THRESHOLD`** and **takeoff speed** (`TAKEOFF_SPEED_FRACTION` × hull `topSpeed`) so docking and NPC braking still feel right.
 
 ### 3.4 Flight gates and land / jump UX
 
@@ -100,13 +101,13 @@ Coupling: strong gravity near dense landables changes **typical approach speeds*
 LANDING_SPEED_THRESHOLD
 ├── HYPERSPACE_MAX_SPEED           (explicit equality)
 ├── flightScreen, hudRenderer, npcController   (can I land? brake until below threshold?)
-└──► Tune with: TAKEOFF_VELOCITY, landable.radius (world), LANDING_RADIUS_MULTIPLIER
+└──► Tune with: `TAKEOFF_SPEED_FRACTION`, hull `topSpeed`, landable.radius (world), LANDING_RADIUS_MULTIPLIER
 
 HYPERSPACE_ALIGN_MAX_ANGLE_RAD
 └──► Jump aim tolerance (independent of speed unless you want stricter jumps when fast)
 
-TAKEOFF_VELOCITY
-└──► Initial push when leaving pad; should feel coherent with landing threshold, not fight it.
+TAKEOFF_SPEED_FRACTION × getTopSpeed()
+└──► Initial push when leaving pad; should feel coherent with landing threshold and hull class.
 ```
 
 ### 3.5 Fuel loop (constants ↔ equipment ↔ hull)
@@ -230,10 +231,18 @@ These are **data conventions**, not `constants.ts` fields. Goal: generated world
 
 | Class | `hullMass` | `topSpeed` / `topAngularSpeed` | `equipmentCapacity` | `cargoCapacity` | Notes |
 |--------|------------|--------------------------------|---------------------|-----------------|--------|
-| **fighter** | Lowest in roster | Highest speed; high turn rate | Tight; few optional slots | Small | Nimble; sensitive to +mass weapons. |
+| **fighter** | Lowest in roster | Highest speed; high turn rate | Tight; few optional slots | Small | Nimble; sensitive to +mass weapons. **`interceptor_mk1`** stress-tests **advanced** against **`equipmentCapacity`** (§6.1.1). |
 | **courier** | Light–mid | High linear, moderate turn | Enough for fuel + small def | Mid | Jack-of-all-trades for procgen tests. |
 | **freighter** | Heavy | Low speed; low turn | Large (many systems) | Large | Needs strong thrusters in **basic** loadout or it never reaches pad speed. |
 | **heavy** | Heaviest | Mid–low speed; moderate turn (turret platform feel) | Very large | Mid–large | Often armour/weapons mass-heavy; watch **effective mass** vs thruster `force`. |
+
+### 6.1.1 Hand-tuned anchor — Interceptor Mk I (`interceptor_mk1`)
+
+Authoritative data lives in **`public/testWorld.json`** (also summarized in **`plan/ARCHETYPE_CHECKLIST.md`**).
+
+- **`equipmentCapacity`:** 40 — **advanced** loadout is intentionally tuned so Σ equipped item **`mass`** equals this cap at close-of-session numbers (tight budget; any buff to armour/weapons/tank mass needs a matching trim elsewhere or a hull capacity bump).
+- **Fuel:** **`fuel_tank_s`** is the extended-range tank used on the advanced/starter-aligned fits so the archetype keeps range without pretending the hull mounts the **`fuel_tank_large`** form factor.
+- **Remember:** `validateWorldFile` checks slots, item types, required slots, unknown items, and **Σ equipped `mass` ≤ `equipmentCapacity`** for expanded loadouts — same rules as ship customize (`world/validation.ts`).
 
 **`defaultLoadouts`:** For each hull, keep **`raw`** flyable (required slots only, cheapest items), **`basic`** a comfortable career start, **`advanced`** stress-test without exceeding **`equipmentCapacity`**. Validation already requires all three (`world/validation.ts`).
 
@@ -241,7 +250,15 @@ These are **data conventions**, not `constants.ts` fields. Goal: generated world
 
 - **`mass`:** Sets gravity well strength with `GRAVITY_CONSTANT`. Use a **small set of tiers** (e.g. outpost / station / hub) so procgen does not produce one-off gravity surprises.
 - **`radius`:** Landing HUD uses **`LANDING_RADIUS_MULTIPLIER × radius`**. Keep radius consistent with sprite / pad size; if you shrink radius, consider whether threshold speeds still allow safe approaches.
+- **Minimum safe radius rule:** For generated worlds, do not create landables with `radius < 10` (matches `MIN_GRAVITY_DISTANCE`) to avoid pathological near-field gravity behaviour.
 - **Services:** Missions filter destinations with refuel (`missionBoard.ts`); ensure enough **refuel-capable** landables in generated networks.
+
+Use these constants in `src/constants.ts` for world generation:
+
+- **Radius guardrail:** `WORLDGEN_LANDABLE_RADIUS_MIN` (currently tied to `MIN_GRAVITY_DISTANCE`).
+- **Radius ranges:** `WORLDGEN_RADIUS_RANGE_PLANET`, `WORLDGEN_RADIUS_RANGE_MOON`, `WORLDGEN_RADIUS_RANGE_STATION`.
+- **Mass ranges:** `WORLDGEN_MASS_RANGE_PLANET`, `WORLDGEN_MASS_RANGE_MOON`, `WORLDGEN_MASS_RANGE_STATION`.
+- **Deterministic tiers:** `WORLDGEN_MASS_TIER_PLANET_DEFAULT`, `WORLDGEN_MASS_TIER_MOON_DEFAULT`, `WORLDGEN_MASS_TIER_STATION_DEFAULT`.
 
 ### 6.3 Cross-checks for automated worlds
 

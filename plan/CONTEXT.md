@@ -142,7 +142,7 @@ Authoritative detail lives in the checklist below (historical handoff content fr
 - **Session 6 (fleet extension):** multi-ship hyperspace rules (align fleet, weakest drive) when **fleet ownership** exists — **`plan/VOID_RUNNER_Backlog.md`**.  
 - **World generator (offline):** main-menu entry, pipeline per WorldGen doc, pre-trained memory cards — **`plan/VOID_RUNNER_Backlog.md`**.  
 - **Portable saves (JSON file, world-linked):** backlog order is **after** world generator; export/import and optional file-handle autosave — roadmap, GDD persistence section, **`plan/VOID_RUNNER_Backlog.md`**.  
-- **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change.
+- **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change. **`validateWorldFile`** also ensures ship loadouts (hull **`defaultLoadouts`**, **`startingConditions`**, **`shipyardListings`**, named **`defaultLoadouts`**) match **`slotCounts`**, reference real catalog items, fill required slot types, and keep Σ equipped **`mass`** ≤ hull **`equipmentCapacity`** after **`expandSlotsToFullHull`**.
 
 See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.
 

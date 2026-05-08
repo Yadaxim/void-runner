@@ -5,6 +5,8 @@ import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { RenderPipeline } from '../renderer/renderPipeline';
 import type { Camera } from '../renderer/camera';
+import { ControlFrameRecorder } from '../simulation/controlFrameRecorder';
+import { buildControlFrameSensorSnapshot } from '../simulation/controlFrameSensor';
 import { HumanPilot } from '../simulation/pilot';
 import { PlayerController } from '../simulation/playerController';
 import { SectorSimulation } from '../simulation/sector';
@@ -28,7 +30,7 @@ import {
   MAX_RADIATION_DAMAGE_PER_SECOND,
   SECTOR_EDGE_THRESHOLD,
   SECTOR_SIZE,
-  TAKEOFF_VELOCITY
+  TAKEOFF_SPEED_FRACTION
 } from '../constants';
 import { LandableScreen } from './landableScreen';
 import { GalaxyMapScreen } from './galaxyMapScreen';
@@ -89,6 +91,7 @@ export class FlightScreen implements Screen {
   private pauseConfirmNoRect: { x: number; y: number; width: number; height: number } | null = null;
   private missionsPanelExpanded = false;
   private showControlsOverlay = false;
+  private readonly controlFrameRecorder = new ControlFrameRecorder();
   private readonly onBeforeUnload = (): void => {
     this.worldState.saveToLocalStorage();
   };
@@ -215,6 +218,18 @@ export class FlightScreen implements Screen {
     this.sectorSimulation.spawnNPCs();
     this.targeting = new TargetingSystem();
     this.autosaveAccumulator = 0;
+    const recordControls =
+      typeof window !== 'undefined' &&
+      (new URLSearchParams(window.location.search).get('recordControls') === '1' ||
+        localStorage.getItem('voidrunner.recordControlFrames') === '1');
+    this.controlFrameRecorder.setEnabled(recordControls);
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      (
+        window as unknown as {
+          __voidrunnerControlRecorder?: ControlFrameRecorder;
+        }
+      ).__voidrunnerControlRecorder = this.controlFrameRecorder;
+    }
     window.addEventListener('beforeunload', this.onBeforeUnload);
     window.addEventListener('keydown', this.onPauseKeyDown);
     this.canvas.addEventListener('mousedown', this.onPauseMouseDown);
@@ -265,6 +280,14 @@ export class FlightScreen implements Screen {
     window.removeEventListener('keydown', this.onPauseKeyDown);
     this.canvas.removeEventListener('mousedown', this.onPauseMouseDown);
     this.worldState.saveToLocalStorage();
+    this.controlFrameRecorder.setEnabled(false);
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      delete (
+        window as unknown as {
+          __voidrunnerControlRecorder?: ControlFrameRecorder;
+        }
+      ).__voidrunnerControlRecorder;
+    }
     this.playerController?.destroy();
     this.playerController = null;
     this.humanPilot = null;
@@ -328,6 +351,13 @@ export class FlightScreen implements Screen {
     const landPressed = this.isTransitioning ? false : this.humanPilot!.getLastLandPressed();
     const devRefuelPressed = this.isTransitioning ? false : this.humanPilot!.getLastDevRefuelPressed();
     const targetInputs = this.playerController.getTargetInputs();
+    if (this.controlFrameRecorder.isEnabled()) {
+      const sensor = buildControlFrameSensorSnapshot(this.worldState, this.playerShip, npcShips, {
+        landPressed,
+        devRefuelPressed
+      });
+      this.controlFrameRecorder.push(this.worldState.getPlayTime(), frame, sensor);
+    }
     if (targetInputs.hyperspaceJumpQueued) {
       this.tryBeginHyperspaceJump();
     }
@@ -1272,7 +1302,9 @@ export class FlightScreen implements Screen {
       ...this.playerShip.state,
       ...persistedShipState,
       position: new Vector2(landable.position.x + takeoffDirection.x * (landable.radius + 14), landable.position.y + takeoffDirection.y * (landable.radius + 14)),
-      velocity: takeoffDirection.scale(TAKEOFF_VELOCITY)
+      velocity: takeoffDirection.scale(
+        this.playerShip.getTopSpeed(this.worldState) * TAKEOFF_SPEED_FRACTION
+      )
     };
     this.playerShip.recalculateMaxHP(this.worldState);
     this.worldState.updatePlayerShipState(this.playerShip.state);

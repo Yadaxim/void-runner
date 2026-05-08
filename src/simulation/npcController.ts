@@ -31,6 +31,11 @@ type TransitPhase = 'approaching' | 'loitering' | 'departing';
 const ROTATION_THRESHOLD_RAD = 0.08;
 const TAIL_DISTANCE = 500;
 
+/**
+ * Playtest: chase / back-off / strafe band around `NPC_PREFERRED_COMBAT_RANGE` in hostile AI.
+ */
+export const NPC_HOSTILE_DISTANCE_KEEPING_ENABLED = true;
+
 function wrapAngle(angle: number): number {
   let wrapped = angle;
   while (wrapped > Math.PI) wrapped -= Math.PI * 2;
@@ -65,7 +70,6 @@ export class NPCController {
   private aggroRange = NPC_AGGRO_RANGE;
   private fleeHPThreshold = NPC_FLEE_HP_THRESHOLD;
   private fireRange = NPC_FIRE_RANGE;
-  private preferredCombatRange = NPC_PREFERRED_COMBAT_RANGE;
   private patrolIndex = 0;
   private strafeTimer = 0;
   private strafeDirection: -1 | 1 = 1;
@@ -371,31 +375,33 @@ export class NPCController {
     frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
     const absAngleDiff = Math.abs(rotation.angleDiff);
 
-    if (targetDistance > this.preferredCombatRange + 100) {
-      if (absAngleDiff < (35 * Math.PI) / 180) {
-        frame.thrusters.forward = true;
+    if (NPC_HOSTILE_DISTANCE_KEEPING_ENABLED) {
+      if (targetDistance > NPC_PREFERRED_COMBAT_RANGE + 100) {
+        if (absAngleDiff < (35 * Math.PI) / 180) {
+          frame.thrusters.forward = true;
+          frame.thrusters.autoBrakeLinear = false;
+        }
+      } else if (targetDistance < NPC_PREFERRED_COMBAT_RANGE - 100) {
+        if (absAngleDiff < (35 * Math.PI) / 180) {
+          frame.thrusters.reverse = true;
+          frame.thrusters.autoBrakeLinear = false;
+        }
+      } else if (absAngleDiff < (30 * Math.PI) / 180) {
+        this.strafeTimer += dt;
+        if (this.strafeTimer >= NPC_STRAFE_INTERVAL) {
+          this.strafeTimer = 0;
+          this.strafeDirection = this.strafeDirection === 1 ? -1 : 1;
+        }
         frame.thrusters.autoBrakeLinear = false;
-      }
-    } else if (targetDistance < this.preferredCombatRange - 100) {
-      if (absAngleDiff < (35 * Math.PI) / 180) {
-        frame.thrusters.reverse = true;
-        frame.thrusters.autoBrakeLinear = false;
-      }
-    } else if (absAngleDiff < (30 * Math.PI) / 180) {
-      this.strafeTimer += dt;
-      if (this.strafeTimer >= NPC_STRAFE_INTERVAL) {
-        this.strafeTimer = 0;
-        this.strafeDirection = this.strafeDirection === 1 ? -1 : 1;
-      }
-      frame.thrusters.autoBrakeLinear = false;
-      if (this.strafeDirection === 1) {
-        frame.thrusters.rotateCW = true;
-        frame.thrusters.rotateCCW = false;
-        frame.thrusters.autoBrakeRotation = false;
-      } else {
-        frame.thrusters.rotateCCW = true;
-        frame.thrusters.rotateCW = false;
-        frame.thrusters.autoBrakeRotation = false;
+        if (this.strafeDirection === 1) {
+          frame.thrusters.rotateCW = true;
+          frame.thrusters.rotateCCW = false;
+          frame.thrusters.autoBrakeRotation = false;
+        } else {
+          frame.thrusters.rotateCCW = true;
+          frame.thrusters.rotateCW = false;
+          frame.thrusters.autoBrakeRotation = false;
+        }
       }
     }
 

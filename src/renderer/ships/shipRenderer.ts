@@ -7,14 +7,15 @@ export function drawShip(
   hullClass: HullSpec['hullClass'],
   dimensions: { length: number; width: number },
   factionVisual: FactionVisual,
-  armourMass: number
+  armourMass: number,
+  renderHint?: string
 ): void {
   ctx.fillStyle = factionVisual.primaryColour;
   ctx.strokeStyle = factionVisual.primaryColour;
   ctx.lineWidth = 1.5;
-  traceHullPath(ctx, hullClass, dimensions);
+  traceHullPath(ctx, hullClass, dimensions, renderHint);
   ctx.fill();
   ctx.stroke();
-  traceHullPath(ctx, hullClass, dimensions);
+  traceHullPath(ctx, hullClass, dimensions, renderHint);
   applyEquipmentOverlay(ctx, armourMass, factionVisual.secondaryColour);
 }

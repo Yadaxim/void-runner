@@ -16,6 +16,20 @@ describe('validateWorldFile', () => {
     expect(r.errors).toEqual([]);
   });
 
+  it('starting sector (5,5) NPC spawn rules reference hullSpecs with motion and mass', () => {
+    const w = loadWorld();
+    const sector = w.sectors.find((s) => s.coord.x === 5 && s.coord.y === 5);
+    expect(sector).toBeDefined();
+    const hullIds = [...new Set(sector!.npcSpawnRules.map((r) => r.hullSpecId))];
+    for (const id of hullIds) {
+      const hull = w.hullSpecs.find((h) => h.id === id);
+      expect(hull, `missing hull ${id}`).toBeDefined();
+      expect(hull!.topSpeed).toBeGreaterThan(0);
+      expect(hull!.topAngularSpeed).toBeGreaterThan(0);
+      expect(hull!.hullMass).toBeGreaterThan(0);
+    }
+  });
+
   it('flags hull missing required slot type', () => {
     const w = structuredClone(loadWorld());
     const hull = w.hullSpecs[0];
@@ -30,14 +44,54 @@ describe('validateWorldFile', () => {
       x: { hullSpecId: w.hullSpecs[0].id, equipmentSlots: [{ slotType: 'weapon', itemId: 'no_such_item' }] }
     };
     const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('defaultLoadouts') && e.includes('no_such_item'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('defaultLoadouts.x') && e.includes('no_such_item'))).toBe(true);
   });
 
   it('flags startingConditions equipmentSlots unknown item', () => {
     const w = structuredClone(loadWorld());
     w.startingConditions.equipmentSlots = [{ slotType: 'weapon', itemId: 'bogus_equip' }];
     const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('startingConditions.equipmentSlots'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('startingConditions') && e.includes('bogus_equip'))).toBe(true);
+  });
+
+  it('flags hull defaultLoadout when installed equipment mass exceeds equipmentCapacity', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs.find((h) => h.id === 'interceptor_mk1');
+    expect(hull).toBeDefined();
+    hull!.equipmentCapacity = 5;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('defaultLoadouts.advanced') && e.includes('installed equipment mass'))).toBe(
+      true
+    );
+  });
+
+  it('flags startingConditions when installed equipment mass exceeds equipmentCapacity', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs.find((h) => h.id === w.startingConditions.hullSpecId);
+    expect(hull).toBeDefined();
+    hull!.equipmentCapacity = 5;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('startingConditions') && e.includes('installed equipment mass'))).toBe(true);
+  });
+
+  it('flags shipyard listing when installed equipment mass exceeds equipmentCapacity', () => {
+    const w = structuredClone(loadWorld());
+    const listing = w.shipyardListings.find((l) => l.id === 'sy_interceptor_mk1_advanced');
+    expect(listing).toBeDefined();
+    const hull = w.hullSpecs.find((h) => h.id === listing!.hullSpecId);
+    expect(hull).toBeDefined();
+    hull!.equipmentCapacity = 5;
+    const r = validateWorldFile(w);
+    expect(
+      r.errors.some((e) => e.includes('sy_interceptor_mk1_advanced') && e.includes('installed equipment mass'))
+    ).toBe(true);
+  });
+
+  it('flags equipment catalog item with invalid mass', () => {
+    const w = structuredClone(loadWorld());
+    w.equipmentCatalog[0].mass = -1;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('finite mass'))).toBe(true);
   });
 
   it('flags weapon bulletSpecId missing from bulletSpecs', () => {

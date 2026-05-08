@@ -148,11 +148,14 @@ export class ShipEntity {
     slotType: 'thruster_forward' | 'thruster_reverse' | 'thruster_rotate',
     worldState: WorldState
   ): number {
-    const slot = this.state.equipmentSlots.find((s) => s.slotType === slotType);
-    if (!slot?.itemId) return 0;
-    const item = worldState.getEquipmentItem(slot.itemId);
-    if (!item || item.type !== 'thruster') return 0;
-    return (item as ThrusterItem).force;
+    let total = 0;
+    for (const slot of this.state.equipmentSlots) {
+      if (slot.slotType !== slotType || !slot.itemId) continue;
+      const item = worldState.getEquipmentItem(slot.itemId);
+      if (!item || item.type !== 'thruster') continue;
+      total += (item as ThrusterItem).force;
+    }
+    return total;
   }
 
   getAutoBrake(worldState: WorldState): AutoBrakeItem | null {

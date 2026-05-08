@@ -46,7 +46,7 @@ describe('headless SectorSimulation', () => {
     const wf = loadWorld();
     const { worldState, playerShip } = makeHeadlessSim({
       worldFile: wf,
-      playerOverrides: { currentJoules: 499, fuel: 500 }
+      playerOverrides: { currentJoules: 299, fuel: 500 }
     });
     for (let i = 0; i < 50; i += 1) {
       tickShipEnergyAndShield(playerShip.state, worldState, 0.2, Date.now());
@@ -267,6 +267,8 @@ describe('headless SectorSimulation', () => {
 
   it('cannot sell required thruster_forward slot', () => {
     const wf = loadWorld();
+    wf.startingConditions.hullSpecId = 'dogfighter_mk1';
+    wf.startingConditions.equipmentSlots = [];
     const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const before = structuredClone(ws.getPlayerShipState());
@@ -342,6 +344,8 @@ describe('headless SectorSimulation', () => {
 
   it('armHyperspaceCooldownFromEquippedDrive uses equipped drive cooldown seconds', () => {
     const wf = loadWorld();
+    wf.startingConditions.hullSpecId = 'courier_transport_mk1';
+    wf.startingConditions.equipmentSlots = [];
     const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const drive = ws.getPlayerHyperspaceDrive();

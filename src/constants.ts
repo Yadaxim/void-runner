@@ -2,7 +2,7 @@ import type { DamageTypeKey, EquipmentSlot } from './types';
 
 // Physics and simulation
 export const GRAVITY_CONSTANT = 5;
-export const MIN_GRAVITY_DISTANCE = 100;
+export const MIN_GRAVITY_DISTANCE = 10;
 export const MAX_DELTA_SECONDS = 0.1;
 export const BULLET_MOMENTUM_TRANSFER_SCALE = 1;
 export const BULLET_MAX_IMPACT_DELTA_V = 45;
@@ -24,7 +24,8 @@ export const HYPERSPACE_MAX_SPEED = LANDING_SPEED_THRESHOLD;
 /** Max angle (rad) between ship nose and jump vector for a hyper jump to arm. */
 export const HYPERSPACE_ALIGN_MAX_ANGLE_RAD = (14 * Math.PI) / 180;
 export const LANDING_RADIUS_MULTIPLIER = 2.5;
-export const TAKEOFF_VELOCITY = 30;
+/** Takeoff speed = `HullSpec.topSpeed` × this fraction (`flightScreen` uses ship via `getTopSpeed`). */
+export const TAKEOFF_SPEED_FRACTION = 0.25;
 export const AUTOSAVE_INTERVAL_SECONDS = 1.5;
 
 // Economy and resources
@@ -65,6 +66,20 @@ export const RADIATION_VIGNETTE_MAX_OPACITY = 0.55;
 export const RADIATION_PARTICLE_COUNT = 60;
 export const MAX_LANDABLES_PER_SECTOR = 4;
 export const MAX_FLEET_SIZE = 5;
+/** World-creator guardrail: never emit landables below gravity clamp distance. */
+export const WORLDGEN_LANDABLE_RADIUS_MIN = MIN_GRAVITY_DISTANCE;
+/** Suggested radius ranges by landable type for generator output. */
+export const WORLDGEN_RADIUS_RANGE_PLANET = [40, 120] as const;
+export const WORLDGEN_RADIUS_RANGE_MOON = [12, 40] as const;
+export const WORLDGEN_RADIUS_RANGE_STATION = [10, 50] as const;
+/** Suggested mass ranges by landable type for generator output. */
+export const WORLDGEN_MASS_RANGE_PLANET = [90000, 180000] as const;
+export const WORLDGEN_MASS_RANGE_MOON = [18000, 45000] as const;
+export const WORLDGEN_MASS_RANGE_STATION = [0, 6000] as const;
+/** Canonical mass tiers (useful when you want deterministic tiering instead of random ranges). */
+export const WORLDGEN_MASS_TIER_PLANET_DEFAULT = 125000;
+export const WORLDGEN_MASS_TIER_MOON_DEFAULT = 25000;
+export const WORLDGEN_MASS_TIER_STATION_DEFAULT = 0;
 
 // NPC spawning
 export const NPC_ARRIVAL_SPEED_MIN = 60;
@@ -164,10 +179,14 @@ export const DEFAULT_FACTION_VISUAL = {
   densityBias: 'sparse' as const
 };
 
-// AI and neural controls
+// AI and neural controls (canonical output = thrusters 6 + weapon keys Z–V–B 5)
 export const AI_OUTPUT_THRESHOLD = 0.5;
+/** Sensor / feature vector length baseline before weapon-group expansion (balance hooks). */
 export const INPUT_VECTOR_BASE_SIZE = 6;
-export const OUTPUT_VECTOR_SIZE = 10;
+/** Same dimensionality as a flattened {@link ShipControlFrame} for TF.js output layers. */
+export const OUTPUT_VECTOR_SIZE = 11;
+/** After equipment / weapon loadout changes, emit zero control for this many play-time seconds. */
+export const NEURAL_LOADOUT_STALE_SECONDS = 2;
 
 // Engine/system internals
 export const UINT64_MASK = (1n << 64n) - 1n;

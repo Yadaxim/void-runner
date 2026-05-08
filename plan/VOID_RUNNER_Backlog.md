@@ -78,6 +78,7 @@ Roadmap **Economy and missions**; Appendix A sketches when implementing.
 
 - [ ] **Cargo:** replace minimal mission cargo with **`CargoItem`** model (Appendix A)  
 - [ ] **Missions:** kill-target type; sector **`missionSpawnRules`** / temporary NPCs; extend **`MissionTargetType`** with **`'kill'`** (and later **`'waypoint_visit'`**)  
+- [ ] **Equipment shop UI units:** show explicit units in item stats (mass as **`t`**, thrust as **`kTU`** via `force / 1000` display, e.g. `16.5 kTU`)  
 - [ ] **Mission chains/trees:** **`followUpMissions`**, branch copy; **`priceHidden`** on templates + UI payoff **`???`** until complete  
 - [ ] **Waypoints:** fly-close/slow visit targets; ring + label + “waypoint reached”; **`SectorMetadata.waypoints`** or mission-spawned temporary waypoints  
 - [ ] **Trade economy:** speculative cargo (supply/demand) **after** **`CargoItem`**  
@@ -164,6 +165,14 @@ From roadmap; **not** backlog tasks — do not implement unless design explicitl
 - NPC fleets (until fleet tech)  
 - Reputation decay (unless design revisits)  
 - Energy/void exotic **content** (types exist; content when balancing needs it)  
+
+---
+
+## Ship archetype balancing (world JSON)
+
+Hand-tuned hull/item pairs before procedural catalog generation; tracked in **`plan/ARCHETYPE_CHECKLIST.md`**.
+
+- [x] **Interceptor (`interceptor_mk1`)** — raw/basic/advanced coherent in **`public/testWorld.json`**; advanced/starter/shipyard listing aligned; mass-cap snapshot documented **2026-05**.
 
 ---
 

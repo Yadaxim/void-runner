@@ -1,9 +1,12 @@
+import type { ControlFrameSensorSnapshot } from './controlFrameSensor';
 import type { ShipControlFrame } from './shipControlFrame';
 
 export interface TimestampedControlFrame {
   /** Monotonic or world time in seconds — caller chooses clock. */
   timeSeconds: number;
   frame: ShipControlFrame;
+  /** Optional observation vector (e.g. pre-step state for imitation learning). */
+  sensor?: ControlFrameSensorSnapshot;
 }
 
 /**
@@ -40,7 +43,7 @@ export class ControlFrameRecorder {
   }
 
   /** Append one sample; drops oldest when full. */
-  push(timeSeconds: number, frame: ShipControlFrame): void {
+  push(timeSeconds: number, frame: ShipControlFrame, sensor?: ControlFrameSensorSnapshot): void {
     if (!this.enabled) {
       return;
     }
@@ -49,7 +52,16 @@ export class ControlFrameRecorder {
       frame: {
         thrusters: { ...frame.thrusters },
         weapons: { ...frame.weapons }
-      }
+      },
+      ...(sensor
+        ? {
+            sensor: {
+              ...sensor,
+              position: { ...sensor.position },
+              velocity: { ...sensor.velocity }
+            }
+          }
+        : {})
     };
     if (this.count < this.capacity) {
       this.buffer.push(sample);
@@ -79,10 +91,108 @@ export class ControlFrameRecorder {
   }
 }
 
-/**
- * Headless replay hook — feed recorded frames into {@link applyShipControlFrame} + integration
- * when a deterministic runner exists. Intentionally unimplemented.
- */
-export function replayControlFramesHeadless(_frames: TimestampedControlFrame[]): void {
-  // Reserved for Session D+: deterministic replay / dataset validation.
+/** JSON export for datasets / fixtures — {@link parseTimestampedControlFrames} reverses this. */
+export function serializeTimestampedControlFrames(frames: TimestampedControlFrame[]): string {
+  return JSON.stringify(frames);
+}
+
+export function parseTimestampedControlFrames(json: string): TimestampedControlFrame[] {
+  const data = JSON.parse(json) as unknown;
+  if (!Array.isArray(data)) {
+    throw new Error('Expected a JSON array of timestamped control frames');
+  }
+  const out: TimestampedControlFrame[] = [];
+  for (let i = 0; i < data.length; i += 1) {
+    const row = data[i];
+    if (
+      typeof row !== 'object' ||
+      row === null ||
+      typeof (row as TimestampedControlFrame).timeSeconds !== 'number' ||
+      typeof (row as TimestampedControlFrame).frame !== 'object' ||
+      (row as TimestampedControlFrame).frame === null
+    ) {
+      throw new Error(`Invalid timestamped frame at index ${i}`);
+    }
+    const fr = (row as TimestampedControlFrame).frame;
+    const thr = fr.thrusters;
+    const wpn = fr.weapons;
+    if (
+      typeof thr !== 'object' ||
+      thr === null ||
+      typeof wpn !== 'object' ||
+      wpn === null
+    ) {
+      throw new Error(`Invalid control frame at index ${i}`);
+    }
+    let sensor: ControlFrameSensorSnapshot | undefined;
+    if ('sensor' in row && (row as TimestampedControlFrame).sensor !== undefined) {
+      const s = (row as TimestampedControlFrame).sensor;
+      if (typeof s !== 'object' || s === null) {
+        throw new Error(`Invalid sensor at index ${i}`);
+      }
+      const pos = s.position;
+      const vel = s.velocity;
+      if (
+        typeof pos !== 'object' ||
+        pos === null ||
+        typeof (pos as { x?: unknown }).x !== 'number' ||
+        typeof (pos as { y?: unknown }).y !== 'number' ||
+        typeof vel !== 'object' ||
+        vel === null ||
+        typeof (vel as { x?: unknown }).x !== 'number' ||
+        typeof (vel as { y?: unknown }).y !== 'number' ||
+        typeof s.angle !== 'number' ||
+        typeof s.angularVelocity !== 'number' ||
+        typeof s.hullFraction !== 'number' ||
+        typeof s.shieldFraction !== 'number' ||
+        typeof s.radiationIntensity !== 'number'
+      ) {
+        throw new Error(`Invalid sensor fields at index ${i}`);
+      }
+      const nn = s.nearestNpcDistanceMetres;
+      const nh = s.nearestHostileDistanceMetres;
+      if (nn !== null && typeof nn !== 'number') {
+        throw new Error(`Invalid nearestNpcDistanceMetres at index ${i}`);
+      }
+      if (nh !== null && typeof nh !== 'number') {
+        throw new Error(`Invalid nearestHostileDistanceMetres at index ${i}`);
+      }
+      sensor = {
+        position: { x: pos.x, y: pos.y },
+        velocity: { x: vel.x, y: vel.y },
+        angle: s.angle,
+        angularVelocity: s.angularVelocity,
+        hullFraction: s.hullFraction,
+        shieldFraction: s.shieldFraction,
+        radiationIntensity: s.radiationIntensity,
+        nearestNpcDistanceMetres: nn ?? null,
+        nearestHostileDistanceMetres: nh ?? null,
+        landPressed: Boolean(s.landPressed),
+        devRefuelPressed: Boolean(s.devRefuelPressed)
+      };
+    }
+
+    out.push({
+      timeSeconds: (row as TimestampedControlFrame).timeSeconds,
+      frame: {
+        thrusters: {
+          forward: Boolean(thr.forward),
+          reverse: Boolean(thr.reverse),
+          rotateCW: Boolean(thr.rotateCW),
+          rotateCCW: Boolean(thr.rotateCCW),
+          autoBrakeLinear: Boolean(thr.autoBrakeLinear),
+          autoBrakeRotation: Boolean(thr.autoBrakeRotation)
+        },
+        weapons: {
+          Z: Boolean(wpn.Z),
+          X: Boolean(wpn.X),
+          C: Boolean(wpn.C),
+          V: Boolean(wpn.V),
+          B: Boolean(wpn.B)
+        }
+      },
+      ...(sensor ? { sensor } : {})
+    });
+  }
+  return out;
 }

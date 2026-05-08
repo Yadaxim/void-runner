@@ -119,6 +119,35 @@ function validateExpandedLoadout(
       }
     }
   }
+
+  let installedMass = 0;
+  let massAccountingOk = true;
+  for (const slot of expandedSlots) {
+    if (!slot.itemId) {
+      continue;
+    }
+    const item = equipmentById.get(slot.itemId);
+    if (!item) {
+      massAccountingOk = false;
+      continue;
+    }
+    if (typeof item.mass !== 'number' || !Number.isFinite(item.mass) || item.mass < 0) {
+      push(`${label} hull "${hull.id}": equipment "${item.id}" must have finite mass >= 0`);
+      massAccountingOk = false;
+      continue;
+    }
+    installedMass += item.mass;
+  }
+  if (
+    massAccountingOk &&
+    typeof hull.equipmentCapacity === 'number' &&
+    Number.isFinite(hull.equipmentCapacity) &&
+    installedMass > hull.equipmentCapacity
+  ) {
+    push(
+      `${label} for hull "${hull.id}": installed equipment mass (${installedMass}) exceeds equipmentCapacity (${hull.equipmentCapacity})`
+    );
+  }
 }
 
 export function validateWorldFile(world: WorldFile): ValidationResult {
@@ -143,6 +172,9 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     if (!hull.slotCounts || Object.keys(hull.slotCounts).length === 0) {
       push(`Hull "${hull.id}" must have slotCounts defined`);
     }
+    if (!(typeof hull.equipmentCapacity === 'number' && Number.isFinite(hull.equipmentCapacity) && hull.equipmentCapacity >= 0)) {
+      push(`Hull "${hull.id}" must have finite equipmentCapacity >= 0`);
+    }
   }
 
   const hullIds = new Set<string>();
@@ -161,6 +193,9 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     equipIds.add(item.id);
     if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price <= 0) {
       push(`Equipment "${item.id}" must have a finite numeric price > 0`);
+    }
+    if (typeof item.mass !== 'number' || !Number.isFinite(item.mass) || item.mass < 0) {
+      push(`Equipment "${item.id}" must have finite mass >= 0`);
     }
   }
 
@@ -185,22 +220,6 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       (listing.equipmentSlots ?? []).map((s) => ({ ...s }))
     );
     validateExpandedLoadout(listHull, listExpanded, `Shipyard listing "${listing.id}"`, equipmentById, push);
-  }
-
-  if (world.defaultLoadouts) {
-    for (const [name, entry] of Object.entries(world.defaultLoadouts)) {
-      for (const slot of entry.equipmentSlots ?? []) {
-        if (slot.itemId && !equipmentById.has(slot.itemId)) {
-          push(`defaultLoadouts.${name} references unknown equipment: ${slot.itemId}`);
-        }
-      }
-    }
-  }
-
-  for (const slot of world.startingConditions.equipmentSlots) {
-    if (slot.itemId && !equipmentById.has(slot.itemId)) {
-      push(`startingConditions.equipmentSlots references unknown equipment: ${slot.itemId}`);
-    }
   }
 
   for (const item of world.equipmentCatalog) {
@@ -337,6 +356,13 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
   }
   if (!hullById.has(sc.hullSpecId)) {
     push(`startingConditions.hullSpecId unknown: ${sc.hullSpecId}`);
+  } else {
+    const startHull = hullById.get(sc.hullSpecId)!;
+    const startExpanded = expandSlotsToFullHull(
+      startHull,
+      (sc.equipmentSlots ?? []).map((s) => ({ ...s }))
+    );
+    validateExpandedLoadout(startHull, startExpanded, 'startingConditions', equipmentById, push);
   }
 
   if (sc.factionReputations) {
@@ -388,32 +414,6 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
   }
 
   for (const hull of world.hullSpecs) {
-    const desired = { ...(hull.slotCounts ?? {}) } as Partial<Record<EquipmentSlot['slotType'], number>>;
-    if (desired.weapon === undefined) {
-      desired.weapon = hull.weaponSlots;
-    }
-
-    const checkLoadout = (slots: EquipmentSlot[], label: string): void => {
-      const perType: Partial<Record<EquipmentSlot['slotType'], number>> = {};
-      for (const slot of slots) {
-        perType[slot.slotType] = (perType[slot.slotType] ?? 0) + 1;
-      }
-      for (const [slotType, needed] of Object.entries(desired)) {
-        const have = perType[slotType as EquipmentSlot['slotType']] ?? 0;
-        if (have > (needed as number)) {
-          push(`${label} for hull "${hull.id}" exceeds slotCounts for ${slotType}`);
-        }
-      }
-      for (const slot of slots) {
-        if (!slot.itemId) continue;
-        const item = equipmentById.get(slot.itemId);
-        if (!item) continue;
-        if (!equipmentTypeMatchesSlot(item, slot.slotType)) {
-          push(`${label} hull "${hull.id}": item "${item.id}" type mismatch for slot ${slot.slotType}`);
-        }
-      }
-    };
-
     if (!hull.defaultLoadouts) {
       push(`Hull "${hull.id}" must define defaultLoadouts (raw, basic, advanced)`);
     } else {
@@ -443,27 +443,11 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
         push(`defaultLoadouts.${name} references unknown hullSpecId: ${entry.hullSpecId}`);
         continue;
       }
-      const desired = { ...(hull.slotCounts ?? {}) } as Partial<Record<EquipmentSlot['slotType'], number>>;
-      if (desired.weapon === undefined) desired.weapon = hull.weaponSlots;
-      const countFor = (t: EquipmentSlot['slotType']): number => Math.max(0, Math.floor(Number(desired[t] ?? 0)));
-      const perType: Partial<Record<EquipmentSlot['slotType'], number>> = {};
-      for (const slot of entry.equipmentSlots ?? []) {
-        perType[slot.slotType] = (perType[slot.slotType] ?? 0) + 1;
-      }
-      for (const [slotType, needed] of Object.entries(desired)) {
-        const have = perType[slotType as EquipmentSlot['slotType']] ?? 0;
-        if (have > (needed as number)) {
-          push(`defaultLoadouts.${name} exceeds slotCounts for hull "${hull.id}" slot ${slotType}`);
-        }
-      }
-      for (const slot of entry.equipmentSlots ?? []) {
-        if (!slot.itemId) continue;
-        const item = equipmentById.get(slot.itemId);
-        if (!item) continue;
-        if (!equipmentTypeMatchesSlot(item, slot.slotType)) {
-          push(`defaultLoadouts.${name}: item "${item.id}" mismatch for slot ${slot.slotType}`);
-        }
-      }
+      const expanded = expandSlotsToFullHull(
+        hull,
+        (entry.equipmentSlots ?? []).map((s) => ({ ...s }))
+      );
+      validateExpandedLoadout(hull, expanded, `defaultLoadouts.${name}`, equipmentById, push);
     }
   }
 

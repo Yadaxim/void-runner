@@ -6,6 +6,16 @@ import { drawShip } from '../ships/shipRenderer';
 import type { ShipEntity } from '../../simulation/shipEntity';
 import type { BurnEffect } from '../../simulation/weaponSystem';
 
+function renderHintForHullName(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  const n = name.toLowerCase();
+  if (n.includes('interceptor')) return 'interceptor';
+  if (n.includes('dogfighter')) return 'dogfighter';
+  if (n.includes('courier')) return 'courier';
+  if (n.includes('freighter')) return 'freighter';
+  return undefined;
+}
+
 function hpBarColour(ratio: number): string {
   if (ratio > 0.6) return COLOURS.SAFE;
   if (ratio > 0.3) return COLOURS.WARNING;
@@ -27,6 +37,7 @@ export class ShipLayer {
       const hullSpec = worldState.getHullSpec(ship.state.hullSpecId);
       const hullClass = hullSpec?.hullClass ?? 'fighter';
       const dimensions = HULL_DIMENSIONS[hullClass];
+      const renderHint = renderHintForHullName(hullSpec?.name);
       const factionVisual = ship.state.factionId
         ? worldState.getFactionVisual(ship.state.factionId)
         : DEFAULT_FACTION_VISUAL;
@@ -35,14 +46,14 @@ export class ShipLayer {
       this.ctx.translate(screenPos.x, screenPos.y);
       this.ctx.rotate(ship.state.angle);
       const armourMass = ship.getTotalArmourMass(worldState);
-      drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass);
+      drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass, renderHint);
       const burn = activeBurns.find((effect) => effect.targetId === ship.state.id);
       if (burn) {
         const opacity = Math.min(0.35, Math.max(0, (burn.remainingDuration / burn.totalDuration) * 0.35));
         if (opacity > 0) {
           this.ctx.globalAlpha = opacity;
           this.ctx.fillStyle = '#80ff40';
-          drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass);
+          drawShip(this.ctx, hullClass, dimensions, factionVisual, armourMass, renderHint);
         }
       }
       this.ctx.restore();

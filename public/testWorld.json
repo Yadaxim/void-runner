@@ -157,27 +157,27 @@
   ],
   "hullSpecs": [
     {
-      "id": "fighter_mk1",
-      "name": "Fighter Mk I",
-      "description": "A nimble single-seat fighter. Fast and responsive but limited cargo space.",
+      "id": "dogfighter_mk1",
+      "name": "Dogfighter Mk I",
+      "description": "Frontline multi-role fighter archetype. Balanced dogfight profile with two weapon hardpoints.",
       "hullClass": "fighter",
-      "hullMass": 80,
-      "cargoCapacity": 80,
-      "equipmentCapacity": 200,
-      "topSpeed": 250,
-      "topAngularSpeed": 3.5,
+      "hullMass": 20,
+      "cargoCapacity": 0,
+      "equipmentCapacity": 40,
+      "topSpeed": 400,
+      "topAngularSpeed": 2,
       "baseHP": 100,
-      "weaponSlots": 1,
+      "weaponSlots": 2,
       "slotCounts": {
         "thruster_forward": 1,
         "thruster_rotate": 1,
-        "weapon": 1,
+        "weapon": 2,
         "armour": 1,
         "autoBrake": 1,
         "fuelTank": 1,
         "reactor": 1,
         "shield": 1,
-        "hyperspaceDrive": 1
+        "hyperspaceDrive": 0
       },
       "price": 18000,
       "sellValue": 10800,
@@ -193,7 +193,7 @@
           },
           {
             "slotType": "fuelTank",
-            "itemId": "fuel_tank_standard"
+            "itemId": "fuel_tank_xs"
           },
           {
             "slotType": "reactor",
@@ -216,7 +216,7 @@
             "itemId": null
           },
           {
-            "slotType": "hyperspaceDrive",
+            "slotType": "weapon",
             "itemId": null
           }
         ],
@@ -231,7 +231,7 @@
           },
           {
             "slotType": "fuelTank",
-            "itemId": "fuel_tank_standard"
+            "itemId": "fuel_tank_xs"
           },
           {
             "slotType": "reactor",
@@ -254,8 +254,8 @@
             "itemId": "pulse_cannon_t1"
           },
           {
-            "slotType": "hyperspaceDrive",
-            "itemId": "hyperdrive_basic"
+            "slotType": "weapon",
+            "itemId": null
           }
         ],
         "advanced": [
@@ -292,35 +292,37 @@
             "itemId": "seeker_launcher_t1"
           },
           {
-            "slotType": "hyperspaceDrive",
-            "itemId": "hyperdrive_basic"
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
           }
         ]
       }
     },
     {
-      "id": "fighter_raider_mk1",
-      "name": "Raider Mk I",
-      "description": "A rough fighter variant used by raiders and militia patrols.",
+      "id": "interceptor_mk1",
+      "name": "Interceptor Mk I",
+      "description": "Short-range interceptor archetype. High agility strike craft with minimal sustain systems.",
       "hullClass": "fighter",
-      "hullMass": 85,
-      "cargoCapacity": 16,
-      "equipmentCapacity": 125,
-      "topSpeed": 245,
-      "topAngularSpeed": 3.2,
-      "baseHP": 110,
-      "weaponSlots": 1,
+      "hullMass": 20,
+      "cargoCapacity": 0,
+      "equipmentCapacity": 40,
+      "topSpeed": 400,
+      "topAngularSpeed": 2,
+      "baseHP": 100,
+      "weaponSlots": 2,
       "slotCounts": {
         "thruster_forward": 1,
         "thruster_rotate": 1,
-        "weapon": 1,
+        "weapon": 2,
         "armour": 1,
         "autoBrake": 1,
         "fuelTank": 1,
-        "hyperspaceDrive": 1
+        "reactor": 1,
+        "shield": 1,
+        "hyperspaceDrive": 0
       },
-      "price": 14000,
-      "sellValue": 8400,
+      "price": 18000,
+      "sellValue": 10800,
       "defaultLoadouts": {
         "raw": [
           {
@@ -333,7 +335,15 @@
           },
           {
             "slotType": "fuelTank",
-            "itemId": "fuel_tank_standard"
+            "itemId": "fuel_tank_xs"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": null
+          },
+          {
+            "slotType": "shield",
+            "itemId": null
           },
           {
             "slotType": "thruster_forward",
@@ -348,7 +358,7 @@
             "itemId": null
           },
           {
-            "slotType": "hyperspaceDrive",
+            "slotType": "weapon",
             "itemId": null
           }
         ],
@@ -363,7 +373,15 @@
           },
           {
             "slotType": "fuelTank",
-            "itemId": "fuel_tank_standard"
+            "itemId": "fuel_tank_xs"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_standard"
           },
           {
             "slotType": "thruster_forward",
@@ -378,8 +396,8 @@
             "itemId": "pulse_cannon_t1"
           },
           {
-            "slotType": "hyperspaceDrive",
-            "itemId": "hyperdrive_basic"
+            "slotType": "weapon",
+            "itemId": null
           }
         ],
         "advanced": [
@@ -393,7 +411,15 @@
           },
           {
             "slotType": "fuelTank",
-            "itemId": "fuel_tank_large"
+            "itemId": "fuel_tank_s"
+          },
+          {
+            "slotType": "reactor",
+            "itemId": "reactor_standard"
+          },
+          {
+            "slotType": "shield",
+            "itemId": "shield_heavy"
           },
           {
             "slotType": "thruster_forward",
@@ -405,25 +431,25 @@
           },
           {
             "slotType": "weapon",
-            "itemId": "slug_thrower_t1"
+            "itemId": "seeker_launcher_t1"
           },
           {
-            "slotType": "hyperspaceDrive",
-            "itemId": "hyperdrive_basic"
+            "slotType": "weapon",
+            "itemId": "pulse_cannon_t1"
           }
         ]
       }
     },
     {
-      "id": "courier_mk1",
-      "name": "Courier Mk I",
-      "description": "A reliable mid-size courier. Balanced cargo capacity and decent speed.",
+      "id": "courier_transport_mk1",
+      "name": "Courier Transport Mk I",
+      "description": "Medium civilian courier archetype. General-purpose transport with moderate defenses.",
       "hullClass": "courier",
       "hullMass": 140,
       "cargoCapacity": 80,
       "equipmentCapacity": 200,
       "topSpeed": 200,
-      "topAngularSpeed": 2.8,
+      "topAngularSpeed": 2,
       "baseHP": 160,
       "weaponSlots": 2,
       "slotCounts": {
@@ -582,15 +608,15 @@
       }
     },
     {
-      "id": "freighter_mk1",
-      "name": "Freighter Mk I",
-      "description": "A slow but capacious bulk freighter. Poor in a fight, excellent for trade.",
+      "id": "bulk_freighter_mk1",
+      "name": "Bulk Freighter Mk I",
+      "description": "Heavy cargo freighter archetype. Slow, durable logistics hull for long-haul routes.",
       "hullClass": "freighter",
       "hullMass": 300,
       "cargoCapacity": 300,
       "equipmentCapacity": 310,
-      "topSpeed": 140,
-      "topAngularSpeed": 1.8,
+      "topSpeed": 100,
+      "topAngularSpeed": 1,
       "baseHP": 240,
       "weaponSlots": 1,
       "slotCounts": {
@@ -762,14 +788,14 @@
     },
     {
       "id": "dev_store_rig",
-      "name": "Store Test Rig",
-      "description": "Bench hull for equipment UI: five weapon hardpoints plus forward and rotation thrusters only.",
+      "name": "Heavy Utility Rig (DEV)",
+      "description": "Developer test hull: oversized utility platform for store/loadout validation.",
       "hullClass": "fighter",
       "hullMass": 100,
       "cargoCapacity": 60,
       "equipmentCapacity": 300,
-      "topSpeed": 190,
-      "topAngularSpeed": 3,
+      "topSpeed": 400,
+      "topAngularSpeed": 4,
       "baseHP": 120,
       "weaponSlots": 5,
       "slotCounts": {
@@ -1052,23 +1078,23 @@
     {
       "id": "fwd_thruster_standard",
       "type": "thruster",
-      "name": "Standard Forward Drive",
-      "description": "A reliable forward thruster fitted to most civilian and light combat ships.",
-      "mass": 12,
+      "name": "Forward Thruster (Standard)",
+      "description": "Baseline forward propulsion module for light and medium hulls.",
+      "mass": 3,
       "tier": 1,
       "price": 240,
       "factionAffinity": "federation",
       "slotType": "thruster_forward",
-      "force": 45000,
+      "force": 16500,
       "energyPerSecond": 0,
       "mountPosition": "rear"
     },
     {
       "id": "fwd_thruster_heavy",
       "type": "thruster",
-      "name": "Heavy Forward Drive",
-      "description": "High-thrust drive for large hulls. Powerful but slow to respond.",
-      "mass": 35,
+      "name": "Forward Thruster (Heavy)",
+      "description": "High-mass forward propulsion module for heavy hulls and loaded craft.",
+      "mass": 24,
       "tier": 1,
       "price": 700,
       "factionAffinity": "frontier_clans",
@@ -1080,8 +1106,8 @@
     {
       "id": "rev_thruster_standard",
       "type": "thruster",
-      "name": "Standard Reverse Thruster",
-      "description": "Provides braking thrust without rotating the ship. Not fitted on all hulls.",
+      "name": "Reverse Thruster (Standard)",
+      "description": "Baseline reverse-thrust module for controlled deceleration and docking.",
       "mass": 8,
       "tier": 1,
       "price": 160,
@@ -1094,9 +1120,9 @@
     {
       "id": "rev_thruster_heavy",
       "type": "thruster",
-      "name": "Heavy Reverse Thruster",
-      "description": "Braking thruster for large hulls.",
-      "mass": 20,
+      "name": "Reverse Thruster (Heavy)",
+      "description": "High-mass reverse-thrust module for heavy braking on large ships.",
+      "mass": 14,
       "tier": 1,
       "price": 400,
       "factionAffinity": "frontier_clans",
@@ -1108,22 +1134,22 @@
     {
       "id": "rot_thruster_fighter",
       "type": "thruster",
-      "name": "Fighter Manoeuvring Jets",
-      "description": "High-torque rotation thrusters for nimble combat ships. Snappy and responsive.",
-      "mass": 5,
+      "name": "Rotation Thruster (Fighter)",
+      "description": "Low-mass high-response attitude control thruster for fighter-class hulls.",
+      "mass": 1,
       "tier": 1,
       "price": 100,
       "factionAffinity": "federation",
       "slotType": "thruster_rotate",
-      "force": 700,
+      "force": 260,
       "energyPerSecond": 0,
       "mountPosition": "forward"
     },
     {
       "id": "rot_thruster_standard",
       "type": "thruster",
-      "name": "Standard Manoeuvring Jets",
-      "description": "Balanced rotation thrusters for mid-size ships.",
+      "name": "Rotation Thruster (Standard)",
+      "description": "General-purpose attitude control thruster for non-fighter hulls.",
       "mass": 8,
       "tier": 1,
       "price": 160,
@@ -1136,9 +1162,9 @@
     {
       "id": "rot_thruster_heavy",
       "type": "thruster",
-      "name": "Heavy Manoeuvring Jets",
-      "description": "Large rotation thrusters for big hulls. Slower to turn but authoritative.",
-      "mass": 18,
+      "name": "Rotation Thruster (Heavy)",
+      "description": "Heavy-duty attitude control thruster tuned for high-mass hulls.",
+      "mass": 12,
       "tier": 1,
       "price": 360,
       "factionAffinity": "frontier_clans",
@@ -1150,9 +1176,9 @@
     {
       "id": "auto_brake_t1",
       "type": "autoBrake",
-      "name": "Inertial Dampener Mk I",
-      "description": "Dampens linear and angular velocity automatically. Standard on larger hulls.",
-      "mass": 12,
+      "name": "Auto-Brake Module (T1)",
+      "description": "Inertial damping assist module that stabilizes drift and rotation when engaged.",
+      "mass": 1,
       "tier": 1,
       "price": 240,
       "factionAffinity": "federation",
@@ -1162,9 +1188,9 @@
     {
       "id": "pulse_cannon_t1",
       "type": "weapon",
-      "name": "Pulse Cannon Mk I",
-      "description": "A standard energy weapon. Fast fire rate, moderate damage. Found on most fighter-class ships.",
-      "mass": 8,
+      "name": "Pulse Cannon (Light)",
+      "description": "Light direct-fire kinetic weapon. Low mass, reliable baseline gun.",
+      "mass": 1,
       "tier": 1,
       "price": 160,
       "factionAffinity": "federation",
@@ -1175,9 +1201,9 @@
     {
       "id": "slug_thrower_t1",
       "type": "weapon",
-      "name": "Slug Thrower Mk I",
-      "description": "A kinetic mass driver. Slow fire rate but heavy hitting. Slugs are affected by gravity.",
-      "mass": 14,
+      "name": "Slug Thrower (Medium)",
+      "description": "Medium kinetic weapon with heavier projectiles and higher mass than pulse cannons.",
+      "mass": 2,
       "tier": 1,
       "price": 280,
       "factionAffinity": "frontier_clans",
@@ -1188,9 +1214,9 @@
     {
       "id": "seeker_launcher_t1",
       "type": "weapon",
-      "name": "Seeker Launcher Mk I",
-      "description": "Fires guided missiles that track the ship target. Requires a lock. Slow to reload.",
-      "mass": 18,
+      "name": "Seeker Missile Launcher (Light)",
+      "description": "Guided missile launcher for strike loadouts. Heavier than light guns.",
+      "mass": 2,
       "tier": 1,
       "price": 360,
       "factionAffinity": "pirates",
@@ -1201,9 +1227,9 @@
     {
       "id": "plasma_launcher_t1",
       "type": "weapon",
-      "name": "Plasma Launcher Mk I",
-      "description": "Launches slow plasma orbs that detach from the ship at zero velocity. Useful as area denial.",
-      "mass": 10,
+      "name": "Plasma Emitter (Light)",
+      "description": "Light plasma weapon with moderate mass and sustained pressure role.",
+      "mass": 1,
       "tier": 1,
       "price": 200,
       "factionAffinity": "veth_collective",
@@ -1214,9 +1240,9 @@
     {
       "id": "light_plating_t1",
       "type": "armour",
-      "name": "Light Composite Plating",
-      "description": "Thin composite panels bolted over critical hull sections. Better than nothing.",
-      "mass": 15,
+      "name": "Hull Plating (Light)",
+      "description": "Light armor package for minor survivability gain at moderate mass.",
+      "mass": 4,
       "tier": 1,
       "price": 300,
       "factionAffinity": "federation",
@@ -1240,13 +1266,13 @@
     {
       "id": "heavy_plating_t1",
       "type": "armour",
-      "name": "Heavy Alloy Plating",
-      "description": "Dense alloy plates welded directly to the hull frame. Significantly improves survivability at the cost of mass.",
-      "mass": 35,
+      "name": "Hull Plating (Heavy)",
+      "description": "Heavy armor package for maximum survivability at high mass cost.",
+      "mass": 8,
       "tier": 1,
       "price": 700,
       "factionAffinity": "frontier_clans",
-      "hpBonus": 100,
+      "hpBonus": 75,
       "reductions": {
         "kinetic": 14,
         "antimatter_kinetic": 6,
@@ -1266,9 +1292,9 @@
     {
       "id": "ablative_shield_t1",
       "type": "armour",
-      "name": "Ablative Shield Layer",
-      "description": "A sacrificial outer layer that absorbs and disperses energy weapon impacts.",
-      "mass": 20,
+      "name": "Ablative Plating (Layered)",
+      "description": "Layered sacrificial armor tuned for mixed damage resistance; high mass profile.",
+      "mass": 30,
       "tier": 1,
       "price": 400,
       "factionAffinity": "veth_collective",
@@ -1292,9 +1318,9 @@
     {
       "id": "fuel_tank_standard",
       "type": "fuelTank",
-      "name": "Standard Fuel Cell",
-      "description": "A reliable mid-capacity fuel cell. Standard fitting on most civilian ships.",
-      "mass": 20,
+      "name": "Fuel Cell (Standard)",
+      "description": "General-purpose fuel tank for baseline operational range.",
+      "mass": 12,
       "tier": 1,
       "price": 400,
       "factionAffinity": "federation",
@@ -1303,11 +1329,37 @@
       "slotType": "fuelTank"
     },
     {
+      "id": "fuel_tank_xs",
+      "type": "fuelTank",
+      "name": "Fuel Cell (XS Interceptor)",
+      "description": "Compact short-range fuel tank for interceptor archetypes.",
+      "mass": 12,
+      "tier": 1,
+      "price": 400,
+      "factionAffinity": "federation",
+      "fuelCapacity": 100,
+      "fuelType": "standard",
+      "slotType": "fuelTank"
+    },
+    {
+      "id": "fuel_tank_s",
+      "type": "fuelTank",
+      "name": "Fuel Cell (S)",
+      "description": "Compact extended-cell packaging for tight mounts—same capacity class as the extended cell in a smaller hull footprint.",
+      "mass": 20,
+      "tier": 1,
+      "price": 800,
+      "factionAffinity": "frontier_clans",
+      "fuelCapacity": 160,
+      "fuelType": "standard",
+      "slotType": "fuelTank"
+    },
+    {
       "id": "fuel_tank_large",
       "type": "fuelTank",
-      "name": "Extended Fuel Cell",
-      "description": "High-capacity fuel storage for long-range operations.",
-      "mass": 40,
+      "name": "Fuel Cell (Extended)",
+      "description": "Extended-range fuel tank for long-haul routes and high-burn platforms.",
+      "mass": 18,
       "tier": 1,
       "price": 800,
       "factionAffinity": "frontier_clans",
@@ -1318,9 +1370,9 @@
     {
       "id": "reactor_standard",
       "type": "reactor",
-      "name": "Standard Power Reactor",
-      "description": "A compact fusion reactor. Powers shields and energy weapons at moderate fuel cost.",
-      "mass": 25,
+      "name": "Power Reactor (Standard)",
+      "description": "Baseline onboard power reactor for shields and energy systems.",
+      "mass": 2,
       "tier": 1,
       "price": 500,
       "factionAffinity": "federation",
@@ -1332,9 +1384,9 @@
     {
       "id": "reactor_efficient",
       "type": "reactor",
-      "name": "Efficient Micro-Reactor",
-      "description": "Smaller capacity but highly fuel-efficient.",
-      "mass": 18,
+      "name": "Power Reactor (Efficient)",
+      "description": "Lower-mass efficient reactor optimized for endurance and fuel economy.",
+      "mass": 11,
       "tier": 1,
       "price": 360,
       "factionAffinity": "veth_collective",
@@ -1346,9 +1398,9 @@
     {
       "id": "shield_standard",
       "type": "shield",
-      "name": "Standard Deflector Shield",
-      "description": "An energy barrier absorbing damage before it reaches the hull. Regens slowly after hits, takes time to reboot if collapsed.",
-      "mass": 22,
+      "name": "Shield Emitter (Standard)",
+      "description": "Standard defensive shield emitter for baseline combat resilience.",
+      "mass": 1,
       "tier": 1,
       "price": 440,
       "factionAffinity": "federation",
@@ -1362,9 +1414,9 @@
     {
       "id": "shield_heavy",
       "type": "shield",
-      "name": "Heavy Barrier Shield",
-      "description": "High capacity, slower regen. When it collapses, expect a long wait.",
-      "mass": 40,
+      "name": "Shield Emitter (Heavy)",
+      "description": "High-capacity shield emitter with increased mass and power demand.",
+      "mass": 2,
       "tier": 1,
       "price": 800,
       "factionAffinity": "frontier_clans",
@@ -1378,9 +1430,9 @@
     {
       "id": "hyperdrive_basic",
       "type": "hyperspaceDrive",
-      "name": "Mark I Hop Drive",
-      "description": "Short-range hyperspace hopper. Burns a quarter tank per jump; two-sector reach.",
-      "mass": 18,
+      "name": "Hyperspace Drive (Basic)",
+      "description": "Entry-level jump drive module for inter-sector travel.",
+      "mass": 2,
       "tier": 1,
       "price": 1200,
       "factionAffinity": "federation",
@@ -1396,8 +1448,45 @@
       "y": 5
     },
     "credits": 50000,
-    "hullSpecId": "dev_store_rig",
-    "equipmentSlots": []
+    "hullSpecId": "interceptor_mk1",
+    "equipmentSlots": [
+      {
+        "slotType": "armour",
+        "itemId": "heavy_plating_t1"
+      },
+      {
+        "slotType": "autoBrake",
+        "itemId": "auto_brake_t1"
+      },
+      {
+        "slotType": "fuelTank",
+        "itemId": "fuel_tank_s"
+      },
+      {
+        "slotType": "reactor",
+        "itemId": "reactor_standard"
+      },
+      {
+        "slotType": "shield",
+        "itemId": "shield_heavy"
+      },
+      {
+        "slotType": "thruster_forward",
+        "itemId": "fwd_thruster_standard"
+      },
+      {
+        "slotType": "thruster_rotate",
+        "itemId": "rot_thruster_fighter"
+      },
+      {
+        "slotType": "weapon",
+        "itemId": "seeker_launcher_t1"
+      },
+      {
+        "slotType": "weapon",
+        "itemId": "pulse_cannon_t1"
+      }
+    ]
   },
   "missionTemplates": [
     {
@@ -1609,7 +1698,7 @@
         {
           "factionId": "federation",
           "behaviourType": "patrol",
-          "hullSpecId": "courier_mk1",
+          "hullSpecId": "courier_transport_mk1",
           "countRange": [
             2,
             3
@@ -1624,7 +1713,7 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
-          "hullSpecId": "courier_mk1",
+          "hullSpecId": "courier_transport_mk1",
           "countRange": [
             2,
             3
@@ -1639,7 +1728,7 @@
         {
           "factionId": "federation",
           "behaviourType": "patrol",
-          "hullSpecId": "fighter_mk1",
+          "hullSpecId": "dogfighter_mk1",
           "countRange": [
             1,
             2
@@ -1654,7 +1743,7 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
-          "hullSpecId": "freighter_mk1",
+          "hullSpecId": "bulk_freighter_mk1",
           "countRange": [
             1,
             2
@@ -1669,16 +1758,31 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
-            1
+            2
+          ],
+          "minPresent": 1,
+          "maxPresent": 5,
+          "arrivalIntervalRange": [
+            45,
+            90
+          ]
+        },
+        {
+          "factionId": "pirates",
+          "behaviourType": "hostile",
+          "hullSpecId": "dogfighter_mk1",
+          "countRange": [
+            1,
+            2
           ],
           "minPresent": 0,
-          "maxPresent": 2,
+          "maxPresent": 3,
           "arrivalIntervalRange": [
-            60,
-            120
+            50,
+            100
           ]
         }
       ],
@@ -1786,18 +1890,18 @@
           "seed": 2003,
           "shipyard": {
             "listingIds": [
-              "sy_fighter_mk1_raw",
-              "sy_fighter_mk1_basic",
-              "sy_fighter_mk1_advanced",
-              "sy_fighter_raider_mk1_raw",
-              "sy_fighter_raider_mk1_basic",
-              "sy_fighter_raider_mk1_advanced",
-              "sy_courier_mk1_raw",
-              "sy_courier_mk1_basic",
-              "sy_courier_mk1_advanced",
-              "sy_freighter_mk1_raw",
-              "sy_freighter_mk1_basic",
-              "sy_freighter_mk1_advanced",
+              "sy_dogfighter_mk1_raw",
+              "sy_dogfighter_mk1_basic",
+              "sy_dogfighter_mk1_advanced",
+              "sy_interceptor_mk1_raw",
+              "sy_interceptor_mk1_basic",
+              "sy_interceptor_mk1_advanced",
+              "sy_courier_transport_mk1_raw",
+              "sy_courier_transport_mk1_basic",
+              "sy_courier_transport_mk1_advanced",
+              "sy_bulk_freighter_mk1_raw",
+              "sy_bulk_freighter_mk1_basic",
+              "sy_bulk_freighter_mk1_advanced",
               "sy_dev_store_rig_raw",
               "sy_dev_store_rig_basic",
               "sy_dev_store_rig_advanced"
@@ -1818,7 +1922,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "patrol",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -1833,7 +1937,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -1896,7 +2000,7 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
-          "hullSpecId": "courier_mk1",
+          "hullSpecId": "courier_transport_mk1",
           "countRange": [
             0,
             1
@@ -1979,7 +2083,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             0,
             1
@@ -2006,7 +2110,7 @@
           "id": "derelict_platform",
           "name": "Derelict Platform",
           "type": "station",
-          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line — it works, barely.",
+          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line \u2014 it works, barely.",
           "atmosphere": "eerie and abandoned",
           "factionId": null,
           "mass": 0,
@@ -2042,7 +2146,7 @@
         {
           "factionId": "federation",
           "behaviourType": "patrol",
-          "hullSpecId": "courier_mk1",
+          "hullSpecId": "courier_transport_mk1",
           "countRange": [
             1,
             2
@@ -2057,7 +2161,7 @@
         {
           "factionId": "federation",
           "behaviourType": "transit",
-          "hullSpecId": "courier_mk1",
+          "hullSpecId": "courier_transport_mk1",
           "countRange": [
             1,
             2
@@ -2149,7 +2253,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "patrol",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             2,
             4
@@ -2164,7 +2268,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             2,
             3
@@ -2179,7 +2283,7 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -2206,7 +2310,7 @@
           "id": "clan_home",
           "name": "Rig Tharkan",
           "type": "planet",
-          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
+          "description": "The Frontier Clans' de facto capital \u2014 a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
           "factionId": "frontier_clans",
           "mass": 120000,
@@ -2274,7 +2378,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -2337,7 +2441,7 @@
         {
           "factionId": "veth_collective",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             3,
             4
@@ -2352,7 +2456,7 @@
         {
           "factionId": "veth_collective",
           "behaviourType": "patrol",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -2473,7 +2577,7 @@
         {
           "factionId": "frontier_clans",
           "behaviourType": "transit",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             0,
             1
@@ -2500,7 +2604,7 @@
           "id": "outpost_sigma",
           "name": "Outpost Sigma",
           "type": "station",
-          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
+          "description": "Nobody built this station with intention. It just accumulated over decades \u2014 modules bolted on as needed, never taken off.",
           "atmosphere": "improvised and weathered",
           "factionId": null,
           "mass": 0,
@@ -2536,7 +2640,7 @@
         {
           "factionId": "pirates",
           "behaviourType": "patrol",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             2,
             3
@@ -2551,7 +2655,7 @@
         {
           "factionId": "pirates",
           "behaviourType": "hostile",
-          "hullSpecId": "fighter_raider_mk1",
+          "hullSpecId": "interceptor_mk1",
           "countRange": [
             1,
             2
@@ -2728,8 +2832,8 @@
   ],
   "shipyardListings": [
     {
-      "id": "sy_fighter_mk1_raw",
-      "hullSpecId": "fighter_mk1",
+      "id": "sy_dogfighter_mk1_raw",
+      "hullSpecId": "dogfighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2741,7 +2845,7 @@
         },
         {
           "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
+          "itemId": "fuel_tank_xs"
         },
         {
           "slotType": "reactor",
@@ -2762,15 +2866,19 @@
         {
           "slotType": "weapon",
           "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
         }
       ],
       "price": 18740,
-      "name": "Fighter — Raw",
+      "name": "Fighter \u2014 Raw",
       "description": "raw factory fit for Fighter Mk I."
     },
     {
-      "id": "sy_fighter_mk1_basic",
-      "hullSpecId": "fighter_mk1",
+      "id": "sy_dogfighter_mk1_basic",
+      "hullSpecId": "dogfighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2782,7 +2890,7 @@
         },
         {
           "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
+          "itemId": "fuel_tank_xs"
         },
         {
           "slotType": "reactor",
@@ -2803,15 +2911,19 @@
         {
           "slotType": "weapon",
           "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
         }
       ],
       "price": 20380,
-      "name": "Fighter — Basic",
+      "name": "Fighter \u2014 Basic",
       "description": "basic factory fit for Fighter Mk I."
     },
     {
-      "id": "sy_fighter_mk1_advanced",
-      "hullSpecId": "fighter_mk1",
+      "id": "sy_dogfighter_mk1_advanced",
+      "hullSpecId": "dogfighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2844,15 +2956,19 @@
         {
           "slotType": "weapon",
           "itemId": "seeker_launcher_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
         }
       ],
       "price": 21740,
-      "name": "Fighter — Advanced",
+      "name": "Fighter \u2014 Advanced",
       "description": "advanced factory fit for Fighter Mk I."
     },
     {
-      "id": "sy_fighter_raider_mk1_raw",
-      "hullSpecId": "fighter_raider_mk1",
+      "id": "sy_interceptor_mk1_raw",
+      "hullSpecId": "interceptor_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2864,7 +2980,15 @@
         },
         {
           "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
+          "itemId": "fuel_tank_xs"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": null
+        },
+        {
+          "slotType": "shield",
+          "itemId": null
         },
         {
           "slotType": "thruster_forward",
@@ -2877,15 +3001,19 @@
         {
           "slotType": "weapon",
           "itemId": null
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
         }
       ],
-      "price": 14740,
-      "name": "Raider — Raw",
-      "description": "raw factory fit for Raider Mk I."
+      "price": 18740,
+      "name": "Interceptor \u2014 Raw",
+      "description": "raw factory fit for Interceptor Mk I."
     },
     {
-      "id": "sy_fighter_raider_mk1_basic",
-      "hullSpecId": "fighter_raider_mk1",
+      "id": "sy_interceptor_mk1_basic",
+      "hullSpecId": "interceptor_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2897,7 +3025,15 @@
         },
         {
           "slotType": "fuelTank",
-          "itemId": "fuel_tank_standard"
+          "itemId": "fuel_tank_xs"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_standard"
         },
         {
           "slotType": "thruster_forward",
@@ -2910,15 +3046,19 @@
         {
           "slotType": "weapon",
           "itemId": "pulse_cannon_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": null
         }
       ],
-      "price": 15440,
-      "name": "Raider — Basic",
-      "description": "basic factory fit for Raider Mk I."
+      "price": 20380,
+      "name": "Interceptor \u2014 Basic",
+      "description": "basic factory fit for Interceptor Mk I."
     },
     {
-      "id": "sy_fighter_raider_mk1_advanced",
-      "hullSpecId": "fighter_raider_mk1",
+      "id": "sy_interceptor_mk1_advanced",
+      "hullSpecId": "interceptor_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2930,7 +3070,15 @@
         },
         {
           "slotType": "fuelTank",
-          "itemId": "fuel_tank_large"
+          "itemId": "fuel_tank_s"
+        },
+        {
+          "slotType": "reactor",
+          "itemId": "reactor_standard"
+        },
+        {
+          "slotType": "shield",
+          "itemId": "shield_heavy"
         },
         {
           "slotType": "thruster_forward",
@@ -2942,16 +3090,20 @@
         },
         {
           "slotType": "weapon",
-          "itemId": "slug_thrower_t1"
+          "itemId": "seeker_launcher_t1"
+        },
+        {
+          "slotType": "weapon",
+          "itemId": "pulse_cannon_t1"
         }
       ],
-      "price": 16360,
-      "name": "Raider — Advanced",
-      "description": "advanced factory fit for Raider Mk I."
+      "price": 21740,
+      "name": "Interceptor \u2014 Advanced",
+      "description": "advanced factory fit for Interceptor Mk I."
     },
     {
-      "id": "sy_courier_mk1_raw",
-      "hullSpecId": "courier_mk1",
+      "id": "sy_courier_transport_mk1_raw",
+      "hullSpecId": "courier_transport_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -2995,12 +3147,12 @@
         }
       ],
       "price": 32800,
-      "name": "Courier — Raw",
+      "name": "Courier \u2014 Raw",
       "description": "raw factory fit for Courier Mk I."
     },
     {
-      "id": "sy_courier_mk1_basic",
-      "hullSpecId": "courier_mk1",
+      "id": "sy_courier_transport_mk1_basic",
+      "hullSpecId": "courier_transport_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -3044,12 +3196,12 @@
         }
       ],
       "price": 34760,
-      "name": "Courier — Basic",
+      "name": "Courier \u2014 Basic",
       "description": "basic factory fit for Courier Mk I."
     },
     {
-      "id": "sy_courier_mk1_advanced",
-      "hullSpecId": "courier_mk1",
+      "id": "sy_courier_transport_mk1_advanced",
+      "hullSpecId": "courier_transport_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -3093,12 +3245,12 @@
         }
       ],
       "price": 35640,
-      "name": "Courier — Advanced",
+      "name": "Courier \u2014 Advanced",
       "description": "advanced factory fit for Courier Mk I."
     },
     {
-      "id": "sy_freighter_mk1_raw",
-      "hullSpecId": "freighter_mk1",
+      "id": "sy_bulk_freighter_mk1_raw",
+      "hullSpecId": "bulk_freighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -3146,12 +3298,12 @@
         }
       ],
       "price": 53460,
-      "name": "Freighter — Raw",
+      "name": "Freighter \u2014 Raw",
       "description": "raw factory fit for Freighter Mk I."
     },
     {
-      "id": "sy_freighter_mk1_basic",
-      "hullSpecId": "freighter_mk1",
+      "id": "sy_bulk_freighter_mk1_basic",
+      "hullSpecId": "bulk_freighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -3199,12 +3351,12 @@
         }
       ],
       "price": 56200,
-      "name": "Freighter — Basic",
+      "name": "Freighter \u2014 Basic",
       "description": "basic factory fit for Freighter Mk I."
     },
     {
-      "id": "sy_freighter_mk1_advanced",
-      "hullSpecId": "freighter_mk1",
+      "id": "sy_bulk_freighter_mk1_advanced",
+      "hullSpecId": "bulk_freighter_mk1",
       "equipmentSlots": [
         {
           "slotType": "armour",
@@ -3252,7 +3404,7 @@
         }
       ],
       "price": 57920,
-      "name": "Freighter — Advanced",
+      "name": "Freighter \u2014 Advanced",
       "description": "advanced factory fit for Freighter Mk I."
     },
     {
@@ -3317,7 +3469,7 @@
         }
       ],
       "price": 24800,
-      "name": "Store — Raw",
+      "name": "Store \u2014 Raw",
       "description": "raw factory fit for Store Test Rig."
     },
     {
@@ -3382,7 +3534,7 @@
         }
       ],
       "price": 27140,
-      "name": "Store — Basic",
+      "name": "Store \u2014 Basic",
       "description": "basic factory fit for Store Test Rig."
     },
     {
@@ -3447,7 +3599,7 @@
         }
       ],
       "price": 29440,
-      "name": "Store — Advanced",
+      "name": "Store \u2014 Advanced",
       "description": "advanced factory fit for Store Test Rig."
     }
   ]

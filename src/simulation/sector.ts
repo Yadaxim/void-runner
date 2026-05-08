@@ -122,7 +122,7 @@ export class SectorSimulation {
     }
   }
 
-  update(dt: number): void {
+  update(dt: number, options?: { nowMs?: number }): void {
     for (const ruleState of this.spawnRuleStates) {
       ruleState.nextArrivalIn -= dt;
       if (ruleState.nextArrivalIn <= 0) {
@@ -174,7 +174,7 @@ export class SectorSimulation {
     this.weaponSystem.pruneExpired();
     this.particleSystem.update(dt);
 
-    const nowMs = Date.now();
+    const nowMs = options?.nowMs ?? Date.now();
     tickShipEnergyAndShield(this.playerShip.state, this.worldState, dt, nowMs);
     for (const npc of this.npcShips) {
       tickShipEnergyAndShield(npc.state, this.worldState, dt, nowMs);

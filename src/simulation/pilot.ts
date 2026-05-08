@@ -73,3 +73,5 @@ export class NeuralPilotStub implements Pilot {
     return zeroControlFrame();
   }
 }
+
+export { NeuralPilot, type NeuralPilotOptions } from './neuralPilot';
