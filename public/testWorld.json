@@ -1444,8 +1444,8 @@
   ],
   "startingConditions": {
     "sectorCoord": {
-      "x": 5,
-      "y": 5
+      "x": 29,
+      "y": 29
     },
     "credits": 50000,
     "hullSpecId": "interceptor_mk1",
@@ -2828,6 +2828,59 @@
       },
       "seed": 1022,
       "landables": []
+    },
+    {
+      "coord": {
+        "x": 29,
+        "y": 29
+      },
+      "regionType": "frontier",
+      "factionId": "federation",
+      "landableDensity": 0.1,
+      "npcSpawnRules": [],
+      "inRadiationZone": false,
+      "radiationFringeIntensity": 0,
+      "ambientVisuals": {
+        "hasNebula": false,
+        "nebulaHue": 220,
+        "nebulaIntensity": 0,
+        "starDensityMultiplier": 0.85
+      },
+      "seed": 6029,
+      "landables": [
+        {
+          "id": "lonely_watch_station",
+          "name": "Lonely Watch",
+          "type": "station",
+          "description": "An isolated deep-edge outpost with a skeleton crew and long-range scanners watching the void.",
+          "atmosphere": "quiet, isolated, and austere",
+          "factionId": "federation",
+          "mass": 40000,
+          "radius": 36,
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "services": [
+            {
+              "type": "refuel",
+              "refuelPricePerUnit": 3
+            },
+            {
+              "type": "repair",
+              "repairPricePerHP": 3
+            },
+            {
+              "type": "missionBoard"
+            },
+            {
+              "type": "equipmentStore"
+            }
+          ],
+          "rotationSpeed": 0,
+          "seed": 6030
+        }
+      ]
     }
   ],
   "shipyardListings": [

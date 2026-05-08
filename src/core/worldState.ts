@@ -47,6 +47,7 @@ import {
 } from '../shipyard/customize';
 import { expandSlotsToFullHull } from '../shipyard/slotLayout';
 import { throwIfWorldFileInvalidForGame, WorldFileValidationError } from '../world/validation';
+import { clampSectorCoordToGalaxy, sectorGridDistance } from '../sim/hyperspaceJump';
 
 export type { RepActionType };
 
@@ -379,8 +380,13 @@ export class WorldState {
 
     this.worldFile = indexedWorld;
     this.activeSaveId = options?.activeSaveId ?? generateSaveId();
-    this.currentSectorCoord = { ...startSector };
-    this.visitedSectors = new Set<string>([coordKey(startSector)]);
+    const wrappedStart = clampSectorCoordToGalaxy(
+      startSector,
+      indexedWorld.galaxy.gridWidth,
+      indexedWorld.galaxy.gridHeight
+    );
+    this.currentSectorCoord = { ...wrappedStart };
+    this.visitedSectors = new Set<string>([coordKey(wrappedStart)]);
     this.hyperspaceCooldownUntilPlayTime = 0;
     this.playerShipState = normaliseShipState(playerShipState);
     this.ensureHullSlots();
@@ -452,15 +458,17 @@ export class WorldState {
   }
 
   getSector(coord: GridCoord): SectorMetadata | null {
-    return this.sectorIndex.get(coordKey(coord)) ?? null;
+    const wrapped = this.wrapSectorCoord(coord);
+    return this.sectorIndex.get(coordKey(wrapped)) ?? null;
   }
 
   setCurrentSector(coord: GridCoord): void {
-    const key = coordKey(coord);
+    const wrapped = this.wrapSectorCoord(coord);
+    const key = coordKey(wrapped);
     if (!this.sectorIndex.has(key)) {
-      this.sectorIndex.set(key, createRuntimeVoidSector(this.worldFile, coord));
+      this.sectorIndex.set(key, createRuntimeVoidSector(this.worldFile, wrapped));
     }
-    this.currentSectorCoord = { ...coord };
+    this.currentSectorCoord = { ...wrapped };
   }
 
   getLandablesInCurrentSector(): Landable[] {
@@ -1186,11 +1194,11 @@ export class WorldState {
   }
 
   markVisited(coord: GridCoord): void {
-    this.visitedSectors.add(coordKey(coord));
+    this.visitedSectors.add(coordKey(this.wrapSectorCoord(coord)));
   }
 
   isVisited(coord: GridCoord): boolean {
-    return this.visitedSectors.has(coordKey(coord));
+    return this.visitedSectors.has(coordKey(this.wrapSectorCoord(coord)));
   }
 
   getVisitedSectorCoords(): GridCoord[] {
@@ -1245,7 +1253,7 @@ export class WorldState {
   }
 
   getDistanceFromCentre(coord: GridCoord): number {
-    return Math.sqrt(coord.x ** 2 + coord.y ** 2);
+    return sectorGridDistance(coord, this.getGalaxyCentre(), this.getGridWidth(), this.getGridHeight());
   }
 
   /** Radiation falloff 0…1 by distance from galactic centre (same formula as hull damage zone). */
@@ -1264,9 +1272,8 @@ export class WorldState {
   }
 
   isSectorCoordInGalaxyBounds(coord: GridCoord): boolean {
-    const hw = this.getGridWidth() / 2;
-    const hh = this.getGridHeight() / 2;
-    return coord.x >= -hw && coord.x < hw && coord.y >= -hh && coord.y < hh;
+    const wrapped = this.wrapSectorCoord(coord);
+    return wrapped.x === Math.round(coord.x) && wrapped.y === Math.round(coord.y);
   }
 
   getHyperspaceTargetCoord(): GridCoord | null {
@@ -1282,6 +1289,10 @@ export class WorldState {
       return;
     }
     this.hyperspaceTargetCoord = { ...coord };
+  }
+
+  wrapSectorCoord(coord: GridCoord): GridCoord {
+    return clampSectorCoordToGalaxy(coord, this.getGridWidth(), this.getGridHeight());
   }
 
   getPlayerHyperspaceDrive(): HyperspaceDriveItem | null {
@@ -1366,7 +1377,13 @@ export class WorldState {
         activeSaveId: saveId
       });
       state.setCurrentSector(parsed.currentSectorCoord);
-      state.visitedSectors = new Set(parsed.visitedSectors);
+      state.visitedSectors = new Set(
+        parsed.visitedSectors.map((key) => {
+          const [xRaw, yRaw] = key.split(':');
+          const wrapped = state.wrapSectorCoord({ x: Number(xRaw), y: Number(yRaw) });
+          return coordKey(wrapped);
+        })
+      );
       state.factionReputations = { ...defaultFactionReputations(worldFile), ...parsed.factionReputations };
       state.repLog = Array.isArray(parsed.repLog) ? parsed.repLog.slice(-8) : [];
       state.pilotName = typeof parsed.pilotName === 'string' ? parsed.pilotName : 'Pilot';

@@ -68,9 +68,7 @@ export class GalaxyMapScreen implements Screen {
       event.preventDefault();
       event.stopPropagation();
       const next = { x: this.cursor.x + dx, y: this.cursor.y + dy };
-      if (this.worldState.isSectorCoordInGalaxyBounds(next)) {
-        this.cursor = next;
-      }
+      this.cursor = this.worldState.wrapSectorCoord(next);
     }
   };
 
@@ -251,7 +249,7 @@ export class GalaxyMapScreen implements Screen {
       for (let col = 0; col < gw; col += 1) {
         const sx = -hw + col;
         const coord: GridCoord = { x: sx, y: sy };
-        if (sectorGridDistance(current, coord) <= range + 1e-6) {
+        if (sectorGridDistance(current, coord, this.worldState.getGridWidth(), this.worldState.getGridHeight()) <= range + 1e-6) {
           const cx = gridOffsetX + col * (cellSize + gap);
           const cy = gridOffsetY + row * (cellSize + gap);
           ctx.fillStyle = 'rgba(255, 220, 120, 0.12)';

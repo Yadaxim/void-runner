@@ -72,7 +72,6 @@ export class FlightScreen implements Screen {
   } | null = null;
   private flightBannerUntilMs = 0;
   private flightBannerText = '';
-  private boundaryWarningUntilMs = 0;
   private arrivalMessageUntilMs = 0;
   private arrivalMessageSectorName = '';
   private arrivalMessageLandables = '';
@@ -455,14 +454,7 @@ export class FlightScreen implements Screen {
     }
     const crossedEdge = this.checkSectorEdge();
     if (crossedEdge) {
-      const current = this.worldState.getCurrentSectorCoord();
-      const adjacent = getAdjacentSectorCoord(current, crossedEdge);
-      if (!this.isWithinGalaxyBounds(adjacent)) {
-        this.applyBoundaryClamp(crossedEdge);
-        this.boundaryWarningUntilMs = performance.now() + 2000;
-      } else {
-        void this.transitionToSector(crossedEdge);
-      }
+      void this.transitionToSector(crossedEdge);
     }
   }
 
@@ -506,7 +498,7 @@ export class FlightScreen implements Screen {
       heldFireKeys: this.heldFireKeys,
       worldState: this.worldState,
       dt: this.lastDt,
-      showBoundaryWarning: performance.now() <= this.boundaryWarningUntilMs,
+      showBoundaryWarning: false,
       radiationIntensity: this.worldState.getRadiationIntensity(),
       arrivalMessage: this.getArrivalMessage(),
       destructionMessageAlpha: this.getDestructionMessageAlpha(),
@@ -734,17 +726,6 @@ export class FlightScreen implements Screen {
     return null;
   }
 
-  private isWithinGalaxyBounds(coord: { x: number; y: number }): boolean {
-    const gridHalfWidth = this.worldState.getGridWidth() / 2;
-    const gridHalfHeight = this.worldState.getGridHeight() / 2;
-    return (
-      coord.x >= -gridHalfWidth &&
-      coord.x < gridHalfWidth &&
-      coord.y >= -gridHalfHeight &&
-      coord.y < gridHalfHeight
-    );
-  }
-
   private applyRadiationDamage(dt: number): void {
     if (!this.playerShip) {
       return;
@@ -927,38 +908,6 @@ export class FlightScreen implements Screen {
     return sector.landables[0];
   }
 
-  private applyBoundaryClamp(edge: SectorEdge): void {
-    if (!this.playerShip) {
-      return;
-    }
-    const position = this.playerShip.state.position as Vector2;
-    const velocity = this.playerShip.state.velocity as Vector2;
-    let nextPosition = position;
-    let nextVelocity = velocity;
-    if (edge === 'east') {
-      nextPosition = new Vector2(SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD, position.y);
-      nextVelocity = new Vector2(Math.min(0, velocity.x), velocity.y);
-    } else if (edge === 'west') {
-      nextPosition = new Vector2(-(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD, position.y);
-      nextVelocity = new Vector2(Math.max(0, velocity.x), velocity.y);
-    } else if (edge === 'north') {
-      nextPosition = new Vector2(position.x, -(SECTOR_SIZE / 2) + SECTOR_EDGE_THRESHOLD);
-      nextVelocity = new Vector2(velocity.x, Math.max(0, velocity.y));
-    } else {
-      nextPosition = new Vector2(position.x, SECTOR_SIZE / 2 - SECTOR_EDGE_THRESHOLD);
-      nextVelocity = new Vector2(velocity.x, Math.min(0, velocity.y));
-    }
-    this.playerShip.state = {
-      ...this.playerShip.state,
-      position: nextPosition,
-      velocity: nextVelocity
-    };
-    this.worldState.updatePlayerShipState({
-      position: nextPosition,
-      velocity: nextVelocity
-    });
-  }
-
   private showFlightBanner(text: string): void {
     this.flightBannerText = text;
     this.flightBannerUntilMs = performance.now() + 3200;
@@ -987,7 +936,12 @@ export class FlightScreen implements Screen {
     if (!landing || (landing.x === from.x && landing.y === from.y)) {
       return null;
     }
-    const jumpDir = getHyperspaceHopWorldDirection(from, landing);
+    const jumpDir = getHyperspaceHopWorldDirection(
+      from,
+      landing,
+      this.worldState.getGridWidth(),
+      this.worldState.getGridHeight()
+    );
     if (!jumpDir) {
       return null;
     }
@@ -1221,7 +1175,12 @@ export class FlightScreen implements Screen {
     try {
       await this.pipeline.playTransitionOut(this.ctx, 300);
       const currentCoord = this.worldState.getCurrentSectorCoord();
-      const nextCoord = getAdjacentSectorCoord(currentCoord, edge);
+      const nextCoord = getAdjacentSectorCoord(
+        currentCoord,
+        edge,
+        this.worldState.getGridWidth(),
+        this.worldState.getGridHeight()
+      );
       this.worldState.setCurrentSector(nextCoord);
       this.worldState.markVisited(nextCoord);
 

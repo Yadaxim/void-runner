@@ -1,11 +1,18 @@
 import { SECTOR_EDGE_THRESHOLD, SECTOR_SIZE } from '../constants';
 import type { GridCoord } from '../types';
 import { Vector2 } from '../physics/vector2';
+import { clampSectorCoordToGalaxy } from './hyperspaceJump';
 
 export type SectorEdge = 'north' | 'south' | 'east' | 'west';
 
 /** @see flightScreen.getAdjacentCoord — extracted for tests and navigation consistency */
-export function getAdjacentSectorCoord(coord: GridCoord, edge: SectorEdge): GridCoord {
+export function getAdjacentSectorCoord(
+  coord: GridCoord,
+  edge: SectorEdge,
+  gridWidth: number,
+  gridHeight: number
+): GridCoord {
+  const next: GridCoord = (() => {
   if (edge === 'north') {
     return { x: coord.x, y: coord.y + 1 };
   }
@@ -16,6 +23,8 @@ export function getAdjacentSectorCoord(coord: GridCoord, edge: SectorEdge): Grid
     return { x: coord.x + 1, y: coord.y };
   }
   return { x: coord.x - 1, y: coord.y };
+  })();
+  return clampSectorCoordToGalaxy(next, gridWidth, gridHeight);
 }
 
 /** Player spawn position on the inward side of a sector after crossing `edge` (preserves lateral coordinate). */

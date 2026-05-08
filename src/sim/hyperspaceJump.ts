@@ -1,26 +1,37 @@
 import { Vector2 } from '../physics/vector2';
 import type { GridCoord } from '../types';
 
-/** Euclidean distance between sector grid coordinates (continuous). */
-export function sectorGridDistance(a: GridCoord, b: GridCoord): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
+function shortestWrappedAxisDelta(from: number, to: number, period: number): number {
+  const direct = to - from;
+  if (period <= 0) {
+    return direct;
+  }
+  const wrapped = ((direct + period / 2) % period + period) % period - period / 2;
+  return wrapped;
+}
+
+function wrapAxis(n: number, minInclusive: number, period: number): number {
+  if (period <= 0) {
+    return Math.round(n);
+  }
+  const rounded = Math.round(n);
+  return ((rounded - minInclusive) % period + period) % period + minInclusive;
+}
+
+/** Euclidean distance between sector coordinates using shortest torus deltas. */
+export function sectorGridDistance(a: GridCoord, b: GridCoord, gridWidth: number, gridHeight: number): number {
+  const dx = shortestWrappedAxisDelta(a.x, b.x, gridWidth);
+  const dy = shortestWrappedAxisDelta(a.y, b.y, gridHeight);
   return Math.hypot(dx, dy);
 }
 
-function clampInt(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, Math.round(n)));
-}
-
-/** Integer sector coord inside galaxy half-open bounds (matches `WorldState.isSectorCoordInGalaxyBounds`). */
+/** Integer sector coord wrapped into galaxy half-open bounds. */
 export function clampSectorCoordToGalaxy(coord: { x: number; y: number }, gridWidth: number, gridHeight: number): GridCoord {
   const hw = gridWidth / 2;
   const hh = gridHeight / 2;
-  const maxX = hw - 1;
-  const maxY = hh - 1;
   return {
-    x: clampInt(coord.x, -hw, maxX),
-    y: clampInt(coord.y, -hh, maxY)
+    x: wrapAxis(coord.x, -hw, gridWidth),
+    y: wrapAxis(coord.y, -hh, gridHeight)
   };
 }
 
@@ -36,8 +47,8 @@ export function computeHyperspaceLandingSector(
   gridWidth: number,
   gridHeight: number
 ): GridCoord | null {
-  const dx = target.x - current.x;
-  const dy = target.y - current.y;
+  const dx = shortestWrappedAxisDelta(current.x, target.x, gridWidth);
+  const dy = shortestWrappedAxisDelta(current.y, target.y, gridHeight);
   const dist = Math.hypot(dx, dy);
   if (dist < 1e-9) {
     return null;
@@ -51,9 +62,14 @@ export function computeHyperspaceLandingSector(
 /**
  * World-space unit vector for a hop from `from` toward `landing` (grid delta mapped to match ship thrust: +y is screen-up style).
  */
-export function getHyperspaceHopWorldDirection(from: GridCoord, landing: GridCoord): Vector2 | null {
-  const gdx = landing.x - from.x;
-  const gdy = landing.y - from.y;
+export function getHyperspaceHopWorldDirection(
+  from: GridCoord,
+  landing: GridCoord,
+  gridWidth: number,
+  gridHeight: number
+): Vector2 | null {
+  const gdx = shortestWrappedAxisDelta(from.x, landing.x, gridWidth);
+  const gdy = shortestWrappedAxisDelta(from.y, landing.y, gridHeight);
   const m = Math.hypot(gdx, gdy);
   if (m < 1e-9) {
     return null;

@@ -471,7 +471,12 @@ describe('headless SectorSimulation', () => {
       ws.setCurrentSector(start);
       const prev = new Vector2(100, 200);
       ws.updatePlayerShipState({ position: prev });
-      const nextCoord = getAdjacentSectorCoord(ws.getCurrentSectorCoord(), edge);
+      const nextCoord = getAdjacentSectorCoord(
+        ws.getCurrentSectorCoord(),
+        edge,
+        ws.getGridWidth(),
+        ws.getGridHeight()
+      );
       const nextPos = playerSpawnPositionAfterCrossing(edge, prev);
       ws.setCurrentSector(nextCoord);
       ws.updatePlayerShipState({ position: nextPos });

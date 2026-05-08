@@ -161,7 +161,8 @@ export class MinimapRenderer {
     for (let row = -1; row <= 1; row += 1) {
       for (let col = -1; col <= 1; col += 1) {
         // Screen rows increase downward, but sector Y increases upward.
-        const coord = { x: current.x + col, y: current.y - row };
+        const rawCoord = { x: current.x + col, y: current.y - row };
+        const coord = worldState.wrapSectorCoord(rawCoord);
         const x = originX + (col + 1) * (cellSize + gap);
         const y = originY + (row + 1) * (cellSize + gap);
 
@@ -181,6 +182,16 @@ export class MinimapRenderer {
           this.ctx.strokeStyle = COLOURS.UI_ACCENT;
           this.ctx.lineWidth = 1;
           this.ctx.strokeRect(x - 1, y - 1, cellSize + 2, cellSize + 2);
+        }
+
+        // Subtle slash marks neighboring cells that wrapped across the torus seam.
+        if (!worldState.isSectorCoordInGalaxyBounds(rawCoord)) {
+          this.ctx.strokeStyle = 'rgba(240, 210, 110, 0.6)';
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(x + cellSize - 2, y + 2);
+          this.ctx.lineTo(x + 2, y + cellSize - 2);
+          this.ctx.stroke();
         }
       }
     }
