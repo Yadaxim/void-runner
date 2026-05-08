@@ -103,8 +103,14 @@ export const PATROL_WAYPOINT_COUNT = 4;
 export const NPC_AGGRO_RANGE = 600;
 export const NPC_FLEE_HP_THRESHOLD = 0.25;
 export const NPC_FIRE_RANGE = 400;
+/** Hostile AI stops chasing perfect nose-on aim within ±this angle (rad); reduces jitter vs global rotate threshold. */
+export const NPC_HOSTILE_AIM_ANGLE_DEADBAND_RAD = (2 * Math.PI) / 180;
 export const NPC_PREFERRED_COMBAT_RANGE = 280;
 export const NPC_STRAFE_INTERVAL = 1.5;
+/** Hostile AI in weapon range: pulse rotation thrusters so coast phases let rotation auto-brake act (player parity). */
+export const NPC_HOSTILE_AIM_PULSE_PERIOD_SEC = 0.24;
+/** Fraction of each pulse period applying rotate thrusters; remainder coasts with auto-brake rotation enabled. */
+export const NPC_HOSTILE_AIM_PULSE_THRUST_DUTY = 0.52;
 export const NPC_DEAGGRO_RANGE_MULTIPLIER = 1.5;
 export const NPC_THREAT_MEMORY_DURATION = 10;
 

@@ -46,6 +46,21 @@ export class TargetingSystem {
     return this.shipTargetId;
   }
 
+  /**
+   * Shift+Tab: nearest NPC hostile to the player; if none, nearest NPC not hostile to the player
+   * (`none` / `toOther`). Empty sector → clear target.
+   */
+  targetClosestHostileShip(playerPosition: Vector2, ships: ShipEntity[]): string | null {
+    const hostileToPlayer = ships.filter((s) => s.getNPCHostilityState() === 'toPlayer');
+    const pool =
+      hostileToPlayer.length > 0
+        ? hostileToPlayer
+        : ships.filter((s) => s.getNPCHostilityState() !== 'toPlayer');
+    const sorted = sortByDistance(playerPosition, pool, (ship) => ship.state.position as Vector2);
+    this.shipTargetId = sorted[0]?.state.id ?? null;
+    return this.shipTargetId;
+  }
+
   cycleLandableTarget(
     playerPosition: Vector2,
     landables: Landable[],

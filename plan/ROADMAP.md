@@ -1,17 +1,18 @@
-# Void Runner Roadmap — Update
+# VOID RUNNER — Roadmap
 
 Replaces the rough roadmap from the original handoff. Reflects the decision to prioritize world generation before fleet, with a pre-gen foundation phase to make rich generation possible.
 
 ---
 
-## Currently in flight
+## Status snapshot
 
-- [x] Energy / shield / armour layered system (player)
-- [ ] Tests: Vitest setup, world validation, damage system, reputation, simulation integration
-- [ ] World validation boundaries (export, import, load)
-- [ ] Shipyard system
+Authoritative **session notes:** **`plan/CONTEXT.md` → Last changes**. Routine checklist: **`plan/BACKLOG.md`**.
 
-When these land, the codebase has: full damage stack, validated worlds at every boundary, ship purchase flow with the customize-on-buy screen, and tests for everything below the gameplay layer.
+**In the codebase today:** Vitest + broad coverage; **`validateWorldFile`** at load/export boundaries in principle (portable **file** import/export still backlog); **shipyard** + equipment store + customize-on-buy; player/NPC combat parity; **galaxy map + hyperspace**; **torus** wrap and wrap-aware distances.
+
+**Phase 4.5 foundation:** Sessions **A–C** are largely shipped (NPC battle parity, torus topology + minimap seam hint, galaxy map + hyperspace). Sessions **D–F** remain (species layer, multi-faction landables, game time + mission trees).
+
+**Hygiene:** When **`testWorld.json`** hull lists change, align **`simulation.test.ts`** / fixtures so starter hull ids still resolve (`shipyardListings` / `startingConditions`).
 
 ---
 
@@ -20,13 +21,13 @@ When these land, the codebase has: full damage stack, validated worlds at every 
 Six sessions establishing the conceptual layers and infrastructure the generation pipeline depends on. None of these add LLM calls — they are pure code work.
 
 ### Session A — NPC battle parity
-Apply shield, reactor, and layered armour to NPCs. Update spawn loadouts to include reactors and shields where appropriate. Make damage resolution entity-agnostic. Tests cover NPC battle scenarios. Closes the hanging gap from the energy system implementation.
+- [x] **Shipped** — layered damage, shields, reactor/joules tick for NPCs; spawn loadouts carry combat state; entity-agnostic resolution.
 
 ### Session B — Torus galaxy topology
-Sector edge transitions wrap. Remove the boundary wall. Distance calculations use shortest torus path. Mini-map handles wrap with a subtle visual indicator. Update existing testWorld for torus topology.
+- [x] **Shipped** — sector transitions wrap; torus distance / hop direction; minimap visited-grid seam cue; **`testWorld`** torus-shaped galaxy bounds.
 
 ### Session C — Galaxy map screen + hyperspace
-Full galaxy map UI: zoom, pan, click to select destination. Hyperspace drive equipment becomes functional. Hyperspace target selection from galaxy map. Jump animation and transition. Fuel cost per parsec. Visited sector reveal (only see what you've explored). Without this, generated 50×50 worlds are unplayable.
+- [x] **Shipped** — **`GalaxyMapScreen`**, hyperspace drive equipment, map target, partial hops, fuel/cooldown, jump animation, visited reveal.
 
 ### Session D — Species layer + faction extensions
 Add `world.species` array and `Species` data model. Extend `Faction` with `speciesComposition`, `homeLandableId: string | null`, `bubbleStance`, and `techArchetype`. Update validation. Update testWorld with example species and updated factions. No gameplay change yet — purely data model expansion.
@@ -141,11 +142,11 @@ These can happen in any phase as warranted:
 
 The pre-gen phase (4.5) is six sessions of unglamorous foundation work. It's tempting to skip ahead to gen, but every gen step depends on at least one of these foundations:
 
-- Gen produces big galaxies → torus + hyperspace + galaxy map needed (B, C)
-- Gen produces multi-species factions → species layer needed (D)
-- Gen produces shared landables → multi-faction control needed (E)
-- Gen produces mission trees with consequences → tree data model and time clock needed (F)
-- Gen produces NPC ships with full equipment → NPC battle parity needed (A)
+- Gen produces big galaxies -> torus + hyperspace + galaxy map needed (B, C)
+- Gen produces multi-species factions -> species layer needed (D)
+- Gen produces shared landables -> multi-faction control needed (E)
+- Gen produces mission trees with consequences -> tree data model and time clock needed (F)
+- Gen produces NPC ships with full equipment -> NPC battle parity needed (A)
 
 Skipping any of these means the generated worlds wouldn't actually express the features they're supposed to.
 

@@ -27,7 +27,8 @@ export class MinimapRenderer {
     playerPosition: Vector2,
     landingCandidate: Landable | null,
     npcShips: ShipEntity[],
-    activeMissions: Mission[]
+    activeMissions: Mission[],
+    shipTargetId: string | null
   ): void {
     const mapX = this.ctx.canvas.width - MINIMAP_SIZE - PANEL_MARGIN;
     const mapY = this.ctx.canvas.height - MINIMAP_SIZE - PANEL_MARGIN;
@@ -128,6 +129,26 @@ export class MinimapRenderer {
         this.ctx.beginPath();
         this.ctx.arc(dotX, dotY, NPC_DOT_RADIUS + 2, 0, Math.PI * 2);
         this.ctx.stroke();
+      }
+
+      if (shipTargetId !== null && npc.state.id === shipTargetId) {
+        const pulse = 0.55 + (Math.sin(performance.now() * (Math.PI * 2 / 900)) + 1) * 0.22;
+        this.ctx.save();
+        this.ctx.globalAlpha = pulse * npc.getOpacity();
+        this.ctx.strokeStyle = COLOURS.UI_ACCENT;
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([]);
+        this.ctx.beginPath();
+        this.ctx.arc(dotX, dotY, NPC_DOT_RADIUS + 5, 0, Math.PI * 2);
+        this.ctx.stroke();
+        const tick = 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(dotX - tick, dotY);
+        this.ctx.lineTo(dotX + tick, dotY);
+        this.ctx.moveTo(dotX, dotY - tick);
+        this.ctx.lineTo(dotX, dotY + tick);
+        this.ctx.stroke();
+        this.ctx.restore();
       }
       this.ctx.restore();
     }

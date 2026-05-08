@@ -1,6 +1,6 @@
 # VOID RUNNER — Backlog checklist
 
-> Actionable checkboxes derived from **`plan/CONTEXT.md`** and **`plan/VOID_RUNNER_Roadmap.md`**. Check items off as you ship; keep this file in sync when priorities move. Detailed design stays in the GDD, WorldGen doc, art guidelines, and roadmap appendices.
+> Actionable checkboxes derived from **`plan/CONTEXT.md`** and **`plan/ROADMAP.md`**. Check items off as you ship; keep this file in sync when priorities move. Detailed design stays in the GDD, WorldGen doc, art guidelines, and roadmap appendices.
 
 ---
 
@@ -110,7 +110,7 @@ Roadmap **Fleet and escorts**.
 
 ## World generator (offline)
 
-Roadmap **World generator**; pipeline detail in **`plan/VOID_RUNNER_WorldGen.md`**.
+Roadmap **World generator**; pipeline detail in **`plan/WORLDGEN.md`**.
 
 - [ ] Generator entry from main menu: new / load / import / export world JSON; progress UI for long runs  
 - [ ] Implement pipeline (spiral density, text passes, validation, export) per WorldGen doc  
@@ -120,7 +120,7 @@ Roadmap **World generator**; pipeline detail in **`plan/VOID_RUNNER_WorldGen.md`
 
 ## Persistence — portable JSON saves (world-linked)
 
-From roadmap **Persistence and portable saves** and **`plan/VOID_RUNNER_GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
+From roadmap **Persistence and portable saves** and **`plan/GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
 
 - [ ] **Single serializer** — one code path builds the save JSON object (and parses/validates on load) used by both **`localStorage`** and file I/O; avoid drift between formats.  
 - [ ] **Export save** — main menu or load-game UI: download a **`.json`** (envelope + `PersistedWorldState`); filename encodes seed (and optional pilot/world name).  
@@ -149,9 +149,10 @@ Roadmap **Polish and presentation**.
 
 - [x] **Flight backdrop —** faint **world-aligned sector grid** above parallax stars (**`BackgroundLayer`**, **`FLIGHT_SECTOR_GRID_SPACING`** / **`FLIGHT_SECTOR_GRID_ALPHA`** in **`constants.ts`**)  
 - [x] **Minimap —** landables: **stroke ring** (faction **`secondaryColour`**) and dot sizing so ports read distinct from ship markers (**`minimapRenderer.ts`**)  
+- [x] **Targeting / minimap —** **Tab** cycles NPC ships by distance; **Shift+Tab** locks closest threat to player, else closest non-threat; minimap **accent ring + crosshair** on locked ship (**`targetingSystem.ts`**, **`playerController.ts`**, **`minimapRenderer.ts`**)  
 - [x] **Auto-brake —** passive linear/angular damping only when matching thrusters are not producing thrust this frame (**`ShipEntity`**)  
 - [ ] Sound — Web Audio API (engines, weapons, UI)  
-- [ ] Visual variety — distinct hull silhouettes per class (**`plan/VOID_RUNNER_Art_Guidelines_v1.0.md`**)  
+- [ ] Visual variety — distinct hull silhouettes per class (**`plan/ART_GUIDELINES_V1.0.md`**)  
 - [ ] Engine glow and damage VFX for readability  
 - [ ] World sharing UX — export/import discoverability  
 
@@ -176,9 +177,9 @@ Hand-tuned hull/item pairs before procedural catalog generation; tracked in **`p
 
 ---
 
-## Parked ideas (from idea backlog)
+## Parked ideas
 
-These are intentionally not active checklist items. Promote them when trigger conditions are met.
+These are intentionally not active checklist items. Promote them when trigger conditions are met. Long-form **What / Trigger** text: **`plan/PARKED_IDEAS_DETAIL.md`**.
 
 ### Combat and ship systems
 
@@ -233,4 +234,4 @@ These are intentionally not active checklist items. Promote them when trigger co
 
 ---
 
-*Last aligned with **`plan/CONTEXT.md`** and **`plan/VOID_RUNNER_Roadmap.md`**. Update both those files and this checklist when delivery order changes.*
+*Last aligned **2026-05-09** with **`plan/CONTEXT.md`** (Last changes) and **`plan/ROADMAP.md`** (Status snapshot). Update those files and this checklist when delivery order changes.*

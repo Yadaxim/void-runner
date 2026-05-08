@@ -1,4 +1,7 @@
-# Void Runner Backlog
+# Parked ideas — long form
+
+> **Summary checklist:** `plan/BACKLOG.md` → **Parked ideas** (same topics, short bullets).  
+> This file keeps the original **What / Trigger** notes for when an idea is promoted back into scope.
 
 Ideas parked for later. Not in any active phase. Each entry notes what would trigger pulling it into the active roadmap.
 

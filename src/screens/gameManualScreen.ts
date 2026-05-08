@@ -71,7 +71,7 @@ export class GameManualScreen implements Screen {
       'E: toggle rotation auto-brake',
       'L: land when prompt appears',
       'M: toggle active missions panel',
-      'Tab: cycle ship target, G: cycle landable target',
+      'Tab: cycle ship target (distance order), Shift+Tab: closest threat (else closest non-threat), G: cycle landable target',
       'Z/X/C/V/B: weapon groups',
       'Esc: pause menu, H: in-flight help overlay'
     ];

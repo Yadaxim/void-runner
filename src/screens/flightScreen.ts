@@ -387,6 +387,9 @@ export class FlightScreen implements Screen {
         fuel: this.worldState.getMaxFuel()
       };
     }
+    if (targetInputs.targetClosestHostileShip) {
+      this.targeting.targetClosestHostileShip(this.playerShip.state.position as Vector2, npcShips);
+    }
     if (targetInputs.cycleShipTarget) {
       this.targeting.cycleShipTarget(
         this.playerShip.state.position as Vector2,
@@ -592,7 +595,7 @@ export class FlightScreen implements Screen {
       'L: land when landing prompt appears',
       'M: toggle active missions panel',
       'K: galaxy map target, J: hyper jump when beacon + prompt (slow, aligned)',
-      'Tab: cycle ship target, G: cycle landable target',
+      'Tab: cycle ship target (distance order), Shift+Tab: closest threat (else closest non-threat), G: cycle landable target',
       'Z/X/C/V/B: fire weapon groups',
       'Esc: pause'
     ];

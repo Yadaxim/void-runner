@@ -178,7 +178,8 @@ export class RenderPipeline {
       state.playerShip.state.position,
       state.landingCandidate,
       state.otherShips,
-      state.playerShip.state.activeMissions
+      state.playerShip.state.activeMissions,
+      state.shipTargetId
     );
   }
 

@@ -4,6 +4,9 @@ import {
   NPC_DEAGGRO_RANGE_MULTIPLIER,
   NPC_FIRE_RANGE,
   NPC_FLEE_HP_THRESHOLD,
+  NPC_HOSTILE_AIM_ANGLE_DEADBAND_RAD,
+  NPC_HOSTILE_AIM_PULSE_PERIOD_SEC,
+  NPC_HOSTILE_AIM_PULSE_THRUST_DUTY,
   NPC_PREFERRED_COMBAT_RANGE,
   NPC_STRAFE_INTERVAL,
   NPC_THREAT_MEMORY_DURATION,
@@ -51,13 +54,14 @@ function angleToTarget(from: Vector2, to: Vector2): number {
 function rotateToward(
   selfAngle: number,
   targetAngle: number,
-  _angularVelocity: number
+  _angularVelocity: number,
+  alignThresholdRad: number = ROTATION_THRESHOLD_RAD
 ): { rotateCW: boolean; rotateCCW: boolean; autoBrakeRotation: boolean; angleDiff: number } {
   const diff = wrapAngle(targetAngle - selfAngle);
-  if (diff > ROTATION_THRESHOLD_RAD) {
+  if (diff > alignThresholdRad) {
     return { rotateCW: true, rotateCCW: false, autoBrakeRotation: false, angleDiff: diff };
   }
-  if (diff < -ROTATION_THRESHOLD_RAD) {
+  if (diff < -alignThresholdRad) {
     return { rotateCW: false, rotateCCW: true, autoBrakeRotation: false, angleDiff: diff };
   }
   return { rotateCW: false, rotateCCW: false, autoBrakeRotation: true, angleDiff: diff };
@@ -89,6 +93,8 @@ export class NPCController {
   private loiterTimer = 0;
   private departureTarget: Vector2 | null = null;
   private readonly factionId: string;
+  /** Accumulator for hostile/tail aim pulse while target is in weapon range (player-parity rotation brake). */
+  private aimPulsePhaseSec = 0;
 
   constructor(initialState: NPCState, sectorSeed: number, factionId: string) {
     this.state = initialState;
@@ -180,7 +186,7 @@ export class NPCController {
       this.state = 'flee';
     }
 
-    if (this.state === 'patrol') return this.updatePatrol(self, player, playerDistance, worldState);
+    if (this.state === 'patrol') return this.updatePatrol(dt, self, player, playerDistance, worldState);
     if (this.state === 'transit') return this.updateTransit(dt, self, landables, worldState);
     if (this.state === 'trade') return this.updateTrade(self, landables);
     if (this.state === 'hostile') return this.updateHostile(dt, self, player, otherNPCs);
@@ -188,6 +194,7 @@ export class NPCController {
   }
 
   private updatePatrol(
+    dt: number,
     self: ShipEntity,
     player: ShipEntity,
     playerDistance: number,
@@ -196,7 +203,7 @@ export class NPCController {
     const frame = defaultControlFrame();
     const factionId = self.state.factionId;
     const tier = factionId ? worldState.getReputationTier(factionId) : 'neutral';
-    if (tier === 'unfriendly') return this.updateTailPlayer(self, player, playerDistance);
+    if (tier === 'unfriendly') return this.updateTailPlayer(dt, self, player, playerDistance);
 
     const selfPos = self.state.position as Vector2;
     const targetAngle = angleToTarget(selfPos, this.patrolTarget);
@@ -304,7 +311,7 @@ export class NPCController {
     return frame;
   }
 
-  private updateTailPlayer(self: ShipEntity, player: ShipEntity, playerDistance: number): ShipControlFrame {
+  private updateTailPlayer(dt: number, self: ShipEntity, player: ShipEntity, playerDistance: number): ShipControlFrame {
     const frame = defaultControlFrame();
     const selfPos = self.state.position as Vector2;
     const playerPos = player.state.position as Vector2;
@@ -321,6 +328,7 @@ export class NPCController {
       frame.thrusters.reverse = true;
       frame.thrusters.autoBrakeLinear = false;
     }
+    this.applyWeaponRangeRotationPulse(dt, frame, playerDistance <= this.fireRange);
     return frame;
   }
 
@@ -369,7 +377,12 @@ export class NPCController {
     }
 
     const targetAngle = angleToTarget(selfPos, targetPos);
-    const rotation = rotateToward(self.state.angle, targetAngle, self.state.angularVelocity);
+    const rotation = rotateToward(
+      self.state.angle,
+      targetAngle,
+      self.state.angularVelocity,
+      NPC_HOSTILE_AIM_ANGLE_DEADBAND_RAD
+    );
     frame.thrusters.rotateCW = rotation.rotateCW;
     frame.thrusters.rotateCCW = rotation.rotateCCW;
     frame.thrusters.autoBrakeRotation = rotation.autoBrakeRotation;
@@ -387,27 +400,31 @@ export class NPCController {
           frame.thrusters.autoBrakeLinear = false;
         }
       } else if (absAngleDiff < (30 * Math.PI) / 180) {
-        this.strafeTimer += dt;
-        if (this.strafeTimer >= NPC_STRAFE_INTERVAL) {
-          this.strafeTimer = 0;
-          this.strafeDirection = this.strafeDirection === 1 ? -1 : 1;
+        if (targetDistance > this.fireRange) {
+          this.strafeTimer += dt;
+          if (this.strafeTimer >= NPC_STRAFE_INTERVAL) {
+            this.strafeTimer = 0;
+            this.strafeDirection = this.strafeDirection === 1 ? -1 : 1;
+          }
+          frame.thrusters.autoBrakeLinear = false;
+          if (this.strafeDirection === 1) {
+            frame.thrusters.rotateCW = true;
+            frame.thrusters.rotateCCW = false;
+            frame.thrusters.autoBrakeRotation = false;
+          } else {
+            frame.thrusters.rotateCCW = true;
+            frame.thrusters.rotateCW = false;
+            frame.thrusters.autoBrakeRotation = false;
+          }
         }
-        frame.thrusters.autoBrakeLinear = false;
-        if (this.strafeDirection === 1) {
-          frame.thrusters.rotateCW = true;
-          frame.thrusters.rotateCCW = false;
-          frame.thrusters.autoBrakeRotation = false;
-        } else {
-          frame.thrusters.rotateCCW = true;
-          frame.thrusters.rotateCW = false;
-          frame.thrusters.autoBrakeRotation = false;
-        }
+        // In weapon range: keep facing from rotateToward above — no orbit strafe; pulse applies below.
       }
     }
 
     if (Math.abs(rotation.angleDiff) < (20 * Math.PI) / 180 && targetDistance <= this.fireRange) {
       frame.weapons.Z = true;
     }
+    this.applyWeaponRangeRotationPulse(dt, frame, targetDistance <= this.fireRange);
     return frame;
   }
 
@@ -438,6 +455,28 @@ export class NPCController {
       frame.thrusters.autoBrakeLinear = false;
     }
     return frame;
+  }
+
+  /**
+   * While target is in weapon range, pulse rotation thrusters so coast segments match player physics:
+   * auto-brake rotation only bites when rotate thrusters are off.
+   */
+  private applyWeaponRangeRotationPulse(dt: number, frame: ShipControlFrame, inWeaponRange: boolean): void {
+    if (!inWeaponRange) {
+      this.aimPulsePhaseSec = 0;
+      return;
+    }
+    this.aimPulsePhaseSec += dt;
+    const period = NPC_HOSTILE_AIM_PULSE_PERIOD_SEC;
+    while (this.aimPulsePhaseSec >= period) {
+      this.aimPulsePhaseSec -= period;
+    }
+    const thrustOn = this.aimPulsePhaseSec < period * NPC_HOSTILE_AIM_PULSE_THRUST_DUTY;
+    if (!thrustOn) {
+      frame.thrusters.rotateCW = false;
+      frame.thrusters.rotateCCW = false;
+      frame.thrusters.autoBrakeRotation = true;
+    }
   }
 
   private ensureTradeRoute(landables: Landable[]): void {

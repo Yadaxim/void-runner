@@ -245,6 +245,7 @@ export class ShipEntity {
     if (this.autoBrakeLinear && autoBrake && !this.linearThrustersActive) {
       this.autoBrakeLinearActive = true;
     }
+    // Same rule for player and NPC: rotation auto-brake only applies when rotation thrusters are off.
     if (this.autoBrakeRotation && autoBrake && !this.rotationThrustersActive) {
       this.autoBrakeRotationActive = true;
     }

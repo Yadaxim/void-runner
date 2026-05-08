@@ -742,8 +742,8 @@
   ],
   "startingConditions": {
     "sectorCoord": {
-      "x": 29,
-      "y": 29
+      "x": 5,
+      "y": 5
     },
     "credits": 50000,
     "hullSpecId": "interceptor_mk1",
@@ -993,6 +993,36 @@
       "factionId": "federation",
       "landableDensity": 0.9,
       "npcSpawnRules": [
+        {
+          "factionId": "federation",
+          "behaviourType": "patrol",
+          "hullSpecId": "interceptor_mk1",
+          "countRange": [
+            2,
+            3
+          ],
+          "minPresent": 2,
+          "maxPresent": 5,
+          "arrivalIntervalRange": [
+            20,
+            40
+          ]
+        },
+        {
+          "factionId": "federation",
+          "behaviourType": "transit",
+          "hullSpecId": "interceptor_mk1",
+          "countRange": [
+            1,
+            2
+          ],
+          "minPresent": 1,
+          "maxPresent": 4,
+          "arrivalIntervalRange": [
+            12,
+            28
+          ]
+        },
         {
           "factionId": "pirates",
           "behaviourType": "hostile",

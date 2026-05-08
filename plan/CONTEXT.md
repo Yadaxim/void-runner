@@ -1,6 +1,6 @@
 # VOID RUNNER — Project context
 
-> Single handoff document for new sessions (`plan/CONTEXT.md`). Detailed design lives in `plan/VOID_RUNNER_GDD.md`, `plan/VOID_RUNNER_WorldGen.md`, and **`plan/VOID_RUNNER_Art_Guidelines_v1.0.md`** (visual / renderer spec). Optional session prompts live in repo-root **`claudePrompts/`** (gitignored — keep a local copy; not authoritative for “what’s done”).
+> Single handoff document for new sessions (`plan/CONTEXT.md`). Detailed design lives in `plan/GDD.md`, `plan/WORLDGEN.md`, and **`plan/ART_GUIDELINES_V1.0.md`** (visual / renderer spec). Optional session prompts live in repo-root **`claudePrompts/`** (gitignored — keep a local copy; not authoritative for “what’s done”).
 
 ---
 
@@ -41,14 +41,27 @@ Vanilla DOM — no React/Vue.
 
 | File | Contents |
 |------|----------|
+| `plan/README.md` | Directory index for **`plan/`** (canonical vs supplementary docs) |
 | `plan/CONTEXT.md` | This document — paste for new sessions; runtime architecture and priorities |
-| `plan/VOID_RUNNER_GDD.md` | Game design (persistence section live; expand other topics as needed) |
-| `plan/VOID_RUNNER_WorldGen.md` | Generator pipeline, PRNG domains, export format |
-| `plan/VOID_RUNNER_Art_Guidelines_v1.0.md` | Visual design, renderer spec |
-| `plan/VOID_RUNNER_Roadmap.md` | Delivery order, deferred type sketches, and world-gen guidelines |
-| **`plan/VOID_RUNNER_Backlog.md`** | **Checklist** of planned work (kept in sync with this file and the roadmap) |
+| `plan/GDD.md` | Game design (persistence section live; expand other topics as needed) |
+| `plan/WORLDGEN.md` | Full generator pipeline — schemas per step, procedural vs LLM, progressive save, assembly into `WorldFile` |
+| `plan/ART_GUIDELINES_V1.0.md` | Visual design, renderer spec |
+| `plan/ROADMAP.md` | Delivery order, deferred type sketches, and world-gen guidelines |
+| **`plan/BACKLOG.md`** | **Checklist** of planned work (kept in sync with this file and the roadmap) |
+| **`plan/PARKED_IDEAS_DETAIL.md`** | Long-form **parked** ideas (What/Trigger); summary in **`plan/BACKLOG.md`** § Parked ideas |
 | **`PLAYER_GUIDE.md`** (repo root) | Pilot-facing primer (controls, map, hyperspace, missions); not a design spec |
 | `claudePrompts/` (repo root, gitignored) | Optional per-task prompts and notes; not committed |
+
+---
+
+## Last changes
+
+Short dated bullets when behaviour or priorities shift — complements **`plan/BACKLOG.md`** checkboxes.
+
+- **2026-05-09** — **Targeting:** Tab cycles NPC ships by distance; **Shift+Tab** locks closest NPC hostile to the player, else closest non-threat (`none` / `toOther`). **Minimap:** accent ring + crosshair on the locked ship target (`minimapRenderer`, `TargetingSystem`). **NPC combat:** hostile aim deadband + weapon-range rotation pulse tuning (`NPC_HOSTILE_AIM_*`, `npcController`). **Galaxy:** torus wrap + shortest-path hop math (`hyperspaceJump`, `sectorNav`); **`testWorld.json`** tuned for interceptor combat visibility (edge start / hub spawns).  
+- **2026-05-09** — **Docs:** removed `VOID_RUNNER_` filename prefix from core plan files (`GDD.md`, `ROADMAP.md`, `BACKLOG.md`, `WORLDGEN.md`, `ART_GUIDELINES_V1.0.md`); **`plan/RandomToughts.md`** unchanged (gitignored local notes).  
+- **2026-05-09** — **`plan/GDD.md`:** merged full content from former **`gdd_additions_v0.5.md`** (expanded §§1–14 + open questions); additions file removed.  
+- **2026-05-09** — **`plan/WORLDGEN.md`:** canonical generator doc is the former **`worldgen_pipeline_v2.0.md`** (570-line pipeline); removed duplicate bloated **`WORLDGEN.md`** (~1500 lines, accidental repeat). Filename **`worldgen_pipeline_v2.0.md`** dropped — use **`WORLDGEN.md`** only.
 
 ---
 
@@ -56,7 +69,7 @@ Vanilla DOM — no React/Vue.
 
 - **`WorldState`** — single source of truth for runtime data. Screens and systems read/write through it; nothing should read the raw world JSON except loaders/validation.  
 - **`WorldFile`** — full galaxy JSON loaded at startup (`public/testWorld.json` in development).  
-- **Persistence (two-tier — planned)** — today, `WorldState.saveToLocalStorage` / `loadFromLocalStorage` persist **`PersistedWorldState`** keyed by world **`metadata.seed`**. **Roadmap / GDD / backlog:** add **JSON file** export/import (and optionally **File System Access** file-handle writes) using the **same blob**, with **disk** flushed on **fewer** events than `localStorage` (sector change, landable enter/exit, credit/equipment/fuel/hull–changing actions, hyperspace target on map, menu/quit best-effort). See **`plan/VOID_RUNNER_GDD.md`** (Persistence and saves) and **`plan/VOID_RUNNER_Backlog.md`**.  
+- **Persistence (two-tier — planned)** — today, `WorldState.saveToLocalStorage` / `loadFromLocalStorage` persist **`PersistedWorldState`** keyed by world **`metadata.seed`**. **Roadmap / GDD / backlog:** add **JSON file** export/import (and optionally **File System Access** file-handle writes) using the **same blob**, with **disk** flushed on **fewer** events than `localStorage` (sector change, landable enter/exit, credit/equipment/fuel/hull–changing actions, hyperspace target on map, menu/quit best-effort). See **`plan/GDD.md`** (Persistence and saves) and **`plan/BACKLOG.md`**.  
 - **`SectorSimulation`** — current sector entities, physics integration, bullets, NPCs, burns, **per-frame energy/shield/reactor tick for the player and every NPC** (`tickShipEnergyAndShield`).  
 - **`ShipEntity`** — wraps `ShipState`; equipment drives effective masses, thrust, fuel use, etc. NPC flight uses **`NPCController`** via **`ScriptedNPCPilot`** into the shared **`ShipControlFrame`** (thrusters + weapon keys), same shape as **`HumanPilot`** for the player (see **AI / control bus**).  
 - **`ScreenManager`** — stack-based screens (main menu, flight, landable, …).  
@@ -135,16 +148,16 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 Authoritative detail lives in the checklist below (historical handoff content from older context docs was merged into this file; keep this section current as you ship).
 
-**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** for bullet **`abilities`** shape; **Phase 4 Session 4 Vitest pass** — expanded **`damage.test.ts`**, **`shipEnergyShield.test.ts`**, **`physics.test.ts`**, **`world-validation.test.ts`**; **Phase 4 Session 5 galaxy map** — **`GalaxyMapScreen`** (**K** in flight, Esc/K closes), square grid, visited dimming + visited-empty vs ports (interior dots), faction colours, radiation tint, legend **You/Cursor/Target**, **sector summary** pane for cursor, persisted **`hyperspaceTargetCoord`**, flight **target strip** third row for hyperspace; **Phase 4 Session 6 hyperspace jump** — **`hyperspaceDrive`** equipment + hull **`slotCounts`**, **`hyperdrive_basic`** in **`testWorld.json`**, hop along grid ray with **partial hops** when target exceeds **`jumpRange`** (Euclidean sector units), **fuel** and **cooldown** on career **`playTimeSeconds`** (persisted), **J** in **`FlightScreen`** when aligned; **galaxy map** shows **one-hop range** tint + ring; **HUD** edge beacon + **`[ J ]`** prompt; jump start **snaps hull** to bearing and **zeros velocity**; **`computeHyperspaceLandingSector`** / **`getHyperspaceHopWorldDirection`** in **`src/sim/hyperspaceJump.ts`**.
+**Done (abbreviated):** Phase 1 flight + landing; Phase 2 world/sector transitions, minimap, radiation core, saves; Phase 3 combat, NPCs, reputation, insurance, armour typing; **player/NPC parity on damage, armour layers, shields, reactor/joules, fuel, and per-tick energy shield regen**; **unified bullet + plasma DoT resolution**; missions + cargo, equipment store, shipyard purchase/customize, main menu, starting conditions from JSON, validation plumbing, many combat/NPC/traffic fixes; **bullet `abilities`** (e.g. **`SeekingAbility`** on `BulletSpec`) with runtime in **`getBulletSeekingAbility`** / **`BulletEntity`**; **world validation** for bullet **`abilities`** shape; **Phase 4 Session 4 Vitest pass** — expanded **`damage.test.ts`**, **`shipEnergyShield.test.ts`**, **`physics.test.ts`**, **`world-validation.test.ts`**; **Phase 4 Session 5 galaxy map** — **`GalaxyMapScreen`** (**K** in flight, Esc/K closes), square grid, visited dimming + visited-empty vs ports (interior dots), faction colours, radiation tint, legend **You/Cursor/Target**, **sector summary** pane for cursor, persisted **`hyperspaceTargetCoord`**, flight **target strip** third row for hyperspace; **Phase 4 Session 6 hyperspace jump** — **`hyperspaceDrive`** equipment + hull **`slotCounts`**, **`hyperdrive_basic`** in **`testWorld.json`**, hop along grid ray with **partial hops** when target exceeds **`jumpRange`** (Euclidean sector units), **fuel** and **cooldown** on career **`playTimeSeconds`** (persisted), **J** in **`FlightScreen`** when aligned; **galaxy map** shows **one-hop range** tint + ring; **HUD** edge beacon + **`[ J ]`** prompt; jump start **snaps hull** to bearing and **zeros velocity**; **`computeHyperspaceLandingSector`** / **`getHyperspaceHopWorldDirection`** in **`src/sim/hyperspaceJump.ts`**. **Phase 4.5 (partial):** **torus** sector boundary wrap + wrap-aware nav; **Shift+Tab / Tab ship targeting** + minimap target marker; ongoing **NPC pilot** parity (rotation pulse, aim deadband).
 
 **Remaining near-term (from live checklist):**
 
-- **Session 6 (fleet extension):** multi-ship hyperspace rules (align fleet, weakest drive) when **fleet ownership** exists — **`plan/VOID_RUNNER_Backlog.md`**.  
-- **World generator (offline):** main-menu entry, pipeline per WorldGen doc, pre-trained memory cards — **`plan/VOID_RUNNER_Backlog.md`**.  
-- **Portable saves (JSON file, world-linked):** backlog order is **after** world generator; export/import and optional file-handle autosave — roadmap, GDD persistence section, **`plan/VOID_RUNNER_Backlog.md`**.  
+- **Session 6 (fleet extension):** multi-ship hyperspace rules (align fleet, weakest drive) when **fleet ownership** exists — **`plan/BACKLOG.md`**.  
+- **World generator (offline):** main-menu entry, pipeline per WorldGen doc, pre-trained memory cards — **`plan/BACKLOG.md`**.  
+- **Portable saves (JSON file, world-linked):** backlog order is **after** world generator; export/import and optional file-handle autosave — roadmap, GDD persistence section, **`plan/BACKLOG.md`**.  
 - **Ongoing:** when behaviour changes, extend the Session 4 test files and **`validateWorldFile`** in the same change. **`validateWorldFile`** also ensures ship loadouts (hull **`defaultLoadouts`**, **`startingConditions`**, **`shipyardListings`**, named **`defaultLoadouts`**) match **`slotCounts`**, reference real catalog items, fill required slot types, and keep Σ equipped **`mass`** ≤ hull **`equipmentCapacity`** after **`expandSlotsToFullHull`**.
 
-See **`plan/VOID_RUNNER_Roadmap.md`** for delivery order and deferred design appendices; use **`plan/VOID_RUNNER_Backlog.md`** for the actionable checklist.
+See **`plan/ROADMAP.md`** for delivery order and deferred design appendices; use **`plan/BACKLOG.md`** for the actionable checklist.
 
 ---
 

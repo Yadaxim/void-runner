@@ -1,6 +1,6 @@
-# Void Runner World Generation Pipeline — v2.0
+# VOID RUNNER — World generation pipeline
 
-Replaces and extends WorldGen v1.0. Defines the full pipeline for procedurally generating a Void Runner galaxy, with explicit schemas, validation, and procedural-vs-LLM split per step.
+Full procedural + LLM pipeline for generating a playable **`WorldFile`**: step input/output schemas, JSON-schema validation, progressive save between steps, procedural-vs-LLM split per step, generation UI flow, and final assembly. Supersedes earlier short-form generator notes.
 
 ---
 
@@ -562,7 +562,7 @@ Total: ~15-25 LLM calls per generation. At Sonnet rates and ~2k tokens per call,
 
 ---
 
-## Open questions for v2.0 freeze
+## Open questions (generator MVP)
 
 - Should the user be able to mix LLM-generated content with hand-edited content in the same world? (Probably yes, post-MVP)
 - Should generation cache LLM responses for re-use across worlds with the same seed? (Probably yes — saves API spend during testing)

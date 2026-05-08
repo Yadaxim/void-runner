@@ -13,6 +13,7 @@ interface ThrusterInputs {
 
 interface TargetInputs {
   cycleShipTarget: boolean;
+  targetClosestHostileShip: boolean;
   cycleLandableTarget: boolean;
   toggleMissionsPanel: boolean;
   toggleGalaxyMap: boolean;
@@ -26,6 +27,7 @@ export class PlayerController {
   private landPressedQueued = false;
   private devRefuelQueued = false;
   private cycleShipTargetQueued = false;
+  private targetClosestHostileShipQueued = false;
   private cycleLandableTargetQueued = false;
   private toggleMissionsPanelQueued = false;
   private toggleGalaxyMapQueued = false;
@@ -68,7 +70,11 @@ export class PlayerController {
       this.devRefuelQueued = true;
     }
     if (!event.repeat && event.code === 'Tab') {
-      this.cycleShipTargetQueued = true;
+      if (event.shiftKey) {
+        this.targetClosestHostileShipQueued = true;
+      } else {
+        this.cycleShipTargetQueued = true;
+      }
     }
     if (!event.repeat && event.code === 'KeyG') {
       this.cycleLandableTargetQueued = true;
@@ -125,12 +131,14 @@ export class PlayerController {
   getTargetInputs(): TargetInputs {
     const inputs = {
       cycleShipTarget: this.cycleShipTargetQueued,
+      targetClosestHostileShip: this.targetClosestHostileShipQueued,
       cycleLandableTarget: this.cycleLandableTargetQueued,
       toggleMissionsPanel: this.toggleMissionsPanelQueued,
       toggleGalaxyMap: this.toggleGalaxyMapQueued,
       hyperspaceJumpQueued: this.hyperspaceJumpQueued
     };
     this.cycleShipTargetQueued = false;
+    this.targetClosestHostileShipQueued = false;
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
     this.toggleGalaxyMapQueued = false;
@@ -157,6 +165,7 @@ export class PlayerController {
     this.landPressedQueued = false;
     this.devRefuelQueued = false;
     this.cycleShipTargetQueued = false;
+    this.targetClosestHostileShipQueued = false;
     this.cycleLandableTargetQueued = false;
     this.toggleMissionsPanelQueued = false;
     this.toggleGalaxyMapQueued = false;
