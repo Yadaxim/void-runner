@@ -16,6 +16,43 @@ describe('validateWorldFile', () => {
     expect(r.errors).toEqual([]);
   });
 
+  it('flags duplicate species id', () => {
+    const w = structuredClone(loadWorld());
+    w.species.push({ ...w.species[0] });
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('Duplicate species id'))).toBe(true);
+  });
+
+  it('flags faction speciesComposition referencing unknown species', () => {
+    const w = structuredClone(loadWorld());
+    w.factions[0].speciesComposition = [{ speciesId: 'ghost_species', percentage: 100 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('speciesComposition') && e.includes('ghost_species'))).toBe(true);
+  });
+
+  it('flags faction speciesComposition percentages that do not sum to 100', () => {
+    const w = structuredClone(loadWorld());
+    w.factions[0].speciesComposition = [{ speciesId: w.species[0].id, percentage: 80 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('speciesComposition percentages must sum to 100'))).toBe(true);
+  });
+
+  it('flags non-independent faction without a valid homeLandableId', () => {
+    const w = structuredClone(loadWorld());
+    w.factions[0].homeLandableId = 'missing_port';
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('homeLandableId') && e.includes('missing_port'))).toBe(true);
+  });
+
+  it('flags independent faction with a homeLandableId', () => {
+    const w = structuredClone(loadWorld());
+    const faction = w.factions[0];
+    faction.type = 'independent';
+    faction.homeLandableId = 'vethos_prime';
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('Independent faction') && e.includes('homeLandableId null'))).toBe(true);
+  });
+
   it('starting sector (5,5) NPC spawn rules reference hullSpecs with motion and mass', () => {
     const w = loadWorld();
     const sector = w.sectors.find((s) => s.coord.x === 5 && s.coord.y === 5);

@@ -38,6 +38,24 @@ const HULL_LOADOUT_VARIANTS = ['raw', 'basic', 'advanced'] as const;
 
 const LOADOUT_VARIANT_SET = new Set<string>(HULL_LOADOUT_VARIANTS);
 
+const SPECIES_ARCHETYPES = new Set([
+  'biological',
+  'machine',
+  'hive',
+  'energy',
+  'hybrid',
+  'ascended',
+  'parasitic',
+  'symbiotic',
+  'voidtouched'
+]);
+
+const HABITAT_PREFERENCES = new Set(['core', 'mid', 'rim', 'nebula', 'radiation', 'shimmer']);
+
+const FACTION_TYPES = new Set(['major_nation', 'minor_nation', 'independent']);
+
+const BUBBLE_STANCES = new Set(['reunifier', 'isolationist', 'breaker', 'indifferent']);
+
 function isRegionCompatible(templateRegion: RegionType, sectorRegion: RegionType): boolean {
   if (templateRegion === sectorRegion) {
     return true;
@@ -157,10 +175,102 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
   const factionIds = new Set(world.factions.map((f) => f.id));
   const hullById = new Map(world.hullSpecs.map((h) => [h.id, h]));
   const sectorCoords = new Set(world.sectors.map((s) => `${s.coord.x}:${s.coord.y}`));
+  const species = Array.isArray(world.species) ? world.species : [];
+  const speciesIds = new Set(species.map((s) => s.id));
+  const allLandableIds = new Set<string>();
+  for (const sector of world.sectors) {
+    for (const land of sector.landables) {
+      allLandableIds.add(land.id);
+    }
+  }
 
   const push = (msg: string): void => {
     errors.push(msg);
   };
+
+  if (!Array.isArray(world.species)) {
+    push('WorldFile.species must be an array');
+  }
+
+  const seenSpeciesIds = new Set<string>();
+  for (const entry of species) {
+    if (!entry.id) {
+      push('Species entry must have a non-empty id');
+    } else if (seenSpeciesIds.has(entry.id)) {
+      push(`Duplicate species id: ${entry.id}`);
+    }
+    seenSpeciesIds.add(entry.id);
+
+    if (!SPECIES_ARCHETYPES.has(entry.archetype)) {
+      push(`Species "${entry.id}" has invalid archetype: ${String(entry.archetype)}`);
+    }
+    if (entry.preferredHabitat !== undefined && !HABITAT_PREFERENCES.has(entry.preferredHabitat)) {
+      push(`Species "${entry.id}" has invalid preferredHabitat: ${String(entry.preferredHabitat)}`);
+    }
+    if (typeof entry.physiology !== 'string' || entry.physiology.length < 20 || entry.physiology.length > 200) {
+      push(`Species "${entry.id}" physiology must be 20-200 characters`);
+    }
+    if (typeof entry.ethos !== 'string' || entry.ethos.length < 20 || entry.ethos.length > 200) {
+      push(`Species "${entry.id}" ethos must be 20-200 characters`);
+    }
+    const tech = entry.techProfile;
+    if (
+      !tech ||
+      typeof tech.weaponStyle !== 'string' ||
+      !tech.weaponStyle ||
+      typeof tech.hullAesthetic !== 'string' ||
+      !tech.hullAesthetic ||
+      typeof tech.namingConvention !== 'string' ||
+      !tech.namingConvention
+    ) {
+      push(`Species "${entry.id}" techProfile must define weaponStyle, hullAesthetic, and namingConvention`);
+    }
+  }
+
+  for (const faction of world.factions) {
+    if (!FACTION_TYPES.has(faction.type)) {
+      push(`Faction "${faction.id}" has invalid type: ${String(faction.type)}`);
+    }
+    if (!BUBBLE_STANCES.has(faction.bubbleStance)) {
+      push(`Faction "${faction.id}" has invalid bubbleStance: ${String(faction.bubbleStance)}`);
+    }
+    if (typeof faction.techArchetype !== 'string' || !faction.techArchetype.trim()) {
+      push(`Faction "${faction.id}" must define non-empty techArchetype`);
+    }
+    if (!Array.isArray(faction.speciesComposition) || faction.speciesComposition.length === 0) {
+      push(`Faction "${faction.id}" must define speciesComposition`);
+    } else {
+      let total = 0;
+      const compositionSpecies = new Set<string>();
+      for (const entry of faction.speciesComposition) {
+        if (!speciesIds.has(entry.speciesId)) {
+          push(`Faction "${faction.id}" speciesComposition references unknown speciesId: ${entry.speciesId}`);
+        }
+        if (compositionSpecies.has(entry.speciesId)) {
+          push(`Faction "${faction.id}" speciesComposition duplicates speciesId: ${entry.speciesId}`);
+        }
+        compositionSpecies.add(entry.speciesId);
+        if (typeof entry.percentage !== 'number' || !Number.isFinite(entry.percentage) || entry.percentage <= 0) {
+          push(`Faction "${faction.id}" speciesComposition percentage must be finite and > 0`);
+        } else {
+          total += entry.percentage;
+        }
+      }
+      if (total !== 100) {
+        push(`Faction "${faction.id}" speciesComposition percentages must sum to 100`);
+      }
+    }
+
+    if (faction.type === 'independent') {
+      if (faction.homeLandableId !== null) {
+        push(`Independent faction "${faction.id}" must have homeLandableId null`);
+      }
+    } else if (!faction.homeLandableId) {
+      push(`Faction "${faction.id}" must have a homeLandableId`);
+    } else if (!allLandableIds.has(faction.homeLandableId)) {
+      push(`Faction "${faction.id}" homeLandableId references unknown landable: ${faction.homeLandableId}`);
+    }
+  }
 
   for (const hull of world.hullSpecs) {
     for (const req of REQUIRED_SLOT_TYPES) {
@@ -274,12 +384,12 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     if (sector.factionId && !factionIds.has(sector.factionId)) {
       push(`Sector ${sector.coord.x},${sector.coord.y} has unknown factionId: ${sector.factionId}`);
     }
-    const landableIds = new Set<string>();
+    const sectorLandableIds = new Set<string>();
     for (const land of sector.landables) {
-      if (landableIds.has(land.id)) {
+      if (sectorLandableIds.has(land.id)) {
         push(`Duplicate landable id "${land.id}" in sector ${sector.coord.x},${sector.coord.y}`);
       }
-      landableIds.add(land.id);
+      sectorLandableIds.add(land.id);
       if (land.factionId && !factionIds.has(land.factionId)) {
         push(`Landable "${land.id}" references unknown factionId: ${land.factionId}`);
       }

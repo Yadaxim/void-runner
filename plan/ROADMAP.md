@@ -10,7 +10,7 @@ Authoritative **session notes:** **`plan/CONTEXT.md` → Last changes**. Routine
 
 **In the codebase today:** Vitest + broad coverage; **`validateWorldFile`** at load/export boundaries in principle (portable **file** import/export still backlog); **shipyard** + equipment store + customize-on-buy; player/NPC combat parity; **galaxy map + hyperspace**; **torus** wrap and wrap-aware distances.
 
-**Phase 4.5 foundation:** Sessions **A–C** are largely shipped (NPC battle parity, torus topology + minimap seam hint, galaxy map + hyperspace). Sessions **D–F** remain (species layer, multi-faction landables, game time + mission trees).
+**Phase 4.5 foundation:** Sessions **A–D** are largely shipped (NPC battle parity, torus topology + minimap seam hint, galaxy map + hyperspace, species/faction data model). Sessions **E–F** remain (multi-faction landables, game time + mission trees).
 
 **Hygiene:** When **`testWorld.json`** hull lists change, align **`simulation.test.ts`** / fixtures so starter hull ids still resolve (`shipyardListings` / `startingConditions`).
 
@@ -30,7 +30,7 @@ Six sessions establishing the conceptual layers and infrastructure the generatio
 - [x] **Shipped** — **`GalaxyMapScreen`**, hyperspace drive equipment, map target, partial hops, fuel/cooldown, jump animation, visited reveal.
 
 ### Session D — Species layer + faction extensions
-Add `world.species` array and `Species` data model. Extend `Faction` with `speciesComposition`, `homeLandableId: string | null`, `bubbleStance`, and `techArchetype`. Update validation. Update testWorld with example species and updated factions. No gameplay change yet — purely data model expansion.
+- [x] **Shipped** — `world.species` array and `Species` data model; factions now carry `type`, `speciesComposition`, `homeLandableId`, `bubbleStance`, and `techArchetype`; validation and `testWorld` fixtures cover the new invariants. No gameplay change yet — purely data model expansion.
 
 ### Session E — Multi-faction landable control + treaty system
 Replace `landable.factionId` with `landable.factionControl[]` and `controlState`. Implement NPC behavior changes for treaty / cooperation / dispute states. Update store, mission board, and standing screens to handle multi-faction landables. Update validation. Update testWorld with at least one multi-faction landable per state to verify behavior.

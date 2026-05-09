@@ -9,10 +9,65 @@
     "gridWidth": 60,
     "gridHeight": 60
   },
+  "species": [
+    {
+      "id": "kaelen",
+      "name": "Kaelen",
+      "archetype": "biological",
+      "physiology": "Oxygen-breathing mammalian bipeds adapted to dense orbital cities and mixed-gravity shipboard life.",
+      "ethos": "They prize civic continuity, negotiated law, and practical engineering over heroic individual action.",
+      "techProfile": {
+        "weaponStyle": "balanced kinetic and missile doctrine",
+        "hullAesthetic": "clean angular armour plates with blue-white registry markings",
+        "namingConvention": "classical civic names and formal station designators"
+      },
+      "preferredHabitat": "core"
+    },
+    {
+      "id": "tharkan",
+      "name": "Tharkan",
+      "archetype": "biological",
+      "physiology": "Broad-framed mineral-adapted humanoids whose dense bones and redundant organs tolerate harsh frontier gravity.",
+      "ethos": "They value clan obligation, salvage rights, and earned independence from distant central authorities.",
+      "techProfile": {
+        "weaponStyle": "rugged projectile weapons and overbuilt defensive systems",
+        "hullAesthetic": "patched rounded hulls with exposed utility trusses and rust-orange panels",
+        "namingConvention": "short industrial callsigns, rig names, and clan-lineage markers"
+      },
+      "preferredHabitat": "rim"
+    },
+    {
+      "id": "veth",
+      "name": "Veth",
+      "archetype": "symbiotic",
+      "physiology": "Long-lived arboreal symbiotes whose paired nervous systems support exceptional memory and trade calculation.",
+      "ethos": "They treat obligation as a ledger, preserving peace when it improves prosperity and leverage.",
+      "techProfile": {
+        "weaponStyle": "precise defensive fire and electronic countermeasures",
+        "hullAesthetic": "sleek green crescent hulls with layered cargo spines",
+        "namingConvention": "apostrophe-linked trade-house names and route titles"
+      },
+      "preferredHabitat": "mid"
+    },
+    {
+      "id": "driftborn",
+      "name": "Driftborn",
+      "archetype": "hybrid",
+      "physiology": "Mixed-lineage spacer enclaves shaped by sealed habitats, cybernetic medicine, and generations away from planets.",
+      "ethos": "They prize survival, anonymity, and flexible loyalty in the shadow economies between formal powers.",
+      "techProfile": {
+        "weaponStyle": "improvised mixed batteries, seekers, and stolen military surplus",
+        "hullAesthetic": "mismatched dark hulls built from refitted civilian and military frames",
+        "namingConvention": "aliases, syndicate handles, and ominous station nicknames"
+      },
+      "preferredHabitat": "nebula"
+    }
+  ],
   "factions": [
     {
       "id": "federation",
       "name": "The Federation",
+      "type": "major_nation",
       "demonym": "a Federation citizen",
       "description": "A sprawling democratic union of core worlds, known for bureaucracy and reliable trade routes.",
       "shipStyle": "Clean angular hulls in blue-white, built for endurance over speed.",
@@ -21,7 +76,20 @@
         "x": 5,
         "y": 5
       },
+      "homeLandableId": "vethos_prime",
       "territoryRadius": 6,
+      "speciesComposition": [
+        {
+          "speciesId": "kaelen",
+          "percentage": 80
+        },
+        {
+          "speciesId": "veth",
+          "percentage": 20
+        }
+      ],
+      "bubbleStance": "reunifier",
+      "techArchetype": "civic patrol and reliable trade logistics",
       "primaryColour": {
         "h": 210,
         "s": 70,
@@ -49,6 +117,7 @@
     {
       "id": "frontier_clans",
       "name": "Frontier Clans",
+      "type": "minor_nation",
       "demonym": "a Clanner",
       "description": "Loose confederacy of independent mining and salvage operations on the outer rim. Distrustful of authority.",
       "shipStyle": "Heavy salvaged hulls in rust-orange, patched and overloaded.",
@@ -57,7 +126,20 @@
         "x": -10,
         "y": -8
       },
+      "homeLandableId": "clan_home",
       "territoryRadius": 5,
+      "speciesComposition": [
+        {
+          "speciesId": "tharkan",
+          "percentage": 85
+        },
+        {
+          "speciesId": "kaelen",
+          "percentage": 15
+        }
+      ],
+      "bubbleStance": "indifferent",
+      "techArchetype": "salvage industry and rugged frontier conversion",
       "primaryColour": {
         "h": 25,
         "s": 65,
@@ -85,6 +167,7 @@
     {
       "id": "veth_collective",
       "name": "Veth Collective",
+      "type": "major_nation",
       "demonym": "a Veth",
       "description": "An ancient mercantile collective operating from the southern arm. Neutral to most, loyal to profit.",
       "shipStyle": "Sleek rounded hulls in deep green, designed for cargo capacity above all.",
@@ -93,7 +176,16 @@
         "x": 3,
         "y": -12
       },
+      "homeLandableId": "veth_prime",
       "territoryRadius": 5,
+      "speciesComposition": [
+        {
+          "speciesId": "veth",
+          "percentage": 100
+        }
+      ],
+      "bubbleStance": "isolationist",
+      "techArchetype": "mercantile cargo optimization and precise defensive systems",
       "primaryColour": {
         "h": 150,
         "s": 55,
@@ -121,6 +213,7 @@
     {
       "id": "pirates",
       "name": "The Syndicate",
+      "type": "minor_nation",
       "demonym": "a Syndicate raider",
       "description": "Organised piracy network operating from hidden stations in void sectors.",
       "shipStyle": "Mismatched salvaged hulls from every faction, bristling with weapons.",
@@ -129,7 +222,24 @@
         "x": -20,
         "y": 15
       },
+      "homeLandableId": "syndicate_base",
       "territoryRadius": 3,
+      "speciesComposition": [
+        {
+          "speciesId": "driftborn",
+          "percentage": 50
+        },
+        {
+          "speciesId": "kaelen",
+          "percentage": 30
+        },
+        {
+          "speciesId": "veth",
+          "percentage": 20
+        }
+      ],
+      "bubbleStance": "breaker",
+      "techArchetype": "black-market refits and predatory mixed weapons",
       "primaryColour": {
         "h": 0,
         "s": 30,

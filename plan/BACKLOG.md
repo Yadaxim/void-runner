@@ -72,6 +72,18 @@ Roadmap steps A–E; aligns with context **AI / control bus**.
 
 ---
 
+## Phase 4.5 Session D — Species layer + faction extensions (complete)
+
+Shipped as a pure data-model foundation for world generation; no gameplay behavior change.
+
+- [x] Add **`WorldFile.species`** and the **`Species`** model  
+- [x] Extend factions with **`type`**, **`speciesComposition`**, **`homeLandableId`**, **`bubbleStance`**, and **`techArchetype`**  
+- [x] Validate species uniqueness, faction species references, composition totals, faction type / bubble stance enums, and home-landable rules  
+- [x] Update **`public/testWorld.json`** with example species and faction metadata  
+- [x] Extend **`world-validation.test.ts`** for the new invariants  
+
+---
+
 ## Economy and missions (depth)
 
 Roadmap **Economy and missions**; Appendix A sketches when implementing.

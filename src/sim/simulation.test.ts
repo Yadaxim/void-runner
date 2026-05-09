@@ -267,8 +267,6 @@ describe('headless SectorSimulation', () => {
 
   it('cannot sell required thruster_forward slot', () => {
     const wf = loadWorld();
-    wf.startingConditions.hullSpecId = 'dogfighter_mk1';
-    wf.startingConditions.equipmentSlots = [];
     const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const before = structuredClone(ws.getPlayerShipState());
@@ -344,8 +342,10 @@ describe('headless SectorSimulation', () => {
 
   it('armHyperspaceCooldownFromEquippedDrive uses equipped drive cooldown seconds', () => {
     const wf = loadWorld();
-    wf.startingConditions.hullSpecId = 'courier_transport_mk1';
-    wf.startingConditions.equipmentSlots = [];
+    wf.startingConditions.equipmentSlots = [
+      ...wf.startingConditions.equipmentSlots,
+      { slotType: 'hyperspaceDrive', itemId: 'hyperdrive_basic' }
+    ];
     const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
     ws.updatePlayerShipState(buildStarterShipState(ws));
     const drive = ws.getPlayerHyperspaceDrive();

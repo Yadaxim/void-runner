@@ -4,6 +4,7 @@ import type { FactionDefinition } from './faction';
 import type { Landable } from './landable';
 import type { MissionTemplate } from './mission';
 import type { EquipmentSlot, HullLoadoutVariantKey, HullSpec, SlotMap } from './ship';
+import type { Species } from './species';
 
 export type RegionType = 'void' | 'frontier' | 'midring' | 'core_arm' | 'contested' | 'radiation_fringe';
 
@@ -83,6 +84,7 @@ export interface WorldFile {
     sectors?: SectorMetadata[][];
   };
   sectors: SectorMetadata[];
+  species: Species[];
   factions: FactionDefinition[];
   hullSpecs: HullSpec[];
   /** Global shipyard SKU list; landables reference by id. */
