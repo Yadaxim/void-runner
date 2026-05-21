@@ -212,8 +212,11 @@ export class WeaponSystem {
     );
     if (nextHP <= 0) {
       ship.markDestroyed();
-      if (isPlayerAggressor && ship.state.factionId) {
-        worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL, 'combat_kill');
+      if (isPlayerAggressor) {
+        worldState.recordNpcKillByPlayer();
+        if (ship.state.factionId) {
+          worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL, 'combat_kill');
+        }
       }
       if (ship.state.isPlayerControlled) {
         this.playerDestroyed = true;
@@ -262,6 +265,10 @@ export class WeaponSystem {
 
       if (ship.state.currentHullHP <= 0) {
         ship.markDestroyed();
+        const killedNpc = !ship.state.isPlayerControlled;
+        if (ownerId === 'player' && killedNpc) {
+          worldState.recordNpcKillByPlayer();
+        }
         if (ship.state.isPlayerControlled) {
           this.playerDestroyed = true;
         }

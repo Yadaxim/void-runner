@@ -12,7 +12,15 @@ import {
 import { childPRNG } from '../core/prng';
 import { EquipmentStore } from '../simulation/equipmentStore';
 import { Vector2 } from '../physics/vector2';
-import { getLandablePrimaryFactionId } from '../types';
+import { applyAchievementUnlocks, evaluateAchievements } from '../achievements/achievementSystem';
+import { ACHIEVEMENT_CATALOG } from '../achievements/catalog';
+import { createDefaultPlayerMeta, normalisePlayerMeta } from '../achievements/context';
+import { getLandableFactionIds, getLandablePrimaryFactionId } from '../types';
+import type {
+  AchievementDefinition,
+  AchievementProgressMap,
+  PlayerMetaData
+} from '../types/achievement';
 import type {
   CargoItem,
   CompletedMission,
@@ -77,6 +85,8 @@ interface PersistedWorldState {
   worldFlags?: Record<string, boolean | number | string>;
   dispositionOverrides?: Record<string, Record<string, number>>;
   unlockedEquipmentByLandable?: Record<string, string[]>;
+  playerMeta?: PlayerMetaData;
+  achievementProgress?: AchievementProgressMap;
 }
 
 export interface SaveMetadata {
@@ -380,6 +390,9 @@ export class WorldState {
   private worldFlags: Record<string, boolean | number | string> = {};
   private dispositionOverrides: Record<string, Record<string, number>> = {};
   private unlockedEquipmentByLandable: Record<string, string[]> = {};
+  private playerMeta: PlayerMetaData;
+  private achievementProgress: AchievementProgressMap = {};
+  private recentlyUnlockedAchievementIds: string[] = [];
   /** localStorage slot for this career (multiple saves per `worldFile.metadata.seed`). */
   private readonly activeSaveId: string;
 
@@ -411,6 +424,7 @@ export class WorldState {
     );
     this.currentSectorCoord = { ...wrappedStart };
     this.visitedSectors = new Set<string>([coordKey(wrappedStart)]);
+    this.playerMeta = createDefaultPlayerMeta(1);
     this.hyperspaceCooldownUntilPlayTime = 0;
     this.playerShipState = normaliseShipState(playerShipState);
     this.ensureHullSlots();
@@ -1233,9 +1247,115 @@ export class WorldState {
         cargo: remainingCargo,
         credits: ship.credits + completed.reduce((sum, entry) => sum + entry.creditsEarned, 0)
       });
+      for (const entry of completed) {
+        for (const reward of entry.mission.reputationRewards) {
+          this.recordFactionContacts([reward.factionId]);
+        }
+      }
+      this.playerMeta.missionsCompletedCount += completed.length;
+      this.refreshAchievements();
       this.saveToLocalStorage();
     }
     return completed;
+  }
+
+  // --- Achievements & player meta ---
+
+  getPlayerMeta(): PlayerMetaData {
+    return {
+      ...this.playerMeta,
+      factionContact: [...this.playerMeta.factionContact],
+      counters: { ...this.playerMeta.counters },
+      flags: { ...this.playerMeta.flags }
+    };
+  }
+
+  getAchievementProgressMap(): AchievementProgressMap {
+    return { ...this.achievementProgress };
+  }
+
+  setAchievementProgressMap(progress: AchievementProgressMap): void {
+    this.achievementProgress = { ...progress };
+  }
+
+  getAchievementDefinitions(): AchievementDefinition[] {
+    return ACHIEVEMENT_CATALOG;
+  }
+
+  getRecentlyUnlockedAchievementIds(): string[] {
+    return [...this.recentlyUnlockedAchievementIds];
+  }
+
+  clearRecentlyUnlockedAchievementIds(): void {
+    this.recentlyUnlockedAchievementIds = [];
+  }
+
+  appendRecentlyUnlocked(ids: string[]): void {
+    for (const id of ids) {
+      if (!this.recentlyUnlockedAchievementIds.includes(id)) {
+        this.recentlyUnlockedAchievementIds.push(id);
+      }
+    }
+  }
+
+  syncExploredSectorMeta(): void {
+    this.playerMeta.exploredSectorCount = this.visitedSectors.size;
+  }
+
+  incrementMetaCounter(key: string, delta = 1): void {
+    if (!key) {
+      return;
+    }
+    const prev = this.playerMeta.counters[key] ?? 0;
+    this.playerMeta.counters[key] = prev + delta;
+    this.refreshAchievements();
+  }
+
+  setMetaFlag(key: string, value: boolean): void {
+    if (!key) {
+      return;
+    }
+    this.playerMeta.flags[key] = value;
+    this.refreshAchievements();
+  }
+
+  recordFactionContacts(factionIds: string[]): void {
+    let added = false;
+    for (const id of factionIds) {
+      if (!id || this.playerMeta.factionContact.includes(id)) {
+        continue;
+      }
+      this.playerMeta.factionContact.push(id);
+      added = true;
+    }
+    if (added) {
+      this.refreshAchievements();
+    }
+  }
+
+  recordLanding(landable: Landable): void {
+    this.playerMeta.landingCount += 1;
+    this.recordFactionContacts(getLandableFactionIds(landable));
+    this.refreshAchievements();
+  }
+
+  recordHyperspaceJump(): void {
+    this.playerMeta.hyperspaceJumpCount += 1;
+    this.refreshAchievements();
+  }
+
+  recordNpcKillByPlayer(): void {
+    this.playerMeta.killCount += 1;
+    this.refreshAchievements();
+  }
+
+  private refreshAchievements(): void {
+    const ids = evaluateAchievements(this);
+    applyAchievementUnlocks(this, ids);
+  }
+
+  isAchievementUnlocked(id: string): boolean {
+    return Boolean(this.achievementProgress[id]);
   }
 
   getFreeCargo(): number {
@@ -1257,6 +1377,8 @@ export class WorldState {
 
   markVisited(coord: GridCoord): void {
     this.visitedSectors.add(coordKey(this.wrapSectorCoord(coord)));
+    this.syncExploredSectorMeta();
+    this.refreshAchievements();
   }
 
   isVisited(coord: GridCoord): boolean {
@@ -1515,7 +1637,9 @@ export class WorldState {
       missionTrees: this.missionTrees,
       worldFlags: this.worldFlags,
       dispositionOverrides: this.dispositionOverrides,
-      unlockedEquipmentByLandable: this.unlockedEquipmentByLandable
+      unlockedEquipmentByLandable: this.unlockedEquipmentByLandable,
+      playerMeta: this.getPlayerMeta(),
+      achievementProgress: this.getAchievementProgressMap()
     };
     const worldSeed = this.worldFile.metadata.seed;
     const { saveKey, metaKey } = persistKeys(worldSeed, this.activeSaveId);
@@ -1580,7 +1704,14 @@ export class WorldState {
         parsed.unlockedEquipmentByLandable && typeof parsed.unlockedEquipmentByLandable === 'object'
           ? { ...parsed.unlockedEquipmentByLandable }
           : {};
+      state.playerMeta = normalisePlayerMeta(parsed.playerMeta, state.visitedSectors.size);
+      state.syncExploredSectorMeta();
+      state.achievementProgress =
+        parsed.achievementProgress && typeof parsed.achievementProgress === 'object'
+          ? { ...parsed.achievementProgress }
+          : {};
       syncMissionTreeAvailability(state);
+      state.refreshAchievements();
       const ht = parsed.hyperspaceTargetCoord;
       if (
         ht &&

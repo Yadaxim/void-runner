@@ -10,7 +10,7 @@
 
 **Done through Phase 4.5** — core loop, navigation, species/factions data, multi-faction landables, game time + mission trees, NPC combat parity, AI control bus, ability-based bullets.
 
-**Current focus:** **Phase 5 — Achievements** (then 6 → 7 → 8 → 9).
+**Current focus:** **Phase 6 — Procedural imagery** (Phase 5 achievements shipped).
 
 **Hygiene:** When `public/testWorld.json` hull lists change, keep `simulation.test.ts` / fixtures aligned with `shipyardListings` and `startingConditions`.
 
@@ -23,7 +23,7 @@
 | 1–3 | Core loop | — (done) |
 | 4 | Navigation + tests | — (done) |
 | 4.5 | Pre-gen foundation (data model) | — (done) |
-| **5** | **Achievements** | This file § Phase 5 |
+| 5 | Achievements | — (done) |
 | **6** | **Procedural imagery** | `WorldFile` params + runtime draw |
 | **7** | **UI polish** | Galaxy map, flight HUD, minimap |
 | **8** | **Pre–world-gen balance** | `plan/pre-worldgen/` |
@@ -84,32 +84,21 @@
 
 ---
 
-## Next — Phase 5: Achievements
+## Done — Phase 5: Achievements
 
-**Surface:** dedicated **Achievements** tab/screen at landables. **Scope:** per **player career** (not per ship); progress in **player metadata** persisted with saves.
+**Surface:** **Achievements** tab at all landables. **Scope:** per career save (`playerMeta` + `achievementProgress` in `PersistedWorldState`).
 
-**Tone:** discovery and milestones — no kill-count ladders. Odd or humorous copy OK.
+**Engine:** `src/achievements/` — catalog, dot-path conditions (`meta.*`, `derived.*`, `meta.counters.*`, `meta.flags.*`), evaluate on meta changes.
 
-### Data model
+### Player metadata (persisted)
 
-- [ ] Achievement **definition catalog** (ids, titles, descriptions, tiers, hidden flag)  
-- [ ] **Player progress** map: `achievementId → { unlockedAt?, progress? }`  
-- [ ] Hooks from gameplay events (landing, hyperspace, combat, missions, map visit, faction standing, …)  
-- [ ] Landable UI: list locked/unlocked, progress bars where partial (e.g. % galaxy explored)  
+- [x] `landingCount`, `hyperspaceJumpCount`, `killCount`, `missionsCompletedCount`, `exploredSectorCount`, `factionContact[]`, `counters`, `flags`  
 
-### Starter set (ship first)
+### Shipped achievements
 
-- [ ] **First landing**  
-- [ ] **First hyperspace jump**  
-- [ ] **First kill** (hostile ship destroyed)  
-- [ ] **First mission** completed  
-- [ ] **Explored N%** of galaxy (configurable thresholds, e.g. 25 / 50 / 75)  
-- [ ] **Met another faction** (standing or first-contact rule TBD)  
-
-### Hard / completionist
-
-- [ ] **Visit every sector** in the galaxy  
-- [ ] **Meet every faction** (non-pirate roster TBD)  
+- [x] First landing · first hyperspace · first kill · first mission  
+- [x] Explore 25 / 50 / 75% · meet two factions  
+- [x] Visit all sectors · meet all non-pirate factions (hidden until unlocked)  
 
 ---
 
@@ -174,6 +163,10 @@ Does not require world generator.
 
 - [ ] **Sector edge cue** — **always-visible** sector boundary (wrap edges readable at all times)  
 - [ ] **Minimap landable scale** — smaller dots/rings so ports do not dominate  
+
+### Achievement feedback *(Phase 5 ships landable tab only)*
+
+- [ ] **Unlock flash on screen** — when an achievement unlocks during flight (kill, sector visit, etc.), show a brief in-world/HUD toast or banner (not only the landable Achievements tab list on next dock). Reuse `getRecentlyUnlockedAchievementIds()`; dismiss after a few seconds; stack or queue if several unlock at once.
 
 ---
 

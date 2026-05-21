@@ -43,6 +43,8 @@ import type {
 import type { EquipmentSlot } from '../types';
 import type { LandableService, ServiceType } from '../types/landable';
 import { formatGameTime } from '../simulation/gameTime';
+import { buildAchievementContext } from '../achievements/context';
+import type { AchievementDefinition } from '../types/achievement';
 import { MissionBoard } from '../simulation/missionBoard';
 import { EquipmentStore } from '../simulation/equipmentStore';
 import type { Screen } from './screenManager';
@@ -51,6 +53,7 @@ type TabId =
   | 'overview'
   | 'reputation'
   | 'missions'
+  | 'achievements'
   | 'supplies'
   | 'repair'
   | 'shipyard'
@@ -100,6 +103,8 @@ export class LandableScreen implements Screen {
   private missionCancelRects: Array<{ missionId: string; x: number; y: number; width: number; height: number }> = [];
   private missionFlashMessage = '';
   private missionFlashTimer = 0;
+  private achievementsTabScrollOffset = 0;
+  private achievementUnlockBanner: string[] = [];
   private pendingDeliveries: CompletedMission[] = [];
   private deliveryDismissAt = 0;
   private missionsTabScrollOffset = 0;
@@ -445,6 +450,15 @@ export class LandableScreen implements Screen {
       }
       return;
     }
+    if (this.activeTab === 'achievements') {
+      event.preventDefault();
+      if (event.deltaY > 0) {
+        this.achievementsTabScrollOffset += 1;
+      } else if (event.deltaY < 0) {
+        this.achievementsTabScrollOffset = Math.max(0, this.achievementsTabScrollOffset - 1);
+      }
+      return;
+    }
     if (
       this.activeTab === 'shipyard' &&
       this.shipyardView === 'list' &&
@@ -507,6 +521,8 @@ export class LandableScreen implements Screen {
   onEnter(): void {
     this.worldState.recalculateArmourLayers();
     const completed = this.worldState.checkMissionDelivery(this.landable.id);
+    this.achievementUnlockBanner = this.worldState.getRecentlyUnlockedAchievementIds();
+    this.worldState.clearRecentlyUnlockedAchievementIds();
     if (completed.length > 0) {
       this.pendingDeliveries = completed;
       this.deliveryDismissAt = Date.now() + MISSION_DELIVERY_DISPLAY_TIME * 1000;
@@ -685,6 +701,7 @@ export class LandableScreen implements Screen {
       { label: 'OVERVIEW', id: 'overview', serviceType: null, available: true },
       { label: 'REPUTATION', id: 'reputation', serviceType: null, available: true },
       { label: 'MISSIONS', id: 'missions', serviceType: null, available: true },
+      { label: 'ACHIEVEMENTS', id: 'achievements', serviceType: null, available: true },
       { label: 'SUPPLIES', id: 'supplies', serviceType: 'refuel', available: this.hasService('refuel') },
       { label: 'REPAIR', id: 'repair', serviceType: 'repair', available: this.hasService('repair') },
       { label: 'SHIPYARD', id: 'shipyard', serviceType: 'shipyard', available: this.hasService('shipyard') },
@@ -746,6 +763,8 @@ export class LandableScreen implements Screen {
       this.renderReputationTab(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'missions') {
       this.renderMissionsTab(ctx, contentX, contentY, contentWidth, contentHeight);
+    } else if (this.activeTab === 'achievements') {
+      this.renderAchievementsTab(ctx, contentX, contentY, contentWidth, contentHeight);
     } else if (this.activeTab === 'supplies') {
       if (!this.canAccessService('refuel')) {
         this.renderAccessDenied(ctx, contentX, contentY);
@@ -834,6 +853,101 @@ export class LandableScreen implements Screen {
     ctx.font = "18px 'Courier New', monospace";
     ctx.fillText('REPUTATION', x, y);
     this.renderStanding(ctx, x, y + 34, width - 20, y + height);
+  }
+
+  private renderAchievementsTab(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    const meta = this.worldState.getPlayerMeta();
+    const derived = buildAchievementContext(this.worldState).derived;
+    const progress = this.worldState.getAchievementProgressMap();
+    const definitions = this.worldState.getAchievementDefinitions();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = COLOURS.UI_PRIMARY;
+    ctx.font = "18px 'Courier New', monospace";
+    ctx.fillText('ACHIEVEMENTS', x, y);
+
+    let ly = y + 30;
+    if (this.achievementUnlockBanner.length > 0) {
+      ctx.font = "13px 'Courier New', monospace";
+      ctx.fillStyle = COLOURS.SAFE;
+      for (const id of this.achievementUnlockBanner) {
+        const def = definitions.find((d) => d.id === id);
+        const label = def ? `Unlocked: ${def.title}` : `Unlocked: ${id}`;
+        ctx.fillText(this.fitTextToWidth(ctx, label, width - 8), x, ly);
+        ly += 18;
+      }
+      ly += 8;
+    }
+
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    ctx.fillText(
+      `Career stats — landings ${meta.landingCount} · jumps ${meta.hyperspaceJumpCount} · kills ${meta.killCount} · missions ${meta.missionsCompletedCount} · sectors ${meta.exploredSectorCount}/${derived.totalSectors} (${derived.exploredPercent}%) · factions met ${meta.factionContact.length}`,
+      x,
+      ly
+    );
+    ly += 28;
+
+    const rowH = 56;
+    const visibleRows = Math.max(1, Math.floor((height - (ly - y) - 8) / rowH));
+    const maxScroll = Math.max(0, definitions.length - visibleRows);
+    this.achievementsTabScrollOffset = Math.min(this.achievementsTabScrollOffset, maxScroll);
+
+    for (let i = 0; i < visibleRows; i += 1) {
+      const index = i + this.achievementsTabScrollOffset;
+      const def = definitions[index];
+      if (!def) {
+        break;
+      }
+      this.drawAchievementRow(ctx, x, ly + i * rowH, width - 12, def, progress[def.id], derived.exploredPercent);
+    }
+
+    if (maxScroll > 0) {
+      ctx.fillStyle = COLOURS.UI_SECONDARY;
+      ctx.font = "11px 'Courier New', monospace";
+      ctx.fillText('Scroll wheel to see more', x, y + height - 18);
+    }
+  }
+
+  private drawAchievementRow(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    def: AchievementDefinition,
+    unlocked: { unlockedAtGameTime: number } | undefined,
+    exploredPercent: number
+  ): void {
+    const hiddenLocked = def.hidden && !unlocked;
+    ctx.font = "14px 'Courier New', monospace";
+    ctx.fillStyle = unlocked ? COLOURS.SAFE : COLOURS.UI_PRIMARY;
+    const title = hiddenLocked ? '???' : def.title;
+    ctx.fillText(this.fitTextToWidth(ctx, `${unlocked ? '✓ ' : '○ '}${title}`, width), x, y);
+    ctx.font = "12px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_SECONDARY;
+    const desc = hiddenLocked ? 'Hidden achievement.' : def.description;
+    ctx.fillText(this.fitTextToWidth(ctx, desc, width), x, y + 18);
+    if (!unlocked && def.conditions.some((c) => c.path === 'derived.exploredPercent')) {
+      const threshold = def.conditions.find((c) => c.path === 'derived.exploredPercent')?.value;
+      if (typeof threshold === 'number') {
+        ctx.fillStyle = COLOURS.UI_ACCENT;
+        ctx.fillText(`Progress: ${exploredPercent}% / ${threshold}%`, x, y + 34);
+      }
+    } else if (unlocked) {
+      ctx.fillStyle = COLOURS.UI_ACCENT;
+      ctx.fillText(
+        `Unlocked ${formatGameTime(unlocked.unlockedAtGameTime)}`,
+        x,
+        y + 34
+      );
+    }
   }
 
   private renderSupplies(
@@ -1315,6 +1429,7 @@ export class LandableScreen implements Screen {
       'overview',
       'reputation',
       'missions',
+      'achievements',
       ...serviceTabs.filter((entry) => this.hasService(entry.service)).map((entry) => entry.tab)
     ];
     if (!this.clickableTabs.includes(this.activeTab)) {
@@ -1505,6 +1620,7 @@ export class LandableScreen implements Screen {
       overview: 'Overview',
       reputation: 'Reputation',
       missions: 'Missions',
+      achievements: 'Achievements',
       supplies: 'Supplies',
       repair: 'Repair',
       shipyard: 'Shipyard',

@@ -346,12 +346,11 @@ MissionTreeTemplate {
 
 Schedule detail and checkboxes: **`plan/BACKLOG.md`**.
 
-### Phase 5 — Achievements `[Phase 5]`
+### Phase 5 — Achievements *(shipped)*
 
-- Landable **Achievements** screen; **player-scoped** progress in career metadata.  
-- Tone: discovery milestones — **no** kill-count ladders.  
-- Starter examples: first landing, first hyperspace jump, first kill, first mission, explored N% galaxy, met another faction.  
-- Hard: visit every sector; meet every faction.
+- Landable **Achievements** tab; **`playerMeta`** + **`achievementProgress`** per career save.  
+- Versatile conditions via dot-paths: `meta.*`, `derived.*`, `meta.counters.*`, `meta.flags.*` — see `src/achievements/`.  
+- Catalog in `src/achievements/catalog.ts` (starter + completionist set).
 
 ### Phase 6 — Procedural imagery `[Phase 6]`
 

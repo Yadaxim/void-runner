@@ -1,3 +1,4 @@
+export * from './achievement';
 export * from './ai';
 export * from './bullet';
 export * from './equipment';

@@ -1075,6 +1075,7 @@ export class FlightScreen implements Screen {
     const spawn = j.dir.scale(-HYPERSPACE_OFFSCREEN_METRES);
     this.worldState.setCurrentSector(j.landingCoord);
     this.worldState.markVisited(j.landingCoord);
+    this.worldState.recordHyperspaceJump();
     this.playerShip.state = {
       ...this.playerShip.state,
       position: spawn,
@@ -1247,6 +1248,7 @@ export class FlightScreen implements Screen {
       lastLandedLandableId: landable.id
     };
     this.worldState.updatePlayerShipState(this.playerShip.state);
+    this.worldState.recordLanding(landable);
     this.worldState.saveToLocalStorage();
     this.landableScreen = new LandableScreen(this.canvas, landable, this.worldState, () => this.takeOff());
     this.screenManager.push(this.landableScreen);

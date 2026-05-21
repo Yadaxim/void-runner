@@ -58,6 +58,7 @@ Vanilla DOM — no React/Vue.
 
 Short dated bullets when behaviour or priorities shift — complements **`plan/BACKLOG.md`** checkboxes.
 
+- **2026-05-09** — **Phase 5 achievements:** `playerMeta` (landings, jumps, kills, missions, explored sectors, faction contacts, counters/flags); dot-path achievement conditions; landable Achievements tab; persisted with saves.  
 - **2026-05-09** — **`plan/GDD.md`:** full restructure (vision, shipped §2–8, world data §10, planned §11 by BACKLOG phase; persistence in appendix).  
 - **2026-05-09** — **Docs:** merged **`plan/ROADMAP.md`** into **`plan/BACKLOG.md`** (single checklist); worldgen docs under **`plan/worldgen/`**; removed **`BULLET_MODEL_REFACTOR.md`** (shipped).  
 - **2026-05-09** — **Bullet model refactor:** `damageCategory` removed; `BulletSpec` uses `matterType` + stackable `abilities` (`seeking`, `dot`, `knockback`, `ballistic`, `explosive`); armour `reductions` are four matter keys only; explosive splash with separate `splashDamage`; see **`plan/worldgen/WEAPONS_WORLDGEN.md`**.  
@@ -152,7 +153,7 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 ## Implemented vs remaining
 
-**Authoritative checklist:** **`plan/BACKLOG.md`** (phases 1–4.5 shipped; **next 5→9:** achievements, procedural imagery, UI polish, pre-worldgen balance, world generator; then 10–13).
+**Authoritative checklist:** **`plan/BACKLOG.md`** (through Phase 5 shipped; **next:** procedural imagery → UI polish → balance → worldgen).
 
 When behaviour changes, extend Session 4 test files and **`validateWorldFile`** in the same PR.
 
