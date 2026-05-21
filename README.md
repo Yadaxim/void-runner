@@ -1,89 +1,48 @@
 # Void Runner
 
-`Void Runner` is a 2D browser-based space trading and combat game scaffold built with Vite + TypeScript.
+2D browser space trading and combat (Escape Velocity–inspired), built with **Vite + TypeScript** and **HTML5 Canvas 2D**.
 
-This repository currently contains **project structure and typed module skeletons only**. Gameplay, rendering behavior, physics integration, AI behavior, and world generation logic are intentionally left as stubs for incremental implementation.
+**Playable today:** Newtonian flight, combat, sectors, landables, missions, reputation, equipment store, shipyard, galaxy map, hyperspace, torus galaxy wrap, `localStorage` saves. Fixture world: `public/testWorld.json`.
 
-## Tech Stack
-
-- `Vite`
-- `TypeScript` (strict mode)
-- `HTML5 Canvas 2D`
-- `@tensorflow/tfjs`
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ (recommended)
-- npm 9+ (recommended)
-
-### Install
+## Quick start
 
 ```bash
 npm install
-```
-
-### Run Dev Server
-
-```bash
-npm run dev
-```
-
-### Type Check
-
-```bash
+npm run dev      # dev server
 npm run typecheck
-```
-
-### Build
-
-```bash
+npm test         # Vitest
 npm run build
 ```
 
-### Preview Production Build
+Node 18+ recommended.
 
-```bash
-npm run preview
-```
-
-## Project Layout
+## Repo layout
 
 ```text
-.
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-├── public/
-└── src/
-    ├── main.ts
-    ├── constants.ts
-    ├── types/                  # canonical interfaces and type unions
-    ├── core/                   # loop, PRNG, world/save state, event bus
-    ├── physics/                # vector math and physics helpers
-    ├── simulation/             # runtime entity/controller layer
-    ├── ai/                     # input/output vectors, pilot + model stubs
-    ├── worldgen/               # stage pipeline and generators
-    ├── renderer/               # camera, layer pipeline, ship/landable/UI renderers
-    ├── screens/                # menu/game/UI screen modules and screen manager
-    └── workers/                # typed TF.js training worker protocol
+public/testWorld.json     # dev world fixture
+src/
+  types/                  # canonical interfaces
+  core/                   # loop, PRNG, WorldState, events
+  simulation/             # ships, weapons, sectors, pilots
+  combat/                 # damage resolution
+  world/                  # load + validate WorldFile
+  worldgen/               # offline generator pipeline (stubs)
+  renderer/, screens/     # Canvas + UI flow
+plan/                     # design docs — start at plan/README.md
+PLAYER_GUIDE.md           # pilot-facing controls (repo root)
 ```
 
-## Important Notes
+## Documentation
 
-- `src/types/` is the canonical type source for cross-module imports.
-- Most modules currently throw `Error('not implemented')` by design.
-- `src/core/prng.ts` includes a SplitMix64 implementation and `childPRNG`.
-- `src/core/gameLoop.ts` includes delta-time capping (`100ms`) and RAF loop control.
-- `src/renderer/renderPipeline.ts` enforces fixed layer ordering.
-- `src/worldgen/pipeline.ts` is stage-based with checkpoint persistence and progress events.
+| Doc | Purpose |
+|-----|---------|
+| [`plan/README.md`](plan/README.md) | Index for all design files |
+| [`plan/CONTEXT.md`](plan/CONTEXT.md) | Architecture handoff for new sessions |
+| [`plan/BACKLOG.md`](plan/BACKLOG.md) | **What’s done / what’s next** (single checklist) |
+| [`plan/worldgen/`](plan/worldgen/) | World generator pipeline + weapon rules |
 
-## Next Implementation Steps
+## Notes
 
-- Replace stubbed functions in `physics`, `simulation`, and `renderer` modules.
-- Wire `main.ts` into screen routing and game boot flow.
-- Implement world generation stages and validation.
-- Implement training worker logic and model manager bridge.
-
+- Types in `src/types/` are the source of truth for cross-module contracts.
+- `validateWorldFile` runs on bundled worlds in development.
+- World generation UI exists (`WorldGenScreen`); pipeline stages in `src/worldgen/` are not implemented yet — see **Phase 5** in `plan/BACKLOG.md`.

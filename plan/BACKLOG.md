@@ -1,273 +1,199 @@
-# VOID RUNNER — Backlog checklist
+# VOID RUNNER — Delivery checklist
 
-> Actionable checkboxes derived from **`plan/CONTEXT.md`** and **`plan/ROADMAP.md`**. Check items off as you ship; keep this file in sync when priorities move. Detailed design stays in the GDD, WorldGen doc, art guidelines, and roadmap appendices.
-
----
-
-## Phase 4 Session 4 — automated tests (complete)
-
-Shipped checklist from roadmap **Now**; extend these tests again when combat, energy, physics, or world schema changes land in the same PR.
-
-- [x] Extend **`damage.test.ts`** (layered damage, plasma DoT) as combat rules grow  
-- [x] Extend **`shipEnergyShield.test.ts`** as reactor/shield rules grow  
-- [x] Extend **`physics.test.ts`** (Newtonian / PRNG) as physics touchpoints grow  
-- [x] Keep **`validateWorldFile`** and **`world-validation*.test.ts`** aligned with schema changes (including **`bulletSpecs.abilities`**)  
+> **Single source of truth** for what is shipped vs what is next. Update this file when priorities change; add a short bullet to **`plan/CONTEXT.md` → Last changes** for notable behaviour shifts. Design detail: **`plan/GDD.md`**. Runtime handoff: **`plan/CONTEXT.md`**.
 
 ---
 
-## Phase 4 Session 5 — Galaxy map
+## Status snapshot
 
-From roadmap **Navigation slice** and context **Session 5**.
+**Playable today:** flight, combat (player/NPC parity), sectors, landables, missions, reputation, insurance, equipment store, shipyard, galaxy map, hyperspace jumps, torus wrap, saves via `localStorage`, Vitest coverage, `validateWorldFile`.
 
-- [x] Galaxy map screen (full-sector view)  
-- [x] Visited-sector state on the map  
-- [x] Faction colouring on the map  
-- [x] Radiation zone overlay  
-- [x] Hyperspace **target selection** UI (jump execution in Session 6)  
+**Pre-gen foundation (Phase 4.5 A–F):** complete — species/factions data, multi-faction landables, game time + mission trees, NPC combat parity, map + hyperspace.
 
----
+**Current focus:** **Phase 5** — offline world generator MVP (`plan/worldgen/` docs).
 
-## Galaxy map — UI polish (complete)
-
-Derived from **`plan/RandomToughts.md`** (local notes; file gitignored). Shipped in **`GalaxyMapScreen`** / **`HudRenderer`**.
-
-- [x] **Square cells** — keep sector tiles square (letterbox or pad the map region so grid cells are not stretched rectangles).  
-- [x] **Visited + landables** — when visited, visually separate sectors **with** vs **without** landables; optional **per-landable dots** inside the cell so corridor density reads at a glance.  
-- [x] **Legend: current / cursor / target** — show **current sector**, **cursor**, and **hyperspace target** coordinates explicitly in the legend (not only outlines on the grid).  
-- [x] **Right pane: sector summary** — for the **selected** (cursor) sector, show a short summary: coordinates, controlling faction, list of **landable names** (scroll if needed).  
-- [x] **Flight HUD: hyperspace near targets** — show hyperspace target alongside **ship target** and **landable target** in the main flight UI (target strip / HUD), not only in the sector telemetry line.  
-- [x] **Visited sectors + landable dots** — every visited sector **with** landables shows one dot per port (up to nine); single port is centered; none when count is zero.  
-- [x] **Color legend — left pane** — **left** pane **map key**: neutral tile, unvisited veil, visited empty, radiation overlay, landable dots, sample faction tints, outline meanings (you / cursor / hyperspace target).  
-- [x] **Layout — map centered, two side panes** — **center column** grid with **left** (color key) and **right** (controls + positions + sector summary); narrow canvas trims pane widths to keep a minimum map width.  
-- [x] **Right pane — keybinds vs positions** — **CONTROLS** block separate from **POSITIONS** block; **SELECTED SECTOR** remains below.  
+**Hygiene:** When `public/testWorld.json` hull lists change, keep `simulation.test.ts` / fixtures aligned with `shipyardListings` and `startingConditions`.
 
 ---
 
-## Phase 4 Session 6 — Hyperspace drive
+## Delivery order (future stages)
 
-From roadmap **Navigation slice** and context **Session 6**.
+| Order | Phase | Theme |
+|-------|--------|--------|
+| **Now** | **5** | World generator MVP (procedural + LLM pipeline → playable `WorldFile`) |
+| Next | — | Portable JSON saves (after gen MVP; see below) |
+| Then | **6** | World gen v2 (ruins, shimmer, wildlife, gen caching, …) |
+| Then | **7** | Fleet (multi-ship, guard mode, fleet hyperspace) |
+| Then | **8** | Neural AI gameplay (escort brains, training simulator, autopilot) |
+| Then | **9** | Polish (audio, hull silhouettes, settings, world sharing UX) |
 
-- [x] Jump toward galaxy-map target along grid ray; **partial hops** when target farther than drive **range** (Euclidean sector units); otherwise land on target sector  
-- [x] Fuel cost per jump (from equipped **`hyperspaceDrive`**)  
-- [x] Cooldown between jumps (career **`playTimeSeconds`**, persisted)  
-- [x] Jump **range** from drive spec (`jumpRange`); **no drive → no jump**  
-- [x] Galaxy map: **one-hop range** (sector tint + dashed ring from equipped drive)  
-- [x] Pre-jump **speed** (below landing-style threshold) and **hull alignment** to hop vector; **edge beacon** + **`[ J ]`** prompt when fuel and cooldown allow; on jump start **snap nose** to jump bearing and **zero linear + angular velocity**  
-- [x] Jump **animation** (camera streak out + arrival streak in + radial flash)  
-- [ ] **Fleet:** all ships align heading before jump; weakest drive limits range — *deferred until fleet ownership exists*  
-
----
-
-## AI control bus (keypress / pre-neural)
-
-Roadmap steps A–E; aligns with context **AI / control bus**.
-
-- [x] **Step A —** Canonical **`ShipControlFrame`** (or rename **`NPCInputs`**); **`NPCController.update`** return type; **`FlightScreen`** maps keys → same struct  
-- [x] **Step B —** **`applyShipControlFrame(ship, frame, worldState, dt)`** for player and NPC paths  
-- [x] **Step C —** **`Pilot` / `getControlFrame`**: **`HumanPilot`**, **`ScriptedNPCPilot`** (wraps NPC controller); stub path for future **`NeuralPilot`**  
-- [x] **Step D —** Record/replay: ring buffer or export **`(timestamp, frame[, sensor])`**; headless replay for determinism / datasets  
-- [x] **Step E —** Neural adapter: output dim = control frame; threshold to booleans; loadout staleness; training simulator uses same frame format  
-
-*Steps D–E shipped:* **D** — recording + sensor + headless replay; **E** — **`shipControlNeural.ts`** (`encode` / `decode`, **`OUTPUT_VECTOR_SIZE` 11**), **`NeuralPilot`**, **`NEURAL_LOADOUT_STALE_SECONDS`**, **`trainingLabelsFromRecording`** (re-exported from `controlFrameReplay.ts` for dataset pipelines).
+Parallel work that does not block Phase 5: **ship/archetype tuning** (`plan/ARCHETYPE_CHECKLIST.md`), **combat/economy depth** (cargo, kill missions, …).
 
 ---
 
-## Phase 4.5 Session D — Species layer + faction extensions (complete)
+## Done — core loop (Phases 1–3)
 
-Shipped as a pure data-model foundation for world generation; no gameplay behavior change.
-
-- [x] Add **`WorldFile.species`** and the **`Species`** model  
-- [x] Extend factions with **`type`**, **`speciesComposition`**, **`homeLandableId`**, **`bubbleStance`**, and **`techArchetype`**  
-- [x] Validate species uniqueness, faction species references, composition totals, faction type / bubble stance enums, and home-landable rules  
-- [x] Update **`public/testWorld.json`** with example species and faction metadata  
-- [x] Extend **`world-validation.test.ts`** for the new invariants  
+- [x] Newtonian flight, landing, sector transitions, minimap, radiation zones  
+- [x] Combat, NPCs, reputation, insurance, layered damage (shield → armour → hull)  
+- [x] Missions + cargo (minimal model), equipment store, shipyard purchase/customize  
+- [x] Main menu, starting conditions from `WorldFile`, world validation plumbing  
 
 ---
 
-## Phase 4.5 Session E — Multi-faction landable control (complete)
+## Done — Phase 4 (navigation + tests)
 
-- [x] Replace landable **`factionId`** with **`factionControl[]`** and **`controlState`**  
-- [x] Validate control faction references, duplicate control entries, share totals, and **`sole/treaty/cooperation/dispute`** faction-count rules  
-- [x] Update **`public/testWorld.json`** with sole ports plus one **`treaty`**, one **`cooperation`**, and one **`dispute`** example  
-- [x] Resolve multi-control ownership in landable UI, standing highlights, store/shipyard pricing, mission destination weighting, minimap dots, and station tinting  
-- [x] Apply local NPC faction disposition overrides for treaty/cooperation/dispute landables  
-- [x] Add validation and NPC behavior tests  
-
----
-
-## Phase 4.5 Session F — In-game time + mission trees (complete)
-
-- [x] **`WorldState.gameTime`** — monotonic in-game epoch with configurable **`gameTimeRate`** (default 60 game-seconds / real second)  
-- [x] **`tickTime`** during flight and hyperspace only (**frozen while docked** at a landable)  
-- [x] Stardate readout on flight HUD and landable header (`formatGameTime`)  
-- [x] **`MissionTreeTemplate`** / **`WorldState.missionTrees`** — prerequisites, node progression, **`finalConsequences`**  
-- [x] Mission board refresh bucket uses game-time; tree missions on controlling-faction landables show arc name (e.g. `Border Accord · …`), not internal tree ids  
-- [x] Validation + **`testWorld`** example tree (`tree_fed_border_accord`)  
-- [x] Tests in **`missionTree.test.ts`**  
-- [x] Landable UI: stardate vs take-off layout; mission list status tag vs title spacing  
+- [x] Automated tests: damage, energy/shield, physics, world validation (extend when schema changes)  
+- [x] Galaxy map screen (visited state, faction colours, radiation overlay, hyperspace target, sector summary, flight HUD target strip)  
+- [x] Hyperspace drive: partial hops, fuel, cooldown, range ring on map, jump animation, alignment rules  
+- [x] Targeting: Tab / Shift+Tab ship lock; minimap marker  
+- [x] Flight sector grid backdrop; minimap landable rings; auto-brake damping rule  
 
 ---
 
-## Economy and missions (depth)
+## Done — Phase 4.5 (pre-gen foundation)
 
-Roadmap **Economy and missions**; Appendix A sketches when implementing.
+### Session A — NPC battle parity
+- [x] NPC shields, armour, reactor/joules, spawn loadouts, shared damage resolution  
 
-- [ ] **Cargo:** replace minimal mission cargo with **`CargoItem`** model (Appendix A)  
-- [ ] **Missions:** kill-target type; sector **`missionSpawnRules`** / temporary NPCs; extend **`MissionTargetType`** with **`'kill'`** (and later **`'waypoint_visit'`**)  
-- [ ] **Equipment shop UI units:** show explicit units in item stats (mass as **`t`**, thrust as **`kTU`** via `force / 1000` display, e.g. `16.5 kTU`)  
-- [ ] **Mission chains/trees (depth):** template-level **`followUpMissions`**, richer branch copy, **`priceHidden`** on templates + UI payoff **`???`** — basic **`MissionTreeTemplate`** runtime shipped in Session F  
-- [ ] **Waypoints:** fly-close/slow visit targets; ring + label + “waypoint reached”; **`SectorMetadata.waypoints`** or mission-spawned temporary waypoints  
-- [ ] **Trade economy:** speculative cargo (supply/demand) **after** **`CargoItem`**  
+### Session B — Torus topology
+- [x] Sector wrap, torus distance/hops, minimap seam cue  
 
----
+### Session C — Galaxy map + hyperspace (data/UI baseline)
+- [x] Covered under Phase 4 above  
 
-## Equipment and combat flavour
+### Session D — Species + faction extensions
+- [x] `WorldFile.species`, faction `type` / composition / home / bubble / tech archetype; validation + `testWorld`  
 
-Roadmap **Equipment and combat flavour**.
+### Session E — Multi-faction landables
+- [x] `factionControl[]`, `controlState` (sole/treaty/cooperation/dispute); UI, economy, NPC local rules  
 
-- [ ] Exotic equipment mechanics as ready (thruster enhancer, electric drive, solar panels, H₂ scoop, extra cargo slot, ECM, repair drone, cloak, tractor beam)  
-- [ ] **Disabled ship state** (hull 0 → disabled buffer, coast, no weapons, VFX; then explosion) — **`disabledHP`**, **`isDisabled`** on **`ShipState`**  
-- [ ] **Boarding** (after disabled ships + short design pass): proximity, loot/capture/intel, timers, rep  
-- [ ] **Trophies:** zero-weight **`cargoType: 'trophy'`**; collection tab when ship status UI exists  
+### Session F — Game time + mission trees
+- [x] `gameTime` (frozen while docked); stardate HUD; `MissionTreeTemplate` runtime; example tree in `testWorld`  
 
----
+### AI control bus (pre-neural)
+- [x] `ShipControlFrame`, `applyShipControlFrame`, pilots, record/replay, neural encode/decode stub (`shipControlNeural.ts`, `NeuralPilot`)  
 
-## Fleet and escorts
+### Combat data model
+- [x] Bullet **`matterType`** + stackable **`abilities`** (`seeking`, `dot`, `knockback`, `ballistic`, `explosive`); armour four matter reductions — see **`plan/worldgen/WEAPONS_WORLDGEN.md`**  
 
-Roadmap **Fleet and escorts**.
-
-- [ ] Fleet ownership (cap ~5), multi-ship persistence  
-- [ ] Fleet landing (all slow/close)  
-- [ ] Hyperspace confirmation with fleet rules (ties Session 6)  
-- [ ] Escort **guard mode** (follow + combat handoff)  
-- [ ] Escort insurance (parallel to player where sensible)  
+### Ship archetypes (partial)
+- [x] **Interceptor (`interceptor_mk1`)** — raw/basic/advanced in `testWorld`; documented in **`plan/ARCHETYPE_CHECKLIST.md`**  
+- [x] **Shuttle (`shuttle_mk1`)** — in `testWorld` as starter hull; archetype checklist not closed  
 
 ---
 
-## World generator (offline)
+## Next — Phase 5: World generator MVP
 
-Roadmap **World generator**; pipeline detail in **`plan/WORLDGEN.md`**.
+Pipeline design: **`plan/worldgen/WORLDGEN.md`**. Weapons/bullets for step 9: **`plan/worldgen/WEAPONS_WORLDGEN.md`**.
 
-- [ ] Generator entry from main menu: new / load / import / export world JSON; progress UI for long runs  
-- [ ] Implement pipeline (spiral density, text passes, validation, export) per WorldGen doc  
-- [ ] Pre-trained memory cards: headless sim + TF.js in generator; embed weights in world file  
+> **Note:** `src/worldgen/pipeline.ts` still has **15 stub stages**; roadmap sessions **G–L** map to the **13-step** doc — reconcile when implementing.
 
----
+### Session G — Shell + procedural galaxy
+- [x] Main menu entry + **`WorldGenScreen`** (seed, name, progress UI)  
+- [ ] Implement pipeline **step 1** (galaxy structure) and **step 2** (special sectors)  
+- [ ] Galaxy-map **preview mode** for generated structure (no commit required)  
 
-## Persistence — portable JSON saves (world-linked)
+### Session H — Claude API + species + factions
+- [ ] LLM infrastructure (schema validation, retry, progressive save)  
+- [ ] Steps **3–5**: species, faction skeleton, faction identity  
 
-From roadmap **Persistence and portable saves** and **`plan/GDD.md`**. Same logical data as **`PersistedWorldState`** + today’s **`SaveMetadata`** fields; keyed to world **`metadata.seed`**.
+### Session I — Homes, territory, stations
+- [ ] Steps **6–7**, **8a–8b**: homes, territorial growth, relationship matrix, station placement  
 
-- [ ] **Single serializer** — one code path builds the save JSON object (and parses/validates on load) used by both **`localStorage`** and file I/O; avoid drift between formats.  
-- [ ] **Export save** — main menu or load-game UI: download a **`.json`** (envelope + `PersistedWorldState`); filename encodes seed (and optional pilot/world name).  
-- [ ] **Import save** — file picker: validate JSON, **seed matches** loaded / selected world, then **`WorldState`** hydrate + write **`localStorage`** so the existing resume path keeps working.  
-- [ ] **Conflict policy** — define behaviour when both imported file and **`localStorage`** exist (e.g. compare envelope **`savedAt`**, or “import overwrites”). Document in code comment + GDD.  
-- [ ] **Coarser disk writes** — when user has granted a **File System Access** file handle (or after export path TBD), flush file on: **sector transition**, **landable `onEnter` / exit to flight**, **credits / equipment / fuel / repair / insurance** mutations that already call save, **galaxy map hyperspace target** set/clear, **exit to main menu**, **`beforeunload`** / **`visibilitychange`** (best-effort); **not** every `localStorage` call.  
-- [ ] **Tests** — round-trip fixture: serialize → parse → `loadFromLocalStorage`-equivalent apply; reject wrong-seed import.  
+### Session J — Equipment catalog
+- [ ] Step **9**: hull specs, equipment catalog, **`bulletSpecs`** (templates + `WEAPONS_WORLDGEN` rules)  
 
----
+### Session K — Missions + trees + projects
+- [ ] Steps **10–12**: mission templates, mission trees, faction projects  
 
-## Neural AI (gameplay)
-
-Roadmap **Neural AI**.
-
-- [ ] Sensor array input resolution/range as equipment stats  
-- [ ] Neural brain + memory card equipment; swappable weights; worker-based training  
-- [ ] Training simulator landable service: record sessions; Follow / Combat / Flee; staleness on loadout change  
-- [ ] Autopilot toggle and mode switching (player + escorts)  
-- [ ] **AI developer sandbox:** separate entry, AI vs AI, balance tooling, imitation-learning path, optional tournament mode  
+### Session L — Assembly + export
+- [ ] Step **13**: assemble `WorldFile`, `validateWorldFile`, save to world list / export  
 
 ---
 
-## Polish and presentation
+## Next — after Phase 5 (ordered)
 
-Roadmap **Polish and presentation**.
+### Portable saves (world-linked)
+- [ ] Single serializer for `localStorage` + file export/import  
+- [ ] Export/import UI; seed match; conflict policy  
+- [ ] Coarser disk writes (sector, landable, loadout mutations, menu exit)  
+- [ ] Round-trip tests  
 
-- [x] **Flight backdrop —** faint **world-aligned sector grid** above parallax stars (**`BackgroundLayer`**, **`FLIGHT_SECTOR_GRID_SPACING`** / **`FLIGHT_SECTOR_GRID_ALPHA`** in **`constants.ts`**)  
-- [x] **Minimap —** landables: **stroke ring** (faction **`secondaryColour`**) and dot sizing so ports read distinct from ship markers (**`minimapRenderer.ts`**)  
-- [x] **Targeting / minimap —** **Tab** cycles NPC ships by distance; **Shift+Tab** locks closest threat to player, else closest non-threat; minimap **accent ring + crosshair** on locked ship (**`targetingSystem.ts`**, **`playerController.ts`**, **`minimapRenderer.ts`**)  
-- [x] **Auto-brake —** passive linear/angular damping only when matching thrusters are not producing thrust this frame (**`ShipEntity`**)  
-- [ ] Sound — Web Audio API (engines, weapons, UI)  
-- [ ] Visual variety — distinct hull silhouettes per class (**`plan/ART_GUIDELINES_V1.0.md`**)  
-- [ ] Engine glow and damage VFX for readability  
-- [ ] World sharing UX — export/import discoverability  
+### Economy and missions (depth)
+- [ ] `CargoItem` model; kill / waypoint mission types  
+- [ ] Equipment shop UI units (`t`, `kTU`)  
+- [ ] Mission tree depth (`followUpMissions`, `priceHidden`, …)  
+- [ ] Trade economy (after cargo)  
+
+### Equipment and combat flavour
+- [ ] Exotic equipment (cloak, ECM, drones, …)  
+- [ ] Disabled ship state + boarding  
+- [ ] More hull archetypes per **`plan/ARCHETYPE_CHECKLIST.md`**  
 
 ---
 
-## Explicit non-goals (reminder)
+## Future — Phase 6 (world gen v2)
 
-From roadmap; **not** backlog tasks — do not implement unless design explicitly revisits.
+- [ ] Wildlife factions  
+- [ ] Ancient ruins (hidden landables, sensor-gated)  
+- [ ] Shimmer zones (ambient damage, salvage)  
+- [ ] Faction projects at varied start progress  
+- [ ] LLM response caching by seed/step  
+
+---
+
+## Future — Phase 7 (fleet)
+
+- [ ] Fleet ownership (~5 ships), persistence  
+- [ ] Fleet landing + hyperspace (weakest drive, align all ships) — *partial rule deferred in Session 6*  
+- [ ] Guard mode; escort customize/insurance  
+
+---
+
+## Future — Phase 8 (neural AI gameplay)
+
+- [ ] Sensor array stats; neural brain + memory cards in play  
+- [ ] Training simulator landable service; autopilot modes  
+- [ ] Pre-trained cards in generated worlds (generator step / Phase 6)  
+
+---
+
+## Future — Phase 9 (polish)
+
+- [ ] Sound (Web Audio)  
+- [ ] Distinct hull silhouettes (`plan/ART_GUIDELINES_V1.0.md`)  
+- [ ] Engine glow / damage VFX  
+- [ ] Settings (incl. game-time rate)  
+- [ ] World sharing UX  
+
+---
+
+## Cross-cutting (any phase)
+
+- [ ] Coverage reporting in CI  
+- [ ] E2E tests (Playwright)  
+- [ ] Performance profiling (busy sectors / fleet)  
+- [ ] Save format versioning  
+- [ ] Accessibility pass  
+
+---
+
+## Out of scope
 
 - Multiplayer  
-- NPC fleets (until fleet tech)  
+- Mobile / VR  
+- Real-money transactions  
+- NPC **fleets** (single-ship NPCs until Phase 7)  
 - Reputation decay (unless design revisits)  
-- Energy/void exotic **content** (types exist; content when balancing needs it)  
-
----
-
-## Ship archetype balancing (world JSON)
-
-Hand-tuned hull/item pairs before procedural catalog generation; tracked in **`plan/ARCHETYPE_CHECKLIST.md`**.
-
-- [x] **Interceptor (`interceptor_mk1`)** — raw/basic/advanced coherent in **`public/testWorld.json`**; advanced/starter/shipyard listing aligned; mass-cap snapshot documented **2026-05**.
 
 ---
 
 ## Parked ideas
 
-These are intentionally not active checklist items. Promote them when trigger conditions are met. Long-form **What / Trigger** text: **`plan/PARKED_IDEAS_DETAIL.md`**.
+Not scheduled. Long form: **`plan/PARKED_IDEAS_DETAIL.md`**.
 
-### Combat and ship systems
-
-- Creature ecology (predator/prey shifts based on player impact) — pull in after wildlife factions + stable disposition behavior.
-- Pre-trained AI cards as loot — pull in after neural AI (Phase 8) stabilizes.
-- Energy weapons as primary equipment (laser/plasma families) — pull in when equipment variety feels thin.
-- Anti-matter and dark-matter weapons — pull in when armor archetypes need stronger counters.
-- Voidtype weapons as ruin/shimmer rewards — pull in with ruins expansion.
-- Equipment-only inventory locker — pull in with fleet ownership friction.
-- Active mission expiry — pull in once in-game clock/time pressure is desired.
-- Reputation decay — pull in only if high-rep gameplay becomes static.
-
-### World and worldgen
-
-- Faction language/glyph generation — pull in when ruins have deeper lore artifacts.
-- Cultural drift over time — pull in for long-lived persistent worlds.
-- Trade economy depth pass — pull in when economy needs stronger sinks/loops.
-- Player-editable post-generation worlds — pull in when tuning generated worlds beats rerolling.
-- LLM response caching by seed/step/input hash — pull in as soon as generator iteration cost matters.
-- Shared-seed world discovery loops — pull in with world sharing UX.
-- Multi-shape composite galaxies — pull in if shape variety feels limited.
-- Faction projects requiring player participation to complete — pull in with faction-project tuning.
-- Procedural hull aesthetics by tech archetype — pull in during art/style refresh.
-
-### UI and UX
-
-- Settings screen (time rate, bindings, audio, text size) — pull in during polish.
-- Save format versioning + migration — pull in at first breaking schema evolution.
-- Photo mode — pull in once visuals become showcase-ready.
-- Codex/encyclopedia (species/factions/equipment/ruins discovery) — pull in with ruins/lore accumulation.
-- Tutorial/onboarding — pull in before external player testing.
-- Accessibility pass (palette, keyboard alternatives, scaling, reader hints) — pull in during polish.
-
-### Tech debt and infra
-
-- Coverage reporting gates in CI — pull in when suite stability is high.
-- E2E tests (Playwright) — pull in when unit/integration misses become frequent.
-- Simulation performance profiling — pull in with fleet/busy-sector stress.
-- Renderer optimization (culling, caching, dirty-rect) — pull in if profiling shows render bottlenecks.
-- Build pipeline hardening (prod builds/deploy targets) — pull in when distributing beyond local dev.
-
-### Far future / blue sky
-
-- VR support
-- Mobile touch controls
-- Procedural music generation by sector/faction
-- NPC voice lines (TTS)
-- Mod kits for worldgen prompts
-- Shared persistent world state across players (still not real-time multiplayer)
-- Roguelike mode with permadeath and meta progression
-- Offline-batched LLM faction comms/events (explicitly not during gameplay runtime)
+Promote when triggers are met — revisit wording for **matter-based weapons** (anti/dark/void matter exists; “energy weapons” means more catalog variety).
 
 ---
 
-*Last aligned **2026-05-09** with **`plan/CONTEXT.md`** (Last changes) and **`plan/ROADMAP.md`** (Status snapshot). Update those files and this checklist when delivery order changes.*
+*Last updated **2026-05-09**.*

@@ -4,8 +4,7 @@ Guide for **offline world generation** and hand-authored `WorldFile` JSON: how c
 
 **Canonical types:** `src/types/bullet.ts`, `src/types/equipment.ts`  
 **Runtime:** `src/simulation/weaponSystem.ts`, `src/simulation/bulletEntity.ts`, `src/combat/damage.ts`  
-**Validation:** `src/world/validation.ts`  
-**Design history:** `plan/BULLET_MODEL_REFACTOR.md` (refactor rationale; behaviour matches this doc)
+**Validation:** `src/world/validation.ts`
 
 ---
 
@@ -347,7 +346,7 @@ Clamp and run `validateWorldFile`. Tune against anchors in `public/testWorld.jso
 
 ---
 
-## 11. Pipeline placement (`plan/WORLDGEN.md` step 9)
+## 11. Pipeline placement (`plan/worldgen/WORLDGEN.md` step 9)
 
 | Output | Notes |
 |--------|--------|

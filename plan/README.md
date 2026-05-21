@@ -1,41 +1,63 @@
 # Design docs (`plan/`)
 
-Read **`plan/CONTEXT.md` first** — single handoff for new sessions (architecture, invariants, pointers).
+Read **`plan/CONTEXT.md` first** — runtime architecture, invariants, and session handoff.
 
-## Canonical
+---
 
-| File | Role |
-|------|------|
-| **`plan/CONTEXT.md`** | Runtime architecture, document map, **Last changes** |
-| **`plan/GDD.md`** | Game design (living): persistence + lore/torus/species/factions through treaty combat §§1–14 |
-| **`plan/ROADMAP.md`** | Phases, sequencing, deferred appendices |
-| **`plan/BACKLOG.md`** | Actionable checklist + short **Parked ideas** |
-
-## World generation
+## Delivery (one checklist)
 
 | File | Role |
 |------|------|
-| **`plan/WORLDGEN.md`** | Full pipeline — step schemas, procedural vs LLM, UI flow, validation, assembly |
-| **`plan/WEAPONS_WORLDGEN.md`** | `bulletSpecs` + weapon catalog semantics for generators (fields, variation axes, bands) |
-| **`plan/BULLET_MODEL_REFACTOR.md`** | Bullet/ability/matter refactor — **design locked**, ready to implement |
+| **`plan/BACKLOG.md`** | **Shipped vs next** — phases, sessions, checkboxes, future stages 6–9 |
 
-## Balance & art
+When behaviour ships, tick **BACKLOG** and add a dated line under **CONTEXT → Last changes**.
+
+---
+
+## Game design and runtime
 
 | File | Role |
 |------|------|
-| **`plan/ARCHETYPE_CHECKLIST.md`** | Hull/loadout tuning checklist (`testWorld.json`) |
-| **`plan/CONSTANTS_BALANCE_TREE.md`** | Tunables tree vs systems |
-| **`plan/ART_GUIDELINES_V1.0.md`** | Visual design / renderer spec |
+| **`plan/CONTEXT.md`** | Architecture, invariants, document map, changelog bullets |
+| **`plan/GDD.md`** | Player-facing rules and long-term vision (§§8+ partly forward-looking) |
 
-## Parked ideas (not active roadmap)
+---
+
+## World generator (`plan/worldgen/`)
+
+Offline pipeline and weapon data — separate from gameplay docs above.
+
+| File | Role |
+|------|------|
+| **`plan/worldgen/WORLDGEN.md`** | 13-step pipeline — procedural vs LLM, schemas, assembly, UI flow |
+| **`plan/worldgen/WEAPONS_WORLDGEN.md`** | `bulletSpecs` + weapons — `matterType`, `abilities[]`, validation bands |
+
+Implementation: `src/worldgen/` (15 stub stages today — align with WORLDGEN doc when building Phase 5).
+
+---
+
+## Balance and art
+
+| File | Role |
+|------|------|
+| **`plan/ARCHETYPE_CHECKLIST.md`** | Hull/loadout tuning before/at alongside procedural catalogs |
+| **`plan/CONSTANTS_BALANCE_TREE.md`** | Constants vs world JSON tuning order |
+| **`plan/ART_GUIDELINES_V1.0.md`** | Visual / renderer spec |
+
+---
+
+## Parked ideas
 
 | File | Role |
 |------|------|
 | **`plan/BACKLOG.md`** → § Parked ideas | Short bullets |
-| **`plan/PARKED_IDEAS_DETAIL.md`** | Same topics — **What / Trigger** long form |
+| **`plan/PARKED_IDEAS_DETAIL.md`** | What / trigger long form |
 
-## Maintenance
+---
 
-- After shipping behaviour, update **`plan/CONTEXT.md` → Last changes** and tick **`plan/BACKLOG.md`**.
-- Keep roadmap phase text aligned with reality (see **`plan/ROADMAP.md`** **Status snapshot**).
-- Avoid duplicate roadmap files — **`plan/ROADMAP.md`** is the only roadmap source.
+## Maintenance rules
+
+1. **One checklist** — `plan/BACKLOG.md` only (no duplicate phase lists elsewhere).  
+2. **CONTEXT** — architecture + short changelog; trim long “done” walls.  
+3. **GDD** — design intent; mark sections not in code as forward-looking.  
+4. **Worldgen** — keep under `plan/worldgen/`; step 9 weapon stats follow **WEAPONS_WORLDGEN.md**.

@@ -1,6 +1,6 @@
 # VOID RUNNER — Game design document (living)
 
-> High-level design and player-facing rules. Runtime architecture and delivery order live in `plan/CONTEXT.md` and `plan/ROADMAP.md`; the actionable checklist is `plan/BACKLOG.md`. World generator pipeline detail: `plan/WORLDGEN.md`.
+> High-level design and player-facing rules. Runtime architecture: `plan/CONTEXT.md`. Delivery checklist: `plan/BACKLOG.md`. World generator: `plan/worldgen/WORLDGEN.md`.
 
 This file is intentionally partial: expand sections as features ship. Sections below are authoritative when present.
 
