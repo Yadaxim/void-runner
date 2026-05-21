@@ -4,7 +4,7 @@
 
 **Supersedes (when done):** `damageCategory`, 13-key `DamageTypeKey` armour, top-level `dotDuration` / `dotDamagePerSecond`, `attractedByGravity`, hardcoded plasma DoT path.
 
-**Updates after ship:** `plan/WEAPONS_WORLDGEN.md`, `plan/GDD.md` combat typing, `plan/CONTEXT.md`.
+**Worldgen reference:** `plan/WEAPONS_WORLDGEN.md` (rewritten for this model). GDD combat § still optional to align.
 
 ---
 
