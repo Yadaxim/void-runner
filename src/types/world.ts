@@ -3,6 +3,7 @@ import type { EquipmentItem } from './equipment';
 import type { FactionDefinition } from './faction';
 import type { Landable } from './landable';
 import type { MissionTemplate } from './mission';
+import type { MissionTreeTemplate } from './missionTree';
 import type { EquipmentSlot, HullLoadoutVariantKey, HullSpec, SlotMap } from './ship';
 import type { Species } from './species';
 
@@ -77,6 +78,8 @@ export interface WorldFile {
     seed: number;
     version: string;
     generatedAt: string;
+    /** Game seconds per real second while the clock runs; default from constants when omitted. */
+    gameTimeRate?: number;
   };
   galaxy: {
     gridWidth: number;
@@ -92,6 +95,8 @@ export interface WorldFile {
   equipmentCatalog: EquipmentItem[];
   bulletSpecs: BulletSpec[];
   missionTemplates: MissionTemplate[];
+  /** Story mission arcs with branching prerequisites and world consequences. */
+  missionTreeTemplates?: MissionTreeTemplate[];
   startingConditions: StartingConditions;
   /** Optional named loadouts; every referenced item must exist in the catalog. */
   defaultLoadouts?: Record<string, DefaultLoadoutEntry>;

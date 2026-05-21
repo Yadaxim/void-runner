@@ -40,7 +40,11 @@ export interface Mission {
   payoff: number;
   reputationRewards: ReputationReward[];
   expiryTime?: number;
+  /** In-game epoch (seconds) when accepted; used for expiry against `gameTime`. */
   acceptedAt: number;
+  /** Set when this mission comes from a mission tree node. */
+  missionTreeId?: string;
+  missionTreeNodeId?: string;
 }
 
 export interface CompletedMission {

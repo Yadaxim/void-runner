@@ -12,6 +12,7 @@ import {
 import { childPRNG } from '../core/prng';
 import { EquipmentStore } from '../simulation/equipmentStore';
 import { Vector2 } from '../physics/vector2';
+import { getLandablePrimaryFactionId } from '../types';
 import type {
   CargoItem,
   CompletedMission,
@@ -48,6 +49,14 @@ import {
 import { expandSlotsToFullHull } from '../shipyard/slotLayout';
 import { throwIfWorldFileInvalidForGame, WorldFileValidationError } from '../world/validation';
 import { clampSectorCoordToGalaxy, sectorGridDistance } from '../sim/hyperspaceJump';
+import { DEFAULT_GAME_TIME_RATE } from '../constants';
+import {
+  initialiseMissionTreesFromWorld,
+  markMissionTreeNodeActive,
+  onMissionTreeMissionCompleted,
+  syncMissionTreeAvailability
+} from '../simulation/missionTree';
+import type { GameTimeState, MissionTreeProgress, MissionTreeProgressMap, MissionTreeTemplate } from '../types';
 
 export type { RepActionType };
 
@@ -63,6 +72,11 @@ interface PersistedWorldState {
   hyperspaceTargetCoord?: GridCoord | null;
   /** Earliest `playTimeSeconds` at which another hyperspace jump is allowed. */
   hyperspaceCooldownUntilPlayTime?: number;
+  gameTimeEpoch?: number;
+  missionTrees?: MissionTreeProgressMap;
+  worldFlags?: Record<string, boolean | number | string>;
+  dispositionOverrides?: Record<string, Record<string, number>>;
+  unlockedEquipmentByLandable?: Record<string, string[]>;
 }
 
 export interface SaveMetadata {
@@ -360,6 +374,12 @@ export class WorldState {
   private readonly sectorIndex: Map<string, SectorMetadata>;
   private pilotName = 'Pilot';
   private playTimeSeconds = 0;
+  private gameTimeEpoch = 0;
+  private readonly gameTimeRate: number;
+  private missionTrees: MissionTreeProgressMap = {};
+  private worldFlags: Record<string, boolean | number | string> = {};
+  private dispositionOverrides: Record<string, Record<string, number>> = {};
+  private unlockedEquipmentByLandable: Record<string, string[]> = {};
   /** localStorage slot for this career (multiple saves per `worldFile.metadata.seed`). */
   private readonly activeSaveId: string;
 
@@ -379,6 +399,10 @@ export class WorldState {
     };
 
     this.worldFile = indexedWorld;
+    this.gameTimeRate =
+      typeof indexedWorld.metadata.gameTimeRate === 'number' && indexedWorld.metadata.gameTimeRate > 0
+        ? indexedWorld.metadata.gameTimeRate
+        : DEFAULT_GAME_TIME_RATE;
     this.activeSaveId = options?.activeSaveId ?? generateSaveId();
     const wrappedStart = clampSectorCoordToGalaxy(
       startSector,
@@ -396,6 +420,7 @@ export class WorldState {
     for (const sector of this.worldFile.sectors) {
       this.sectorIndex.set(coordKey(sector.coord), sector);
     }
+    initialiseMissionTreesFromWorld(this, indexedWorld);
   }
 
   /** New UUID (or fallback) for a **new** career when starting a game — pass as `options.activeSaveId`. */
@@ -503,6 +528,10 @@ export class WorldState {
   }
 
   getFactionDisposition(factionA: string, factionB: string): number {
+    const override = this.dispositionOverrides[factionA]?.[factionB];
+    if (typeof override === 'number') {
+      return override;
+    }
     const faction = this.getFaction(factionA);
     if (!faction) {
       return 0;
@@ -514,6 +543,32 @@ export class WorldState {
     const ab = this.getFactionDisposition(factionA, factionB);
     const ba = this.getFactionDisposition(factionB, factionA);
     return ab < -0.5 || ba < -0.5;
+  }
+
+  getLandablePrimaryFactionId(landable: Landable): string | null {
+    return getLandablePrimaryFactionId(landable);
+  }
+
+  getLandablePriceMultiplier(landable: Landable): number {
+    if (landable.controlState === 'dispute') {
+      return 2;
+    }
+    if (landable.controlState === 'cooperation') {
+      return 0.95;
+    }
+    return 1;
+  }
+
+  getLandableControlLabel(landable: Landable): string {
+    if (landable.factionControl.length === 0) {
+      return 'Independent';
+    }
+    return landable.factionControl
+      .map((entry) => {
+        const name = this.getFaction(entry.factionId)?.name ?? entry.factionId;
+        return `${name} ${entry.share}%`;
+      })
+      .join(' / ');
   }
 
   getFactions(): FactionDefinition[] {
@@ -625,8 +680,9 @@ export class WorldState {
       return { success: false, reason: 'Unknown current hull' };
     }
 
-    if (listing.minReputation !== undefined && landable.factionId) {
-      if (this.getReputationForFaction(landable.factionId) < listing.minReputation) {
+    const landableFactionId = this.getLandablePrimaryFactionId(landable);
+    if (listing.minReputation !== undefined && landableFactionId) {
+      if (this.getReputationForFaction(landableFactionId) < listing.minReputation) {
         return { success: false, reason: 'Insufficient reputation for this listing' };
       }
     }
@@ -636,9 +692,10 @@ export class WorldState {
       return { success: false, reason: 'Required equipment slots must be filled' };
     }
 
-    const hostile = landable.factionId ? this.getReputationTier(landable.factionId) === 'hostile' : false;
+    const hostile = landableFactionId ? this.getReputationTier(landableFactionId) === 'hostile' : false;
+    const priceMultiplier = this.getLandablePriceMultiplier(landable);
     const breakdown = computeShipyardNetCost({
-      newHullPrice: newHull.price,
+      newHullPrice: newHull.price * priceMultiplier,
       oldHullSellValue: oldHull.sellValue,
       hostile,
       newHull,
@@ -647,7 +704,7 @@ export class WorldState {
       storeEntries,
       getBuyPrice: (itemId) => {
         const item = this.getEquipmentItem(itemId);
-        return item ? EquipmentStore.getBuyPrice(item, this, landable.factionId) : 0;
+        return item ? EquipmentStore.getBuyPriceAtLandable(item, this, landable) : 0;
       },
       getSellPrice: (itemId) => {
         const item = this.getEquipmentItem(itemId);
@@ -957,7 +1014,7 @@ export class WorldState {
       return { success: false, reason: 'Insufficient equipment capacity' };
     }
 
-    const buyPrice = EquipmentStore.getBuyPrice(item, this, landable.factionId);
+    const buyPrice = EquipmentStore.getBuyPriceAtLandable(item, this, landable);
     const sellValue = occupyingItem ? EquipmentStore.getSellPrice(occupyingItem) : 0;
     const netCost = buyPrice - sellValue;
     if (ship.credits < netCost) {
@@ -1122,6 +1179,10 @@ export class WorldState {
       weight: mission.cargoWeight
     };
 
+    if (mission.missionTreeId && mission.missionTreeNodeId) {
+      markMissionTreeNodeActive(this, mission.missionTreeId, mission.missionTreeNodeId);
+    }
+
     this.updatePlayerShipState({
       activeMissions: [...ship.activeMissions, mission],
       cargo: [...ship.cargo, newCargo]
@@ -1160,6 +1221,7 @@ export class WorldState {
           this.changeReputation(reward.factionId, reward.amount, 'mission_complete');
         }
         completed.push({ mission, creditsEarned: mission.payoff });
+        onMissionTreeMissionCompleted(this, mission);
       } else {
         remainingMissions.push(mission);
       }
@@ -1246,6 +1308,112 @@ export class WorldState {
 
   getPlayTime(): number {
     return this.playTimeSeconds;
+  }
+
+  /** Advances career play time and in-game epoch (flight and hyperspace only — not while docked). */
+  tickTime(realDt: number): void {
+    if (!(realDt > 0)) {
+      return;
+    }
+    this.addPlayTime(realDt);
+    this.gameTimeEpoch += realDt * this.gameTimeRate;
+  }
+
+  getGameTimeEpoch(): number {
+    return this.gameTimeEpoch;
+  }
+
+  getGameTimeRate(): number {
+    return this.gameTimeRate;
+  }
+
+  getGameTimeState(): GameTimeState {
+    return { epoch: this.gameTimeEpoch, rate: this.gameTimeRate };
+  }
+
+  getMissionTreeTemplates(): MissionTreeTemplate[] {
+    return this.worldFile.missionTreeTemplates ?? [];
+  }
+
+  getMissionTreeTemplate(treeId: string): MissionTreeTemplate | null {
+    return this.getMissionTreeTemplates().find((tree) => tree.id === treeId) ?? null;
+  }
+
+  getMissionTreeProgress(treeId: string): MissionTreeProgress | null {
+    return this.missionTrees[treeId] ?? null;
+  }
+
+  getMissionTreeProgressMap(): MissionTreeProgressMap {
+    return this.missionTrees;
+  }
+
+  replaceMissionTreeProgress(map: MissionTreeProgressMap): void {
+    this.missionTrees = map;
+  }
+
+  getWorldFlag(flagId: string): boolean | number | string | undefined {
+    return this.worldFlags[flagId];
+  }
+
+  setWorldFlag(flagId: string, value: boolean | number | string): void {
+    this.worldFlags[flagId] = value;
+  }
+
+  setDispositionOverride(factionA: string, factionB: string, value: number): void {
+    if (!this.dispositionOverrides[factionA]) {
+      this.dispositionOverrides[factionA] = {};
+    }
+    this.dispositionOverrides[factionA][factionB] = value;
+  }
+
+  setReputationFloor(factionId: string, minimum: number, actionType: RepActionType): void {
+    const current = this.getReputationForFaction(factionId);
+    if (current < minimum) {
+      this.changeReputation(factionId, minimum - current, actionType);
+    }
+  }
+
+  findLandableById(landableId: string): Landable | null {
+    for (const sector of this.worldFile.sectors) {
+      const landable = sector.landables.find((entry) => entry.id === landableId);
+      if (landable) {
+        return landable;
+      }
+    }
+    return null;
+  }
+
+  applyLandableControlShift(landableId: string, factionId: string, share: number): void {
+    const landable = this.findLandableById(landableId);
+    if (!landable) {
+      return;
+    }
+    const clampedShare = Math.max(1, Math.min(100, Math.round(share)));
+    const existing = landable.factionControl.find((entry) => entry.factionId === factionId);
+    if (existing) {
+      existing.share = clampedShare;
+    } else {
+      landable.factionControl.push({ factionId, share: clampedShare });
+    }
+    const total = landable.factionControl.reduce((sum, entry) => sum + entry.share, 0);
+    if (total !== 100) {
+      const scale = 100 / total;
+      for (const entry of landable.factionControl) {
+        entry.share = Math.round(entry.share * scale);
+      }
+      const adjusted = landable.factionControl.reduce((sum, entry) => sum + entry.share, 0);
+      if (adjusted !== 100 && landable.factionControl.length > 0) {
+        landable.factionControl[0].share += 100 - adjusted;
+      }
+    }
+    landable.controlState = landable.factionControl.length === 1 ? 'sole' : landable.controlState;
+  }
+
+  unlockEquipmentAtLandable(landableId: string, equipmentItemId: string): void {
+    const list = this.unlockedEquipmentByLandable[landableId] ?? [];
+    if (!list.includes(equipmentItemId)) {
+      this.unlockedEquipmentByLandable[landableId] = [...list, equipmentItemId];
+    }
   }
 
   getGalaxyCentre(): GridCoord {
@@ -1342,7 +1510,12 @@ export class WorldState {
       pilotName: this.pilotName,
       playTimeSeconds: this.playTimeSeconds,
       hyperspaceTargetCoord: this.hyperspaceTargetCoord,
-      hyperspaceCooldownUntilPlayTime: this.hyperspaceCooldownUntilPlayTime
+      hyperspaceCooldownUntilPlayTime: this.hyperspaceCooldownUntilPlayTime,
+      gameTimeEpoch: this.gameTimeEpoch,
+      missionTrees: this.missionTrees,
+      worldFlags: this.worldFlags,
+      dispositionOverrides: this.dispositionOverrides,
+      unlockedEquipmentByLandable: this.unlockedEquipmentByLandable
     };
     const worldSeed = this.worldFile.metadata.seed;
     const { saveKey, metaKey } = persistKeys(worldSeed, this.activeSaveId);
@@ -1388,6 +1561,26 @@ export class WorldState {
       state.repLog = Array.isArray(parsed.repLog) ? parsed.repLog.slice(-8) : [];
       state.pilotName = typeof parsed.pilotName === 'string' ? parsed.pilotName : 'Pilot';
       state.playTimeSeconds = Number.isFinite(parsed.playTimeSeconds) ? Math.max(0, parsed.playTimeSeconds) : 0;
+      state.gameTimeEpoch =
+        typeof parsed.gameTimeEpoch === 'number' && Number.isFinite(parsed.gameTimeEpoch)
+          ? Math.max(0, parsed.gameTimeEpoch)
+          : 0;
+      if (parsed.missionTrees && typeof parsed.missionTrees === 'object') {
+        state.missionTrees = parsed.missionTrees;
+      } else {
+        initialiseMissionTreesFromWorld(state, worldFile);
+      }
+      state.worldFlags =
+        parsed.worldFlags && typeof parsed.worldFlags === 'object' ? { ...parsed.worldFlags } : {};
+      state.dispositionOverrides =
+        parsed.dispositionOverrides && typeof parsed.dispositionOverrides === 'object'
+          ? { ...parsed.dispositionOverrides }
+          : {};
+      state.unlockedEquipmentByLandable =
+        parsed.unlockedEquipmentByLandable && typeof parsed.unlockedEquipmentByLandable === 'object'
+          ? { ...parsed.unlockedEquipmentByLandable }
+          : {};
+      syncMissionTreeAvailability(state);
       const ht = parsed.hyperspaceTargetCoord;
       if (
         ht &&

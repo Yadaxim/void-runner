@@ -5,7 +5,7 @@ import {
 } from '../../constants';
 import type { WorldState } from '../../core/worldState';
 import type { ShipEntity } from '../../simulation/shipEntity';
-import type { Landable, Mission, Vector2 } from '../../types';
+import { getLandablePrimaryFactionId, type Landable, type Mission, type Vector2 } from '../../types';
 
 const MIN_LANDABLE_DOT_SIZE = 3;
 const MAX_LANDABLE_DOT_SIZE = 8;
@@ -67,9 +67,8 @@ export class MinimapRenderer {
       const dotY = mapY + clamp(relativeY, 0, 1) * MINIMAP_SIZE;
       const dotRadius = clamp(landable.radius / 10, MIN_LANDABLE_DOT_SIZE, MAX_LANDABLE_DOT_SIZE);
 
-      const factionVisual = landable.factionId
-        ? worldState.getFactionVisual(landable.factionId)
-        : null;
+      const primaryFactionId = getLandablePrimaryFactionId(landable);
+      const factionVisual = primaryFactionId ? worldState.getFactionVisual(primaryFactionId) : null;
       this.ctx.fillStyle = factionVisual?.primaryColour ?? COLOURS.UI_SECONDARY;
       this.ctx.beginPath();
       this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);

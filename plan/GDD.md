@@ -278,8 +278,9 @@ In-game time can be shown in a stardate-style format (e.g. `Cycle 247.13.4`); fo
 
 ### When time runs
 
-- **Landable screens:** time advances (not paused); long browsing advances the clock.
-- **Pause / save-load menus:** time **stops**.
+- **Flight and hyperspace:** in-game time advances at `gameTime.rate` (career `playTimeSeconds` advances in parallel for cooldowns).
+- **Landable screens (docked):** in-game time **does not** advance — browsing shops/missions does not pass time.
+- **Galaxy map overlay, insurance screen, pause / save-load menus:** time **stops**.
 
 ---
 

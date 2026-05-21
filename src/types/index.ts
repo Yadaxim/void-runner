@@ -4,6 +4,7 @@ export * from './equipment';
 export * from './faction';
 export * from './landable';
 export * from './mission';
+export * from './missionTree';
 export * from './physics';
 export * from './ship';
 export * from './species';

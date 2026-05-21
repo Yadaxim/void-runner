@@ -1,5 +1,5 @@
 import type { WorldState } from '../../core/worldState';
-import type { Landable } from '../../types';
+import { getLandablePrimaryFactionId, type Landable } from '../../types';
 import { LANDING_RADIUS_MULTIPLIER, COLOURS } from '../../constants';
 import type { Camera } from '../camera';
 import { worldToScreen } from '../camera';
@@ -39,7 +39,7 @@ export class LandableLayer {
           pos.y,
           landable.radius,
           landable.seed,
-          worldState.getFactionVisual(landable.factionId ?? ''),
+          worldState.getFactionVisual(getLandablePrimaryFactionId(landable) ?? ''),
           currentAngle
         );
       }

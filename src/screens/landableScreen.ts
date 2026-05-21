@@ -42,6 +42,7 @@ import type {
 } from '../types';
 import type { EquipmentSlot } from '../types';
 import type { LandableService, ServiceType } from '../types/landable';
+import { formatGameTime } from '../simulation/gameTime';
 import { MissionBoard } from '../simulation/missionBoard';
 import { EquipmentStore } from '../simulation/equipmentStore';
 import type { Screen } from './screenManager';
@@ -545,6 +546,7 @@ export class LandableScreen implements Screen {
   }
 
   update(dt: number): void {
+    // In-game time does not advance while docked; career playTime still pauses here too.
     this.updateSupplies(dt);
     this.updateRepair(dt);
     this.missionFlashTimer = Math.max(0, this.missionFlashTimer - dt);
@@ -666,8 +668,13 @@ export class LandableScreen implements Screen {
     ctx.fillText(this.landable.name.toUpperCase(), panelX + 20, panelY + 16);
     ctx.font = "14px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
-    const factionText = this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'Independent';
+    const factionText = this.worldState.getLandableControlLabel(this.landable);
     ctx.fillText(factionText, panelX + 20, panelY + 54);
+    ctx.textAlign = 'right';
+    ctx.font = "11px 'Courier New', monospace";
+    ctx.fillStyle = COLOURS.UI_ACCENT;
+    ctx.fillText(formatGameTime(this.worldState.getGameTimeEpoch()), panelX + panelWidth - 20, panelY + 12);
+    ctx.textAlign = 'left';
     if (this.isHostileAtLandable()) {
       ctx.font = "12px 'Courier New', monospace";
       ctx.fillStyle = COLOURS.DANGER;
@@ -676,7 +683,7 @@ export class LandableScreen implements Screen {
 
     this.takeOffRect = {
       x: panelX + panelWidth - 172,
-      y: panelY + 20,
+      y: panelY + 30,
       width: 146,
       height: 34
     };
@@ -820,7 +827,7 @@ export class LandableScreen implements Screen {
 
     ctx.font = "13px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_PRIMARY;
-    ctx.fillText(`Faction: ${this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'Independent'}`, x, y + 190);
+    ctx.fillText(`Faction: ${this.worldState.getLandableControlLabel(this.landable)}`, x, y + 190);
     ctx.font = "italic 13px 'Courier New', monospace";
     ctx.fillStyle = COLOURS.UI_SECONDARY;
     ctx.fillText(this.landable.atmosphere || 'Unknown atmosphere', x, y + 214);
@@ -1406,12 +1413,16 @@ export class LandableScreen implements Screen {
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
       ctx.fillRect(x, cardY, width, cardHeight - 10);
+      const statusTag = row.kind === 'active' ? '[ ACTIVE ]' : '[ AVAILABLE ]';
       ctx.fillStyle = row.kind === 'active' ? COLOURS.SAFE : COLOURS.WARNING;
       ctx.font = "11px 'Courier New', monospace";
-      ctx.fillText(row.kind === 'active' ? '[ ACTIVE ]' : '[ AVAILABLE ]', x + 8, cardY + 6);
+      ctx.fillText(statusTag, x + 8, cardY + 8);
+      const tagWidth = ctx.measureText(statusTag).width;
+      const titleX = x + 8 + tagWidth + 14;
+      const titleMaxWidth = Math.max(40, width - (titleX - x) - 12);
       ctx.fillStyle = COLOURS.UI_PRIMARY;
       ctx.font = "15px 'Courier New', monospace";
-      ctx.fillText(mission.title, x + 92, cardY + 8);
+      ctx.fillText(this.fitTextToWidth(ctx, this.getMissionDisplayTitle(mission), titleMaxWidth), titleX, cardY + 6);
       ctx.fillStyle = COLOURS.UI_SECONDARY;
       ctx.font = "12px 'Courier New', monospace";
       ctx.fillText(this.fitTextToWidth(ctx, mission.description, width - 24), x + 8, cardY + 30);
@@ -1465,7 +1476,7 @@ export class LandableScreen implements Screen {
   }
 
   private canAccessService(serviceType: ServiceType): boolean {
-    const landableFactionId = this.landable.factionId;
+    const landableFactionId = this.worldState.getLandablePrimaryFactionId(this.landable);
     if (!landableFactionId) return true;
     const tier = this.worldState.getReputationTier(landableFactionId);
     switch (serviceType) {
@@ -1489,9 +1500,10 @@ export class LandableScreen implements Screen {
   }
 
   private renderAccessDenied(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-    const factionName = this.worldState.getFaction(this.landable.factionId ?? '')?.name ?? 'this faction';
-    const reputation = this.landable.factionId ? Math.round(this.worldState.getReputationForFaction(this.landable.factionId)) : 0;
-    const tier = this.landable.factionId ? this.worldState.getReputationTier(this.landable.factionId) : 'neutral';
+    const landableFactionId = this.worldState.getLandablePrimaryFactionId(this.landable);
+    const factionName = this.worldState.getFaction(landableFactionId ?? '')?.name ?? 'this faction';
+    const reputation = landableFactionId ? Math.round(this.worldState.getReputationForFaction(landableFactionId)) : 0;
+    const tier = landableFactionId ? this.worldState.getReputationTier(landableFactionId) : 'neutral';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillStyle = COLOURS.DANGER;
@@ -1884,7 +1896,7 @@ export class LandableScreen implements Screen {
       ctx.fillStyle = COLOURS.UI_SECONDARY;
       ctx.font = "12px 'Courier New', monospace";
       ctx.fillText(this.formatEquipmentStats(item).join('  '), x + 8, cardY + 28);
-      const buy = EquipmentStore.getBuyPrice(item, this.worldState, this.landable.factionId);
+      const buy = EquipmentStore.getBuyPriceAtLandable(item, this.worldState, this.landable);
       if (!selectionValid) {
         ctx.fillStyle = COLOURS.CREDITS;
         ctx.font = "12px 'Courier New', monospace";
@@ -2196,8 +2208,20 @@ export class LandableScreen implements Screen {
   }
 
   private isHostileAtLandable(): boolean {
-    if (!this.landable.factionId) return false;
-    return this.worldState.getReputationTier(this.landable.factionId) === 'hostile';
+    const factionId = this.worldState.getLandablePrimaryFactionId(this.landable);
+    if (!factionId) return false;
+    return this.worldState.getReputationTier(factionId) === 'hostile';
+  }
+
+  private getMissionDisplayTitle(mission: Mission): string {
+    if (!mission.missionTreeId) {
+      return mission.title;
+    }
+    const tree = this.worldState.getMissionTreeTemplate(mission.missionTreeId);
+    if (!tree) {
+      return mission.title;
+    }
+    return `${tree.name} · ${mission.title}`;
   }
 
   private getOverviewDescription(): string {
@@ -2205,13 +2229,12 @@ export class LandableScreen implements Screen {
     if (trimmedLandable) {
       return trimmedLandable;
     }
-    const landableFaction = this.landable.factionId
-      ? this.worldState.getFaction(this.landable.factionId)
-      : null;
+    const landableFactionId = this.worldState.getLandablePrimaryFactionId(this.landable);
+    const landableFaction = landableFactionId ? this.worldState.getFaction(landableFactionId) : null;
     if (!landableFaction?.isPirate) {
       return 'No description available.';
     }
-    const pirateTier = this.worldState.getReputationTier(this.landable.factionId!);
+    const pirateTier = this.worldState.getReputationTier(landableFactionId!);
     const desc = landableFaction.description?.trim() ?? '';
     const flavour = landableFaction.missionFlavour?.trim() ?? '';
     if (pirateTier === 'hostile') {
@@ -2268,7 +2291,7 @@ export class LandableScreen implements Screen {
       const rep = Math.round(this.worldState.getReputationForFaction(faction.id));
       const tier = this.worldState.getReputationTier(faction.id);
       const rowY = y + 24 + i * rowHeight;
-      const isLandableFaction = this.landable.factionId === faction.id;
+      const isLandableFaction = this.landable.factionControl.some((control) => control.factionId === faction.id);
       if (isLandableFaction) {
         ctx.fillStyle = 'rgba(64, 192, 255, 0.08)';
         ctx.fillRect(x - 2, rowY - 1, width - 40, rowHeight - 2);
@@ -2425,7 +2448,7 @@ export class LandableScreen implements Screen {
       y,
       radius,
       this.landable.seed,
-      this.worldState.getFactionVisual(this.landable.factionId ?? ''),
+      this.worldState.getFactionVisual(this.worldState.getLandablePrimaryFactionId(this.landable) ?? ''),
       performance.now() * this.landable.rotationSpeed * 0.001
     );
   }
@@ -2561,9 +2584,10 @@ export class LandableScreen implements Screen {
       return null;
     }
     const hostile = this.isHostileAtLandable();
+    const priceMultiplier = this.worldState.getLandablePriceMultiplier(this.landable);
     const oldHull = this.worldState.getHullSpec(this.worldState.getPlayerShipState().hullSpecId);
     return computeShipyardNetCost({
-      newHullPrice: c.hull.price,
+      newHullPrice: c.hull.price * priceMultiplier,
       oldHullSellValue: oldHull?.sellValue ?? 0,
       hostile,
       newHull: c.hull,
@@ -2572,7 +2596,7 @@ export class LandableScreen implements Screen {
       storeEntries: c.store,
       getBuyPrice: (itemId) => {
         const it = this.worldState.getEquipmentItem(itemId);
-        return it ? EquipmentStore.getBuyPrice(it, this.worldState, this.landable.factionId) : 0;
+        return it ? EquipmentStore.getBuyPriceAtLandable(it, this.worldState, this.landable) : 0;
       },
       getSellPrice: (itemId) => {
         const it = this.worldState.getEquipmentItem(itemId);
@@ -2622,7 +2646,8 @@ export class LandableScreen implements Screen {
   }
 
   private listingDisplayPrice(listing: ShipyardListing): number {
-    return this.isHostileAtLandable() ? listing.price * 2 : listing.price;
+    const controlPrice = listing.price * this.worldState.getLandablePriceMultiplier(this.landable);
+    return this.isHostileAtLandable() ? controlPrice * 2 : controlPrice;
   }
 
   private formatListingEquipmentSummary(listing: ShipyardListing): string {
@@ -2739,7 +2764,7 @@ export class LandableScreen implements Screen {
       const hull = this.worldState.getHullSpec(listing.hullSpecId);
       const title = listing.name ?? hull?.name ?? listing.hullSpecId;
       const price = this.listingDisplayPrice(listing);
-      const factionId = this.landable.factionId;
+      const factionId = this.worldState.getLandablePrimaryFactionId(this.landable);
       const repOk =
         listing.minReputation === undefined ||
         !factionId ||
@@ -3096,7 +3121,7 @@ export class LandableScreen implements Screen {
       const existing = this.getCustomizeSlot(selection!.slotType, selection!.slotIndex)?.itemId
         ? this.worldState.getEquipmentItem(this.getCustomizeSlot(selection!.slotType, selection!.slotIndex)!.itemId!)
         : null;
-      const buyBase = EquipmentStore.getBuyPrice(item, this.worldState, this.landable.factionId);
+      const buyBase = EquipmentStore.getBuyPriceAtLandable(item, this.worldState, this.landable);
       const buy = entry.origin === 'new' ? (hostile ? buyBase * 2 : buyBase) : 0;
       const sellOldBase = existing ? EquipmentStore.getSellPrice(existing) : 0;
       const sellOld = hostile ? sellOldBase * 0.5 : sellOldBase;

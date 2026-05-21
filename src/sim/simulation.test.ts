@@ -14,7 +14,7 @@ import { getAdjacentSectorCoord, playerSpawnPositionAfterCrossing, type SectorEd
 import { makeHeadlessSim } from './headlessSim';
 import { NPCController } from '../simulation/npcController';
 import { ShipEntity } from '../simulation/shipEntity';
-import type { ShipState, WorldFile } from '../types';
+import type { Landable, ShipState, WorldFile } from '../types';
 import { makeShipState } from '../test/fixtures';
 
 function loadWorld(): WorldFile {
@@ -263,6 +263,54 @@ describe('headless SectorSimulation', () => {
       });
     }
     expect(ctl.getAggroTargetId()).toBe('npc_far');
+  });
+
+  it('treaty landable control suppresses local faction hostility between NPCs', () => {
+    const wf = loadWorld();
+    const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
+    const player = new ShipEntity(makeShipState({ id: 'player', position: new Vector2(5000, 5000) }));
+    const self = new ShipEntity(
+      makeShipState({ id: 'npc_self', isPlayerControlled: false, factionId: 'federation', position: new Vector2(0, 0) })
+    );
+    const other = new ShipEntity(
+      makeShipState({ id: 'npc_other', isPlayerControlled: false, factionId: 'pirates', position: new Vector2(0, 100) })
+    );
+    const landable: Landable = {
+      ...wf.sectors.flatMap((s) => s.landables)[0]!,
+      factionControl: [
+        { factionId: 'federation', share: 50 },
+        { factionId: 'pirates', share: 50 }
+      ],
+      controlState: 'treaty'
+    };
+    self.attachNPCController(new NPCController('patrol', 2, 'federation'), 'patrol');
+    const ctl = self.getNPCController()!;
+    self.update(0.05, ws, undefined, { player, otherNPCs: [other], landables: [landable] });
+    expect(ctl.getAggroTargetId()).toBeNull();
+  });
+
+  it('dispute landable control creates local hostility between controlling NPC factions', () => {
+    const wf = loadWorld();
+    const ws = new WorldState(wf, wf.startingConditions.sectorCoord, makeShipState({ id: 'player' }) as ShipState);
+    const player = new ShipEntity(makeShipState({ id: 'player', position: new Vector2(5000, 5000) }));
+    const self = new ShipEntity(
+      makeShipState({ id: 'npc_self', isPlayerControlled: false, factionId: 'federation', position: new Vector2(0, 0) })
+    );
+    const other = new ShipEntity(
+      makeShipState({ id: 'npc_other', isPlayerControlled: false, factionId: 'veth_collective', position: new Vector2(0, 100) })
+    );
+    const landable: Landable = {
+      ...wf.sectors.flatMap((s) => s.landables)[0]!,
+      factionControl: [
+        { factionId: 'federation', share: 50 },
+        { factionId: 'veth_collective', share: 50 }
+      ],
+      controlState: 'dispute'
+    };
+    self.attachNPCController(new NPCController('patrol', 2, 'federation'), 'patrol');
+    const ctl = self.getNPCController()!;
+    self.update(0.05, ws, undefined, { player, otherNPCs: [other], landables: [landable] });
+    expect(ctl.getAggroTargetId()).toBe('npc_other');
   });
 
   it('cannot sell required thruster_forward slot', () => {

@@ -325,7 +325,7 @@ export class FlightScreen implements Screen {
     if (this.hyperspaceJump) {
       this.lastDt = dt;
       this.updateHyperspaceJump(dt);
-      this.worldState.addPlayTime(dt);
+      this.worldState.tickTime(dt);
       return;
     }
 
@@ -362,7 +362,7 @@ export class FlightScreen implements Screen {
     }
     if (this.hyperspaceJump) {
       this.updateHyperspaceJump(dt);
-      this.worldState.addPlayTime(dt);
+      this.worldState.tickTime(dt);
       return;
     }
     const fireInputs = frame.weapons;
@@ -423,7 +423,7 @@ export class FlightScreen implements Screen {
       return;
     }
     this.applyRadiationDamage(dt);
-    this.worldState.addPlayTime(dt);
+    this.worldState.tickTime(dt);
     this.worldState.updatePlayerShipState({
       position: this.playerShip.state.position,
       velocity: this.playerShip.state.velocity,

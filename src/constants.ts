@@ -40,6 +40,11 @@ export const REPAIR_PRICE_DEFAULT = 3;
 export const REPAIR_PRICE_ARMOUR_MULTIPLIER = 1.5;
 export const INSURANCE_REPAIR_COST_FRACTION = 0.1;
 export const INSURANCE_PAYOUT_FRACTION = 0.9;
+/** Default game seconds per real second (1 real minute ≈ 1 game hour). */
+export const DEFAULT_GAME_TIME_RATE = 60;
+/** Mission board regenerates when in-game epoch crosses this many game seconds. */
+export const MISSION_BOARD_REFRESH_GAME_SECONDS = 6 * 3600;
+
 export const MISSION_BOARD_COUNT = 6;
 export const MISSION_MIN_DISTANCE = 2;
 export const MISSION_MAX_DISTANCE = 20;

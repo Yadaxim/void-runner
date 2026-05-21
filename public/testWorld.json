@@ -3,7 +3,8 @@
     "name": "Test Galaxy",
     "seed": 42,
     "version": "0.1",
-    "generatedAt": "2024-01-01T00:00:00Z"
+    "generatedAt": "2024-01-01T00:00:00Z",
+    "gameTimeRate": 60
   },
   "galaxy": {
     "gridWidth": 60,
@@ -105,7 +106,8 @@
       "disposition": {
         "frontier_clans": -0.3,
         "veth_collective": 0.4,
-        "pirates": -0.9
+        "pirates": -0.9,
+        "independents": 0
       },
       "missionTiers": [
         20,
@@ -155,7 +157,8 @@
       "disposition": {
         "federation": -0.3,
         "veth_collective": 0.1,
-        "pirates": -0.4
+        "pirates": -0.4,
+        "independents": 0
       },
       "missionTiers": [
         10,
@@ -201,7 +204,8 @@
       "disposition": {
         "federation": 0.4,
         "frontier_clans": 0.1,
-        "pirates": -0.7
+        "pirates": -0.7,
+        "independents": 0
       },
       "missionTiers": [
         15,
@@ -255,7 +259,8 @@
       "disposition": {
         "federation": -0.9,
         "frontier_clans": -0.4,
-        "veth_collective": -0.7
+        "veth_collective": -0.7,
+        "independents": 0
       },
       "missionTiers": [
         0,
@@ -263,6 +268,61 @@
         60
       ],
       "isPirate": true
+    },
+    {
+      "id": "independents",
+      "name": "Independent Ports",
+      "type": "independent",
+      "demonym": "an independent spacer",
+      "description": "Unaffiliated ports, free captains, and local councils outside the control of larger powers.",
+      "shipStyle": "Practical mixed hulls with local markings and whatever parts are available.",
+      "missionFlavour": "Local freight, repair work, and practical contracts without formal faction politics.",
+      "homeSector": {
+        "x": 0,
+        "y": 0
+      },
+      "homeLandableId": null,
+      "territoryRadius": 0,
+      "speciesComposition": [
+        {
+          "speciesId": "driftborn",
+          "percentage": 40
+        },
+        {
+          "speciesId": "kaelen",
+          "percentage": 30
+        },
+        {
+          "speciesId": "tharkan",
+          "percentage": 30
+        }
+      ],
+      "bubbleStance": "indifferent",
+      "techArchetype": "local refits and mixed civilian utility craft",
+      "primaryColour": {
+        "h": 45,
+        "s": 25,
+        "l": 58
+      },
+      "secondaryColour": {
+        "h": 210,
+        "s": 15,
+        "l": 72
+      },
+      "geometryBias": "rounded",
+      "densityBias": "sparse",
+      "disposition": {
+        "federation": 0,
+        "frontier_clans": 0,
+        "veth_collective": 0,
+        "pirates": -0.2
+      },
+      "missionTiers": [
+        0,
+        25,
+        50
+      ],
+      "isPirate": false
     }
   ],
   "hullSpecs": [
@@ -411,7 +471,7 @@
     {
       "id": "shuttle_mk1",
       "name": "Shuttle Mk I",
-      "description": "Small civilian runabout. Modest thrust and a tight equipment bay, but enough cargo space for local freight and ferry work\u2014think Escape Velocity starter hauler, not a dogfighter.",
+      "description": "Small civilian runabout. Modest thrust and a tight equipment bay, but enough cargo space for local freight and ferry work—think Escape Velocity starter hauler, not a dogfighter.",
       "hullClass": "fighter",
       "hullMass": 20,
       "cargoCapacity": 15,
@@ -899,7 +959,7 @@
       "id": "fuel_tank_s",
       "type": "fuelTank",
       "name": "Fuel Cell (S)",
-      "description": "Compact extended-cell packaging for tight mounts\u2014same capacity class as the extended cell in a smaller hull footprint.",
+      "description": "Compact extended-cell packaging for tight mounts—same capacity class as the extended cell in a smaller hull footprint.",
       "mass": 20,
       "tier": 1,
       "price": 800,
@@ -1231,6 +1291,45 @@
       ]
     }
   ],
+  "missionTreeTemplates": [
+    {
+      "id": "tree_fed_border_accord",
+      "name": "Border Accord",
+      "factionId": "federation",
+      "rootMissionTemplateId": "tpl_fed_standard_cargo",
+      "nodes": [
+        {
+          "id": "accord_intro",
+          "missionTemplateId": "tpl_fed_standard_cargo",
+          "prerequisites": []
+        },
+        {
+          "id": "accord_priority",
+          "missionTemplateId": "tpl_fed_priority_cargo",
+          "prerequisites": [
+            {
+              "type": "tree_node_completed",
+              "treeId": "tree_fed_border_accord",
+              "nodeId": "accord_intro"
+            }
+          ]
+        }
+      ],
+      "finalConsequences": [
+        {
+          "type": "world_flag_set",
+          "flagId": "fed_border_accord_complete",
+          "value": true
+        },
+        {
+          "type": "change_disposition",
+          "factionA": "federation",
+          "factionB": "veth_collective",
+          "newDisposition": 0.55
+        }
+      ]
+    }
+  ],
   "sectors": [
     {
       "coord": {
@@ -1351,7 +1450,6 @@
           "type": "planet",
           "description": "The administrative capital of the Federation's eastern territories. Its sprawling cities never sleep, and the orbital lanes are thick with traffic.",
           "atmosphere": "tense trade hub",
-          "factionId": "federation",
           "mass": 140000,
           "radius": 70,
           "position": {
@@ -1375,7 +1473,18 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 2001
+          "seed": 2001,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 70
+            },
+            {
+              "factionId": "veth_collective",
+              "share": 30
+            }
+          ],
+          "controlState": "cooperation"
         },
         {
           "id": "vethos_moon",
@@ -1383,7 +1492,6 @@
           "type": "moon",
           "description": "A cold, cratered moon used as a fuel depot and waystation for traffic bound for Vethos Prime.",
           "atmosphere": "quiet and functional",
-          "factionId": "federation",
           "mass": 30000,
           "radius": 28,
           "position": {
@@ -1401,7 +1509,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 2002
+          "seed": 2002,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         },
         {
           "id": "port_kaelen",
@@ -1409,7 +1524,6 @@
           "type": "station",
           "description": "A Federation trading post and equipment hub. The docking bays are always busy and the prices are fair.",
           "atmosphere": "busy and commercial",
-          "factionId": "federation",
           "mass": 0,
           "radius": 40,
           "position": {
@@ -1446,7 +1560,14 @@
               "sy_shuttle_mk1_basic",
               "sy_shuttle_mk1_advanced"
             ]
-          }
+          },
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1506,7 +1627,6 @@
           "type": "station",
           "description": "A cramped outpost bolted together from decommissioned freighter hulls. Smells of welding smoke and recycled air.",
           "atmosphere": "rough and functional",
-          "factionId": "frontier_clans",
           "mass": 0,
           "radius": 30,
           "position": {
@@ -1524,7 +1644,14 @@
             }
           ],
           "rotationSpeed": 0.005,
-          "seed": 3001
+          "seed": 3001,
+          "factionControl": [
+            {
+              "factionId": "frontier_clans",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1553,7 +1680,6 @@
           "type": "station",
           "description": "A Federation communications relay and refuelling stop. Minimal staff, maximum automation.",
           "atmosphere": "empty and sterile",
-          "factionId": "federation",
           "mass": 0,
           "radius": 25,
           "position": {
@@ -1571,7 +1697,14 @@
             }
           ],
           "rotationSpeed": 0.004,
-          "seed": 4001
+          "seed": 4001,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1634,9 +1767,8 @@
           "id": "derelict_platform",
           "name": "Derelict Platform",
           "type": "station",
-          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line \u2014 it works, barely.",
+          "description": "An abandoned mining platform, dark and silent. Someone has jury-rigged a fuel line — it works, barely.",
           "atmosphere": "eerie and abandoned",
-          "factionId": null,
           "mass": 0,
           "radius": 22,
           "position": {
@@ -1654,7 +1786,18 @@
             }
           ],
           "rotationSpeed": 0.001,
-          "seed": 5001
+          "seed": 5001,
+          "factionControl": [
+            {
+              "factionId": "frontier_clans",
+              "share": 50
+            },
+            {
+              "factionId": "pirates",
+              "share": 50
+            }
+          ],
+          "controlState": "dispute"
         }
       ]
     },
@@ -1683,7 +1826,6 @@
           "type": "planet",
           "description": "A temperate Federation colony world, younger and rougher than the core worlds but growing fast.",
           "atmosphere": "optimistic frontier",
-          "factionId": "federation",
           "mass": 110000,
           "radius": 58,
           "position": {
@@ -1704,7 +1846,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 6001
+          "seed": 6001,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         },
         {
           "id": "new_carthage_moon",
@@ -1712,7 +1861,6 @@
           "type": "moon",
           "description": "A barren, rust-coloured moon the colonists call Dust. Small mining operations cling to its craters.",
           "atmosphere": "harsh and mineral",
-          "factionId": "federation",
           "mass": 20000,
           "radius": 20,
           "position": {
@@ -1730,7 +1878,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 6002
+          "seed": 6002,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1803,9 +1958,8 @@
           "id": "clan_home",
           "name": "Rig Tharkan",
           "type": "planet",
-          "description": "The Frontier Clans' de facto capital \u2014 a rugged, storm-swept world where self-reliance is the only law.",
+          "description": "The Frontier Clans' de facto capital — a rugged, storm-swept world where self-reliance is the only law.",
           "atmosphere": "fierce and independent",
-          "factionId": "frontier_clans",
           "mass": 120000,
           "radius": 62,
           "position": {
@@ -1826,7 +1980,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 7001
+          "seed": 7001,
+          "factionControl": [
+            {
+              "factionId": "frontier_clans",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         },
         {
           "id": "clan_station",
@@ -1834,7 +1995,6 @@
           "type": "station",
           "description": "An orbital collection of welded-together hulks that somehow holds pressure. The Clans' main trading post.",
           "atmosphere": "chaotic and loud",
-          "factionId": "frontier_clans",
           "mass": 0,
           "radius": 35,
           "position": {
@@ -1855,7 +2015,14 @@
             }
           ],
           "rotationSpeed": 0.006,
-          "seed": 7002
+          "seed": 7002,
+          "factionControl": [
+            {
+              "factionId": "frontier_clans",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1900,7 +2067,6 @@
           "type": "station",
           "description": "A Frontier Clans fuel stop on the route between Rig Tharkan and the outer rim. Nothing more, nothing less.",
           "atmosphere": "transient and sparse",
-          "factionId": "frontier_clans",
           "mass": 0,
           "radius": 20,
           "position": {
@@ -1918,7 +2084,14 @@
             }
           ],
           "rotationSpeed": 0.003,
-          "seed": 8001
+          "seed": 8001,
+          "factionControl": [
+            {
+              "factionId": "frontier_clans",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -1978,7 +2151,6 @@
           "type": "planet",
           "description": "The Collective's ancient home world. Dense forests cover most of its surface, broken by gleaming trade cities.",
           "atmosphere": "ancient and mercantile",
-          "factionId": "veth_collective",
           "mass": 160000,
           "radius": 75,
           "position": {
@@ -1999,7 +2171,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 9001
+          "seed": 9001,
+          "factionControl": [
+            {
+              "factionId": "veth_collective",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         },
         {
           "id": "veth_station",
@@ -2007,7 +2186,6 @@
           "type": "station",
           "description": "The Collective's primary trading exchange. Goods from across the galaxy change hands here.",
           "atmosphere": "wealthy and precise",
-          "factionId": "veth_collective",
           "mass": 0,
           "radius": 45,
           "position": {
@@ -2028,7 +2206,14 @@
             }
           ],
           "rotationSpeed": 0.002,
-          "seed": 9002
+          "seed": 9002,
+          "factionControl": [
+            {
+              "factionId": "veth_collective",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         },
         {
           "id": "veth_moon",
@@ -2036,7 +2221,6 @@
           "type": "moon",
           "description": "A white ice moon orbiting Veth'Ora. Automated drilling rigs extract water ice around the clock.",
           "atmosphere": "cold and mechanical",
-          "factionId": "veth_collective",
           "mass": 35000,
           "radius": 30,
           "position": {
@@ -2054,7 +2238,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 9003
+          "seed": 9003,
+          "factionControl": [
+            {
+              "factionId": "veth_collective",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -2097,9 +2288,8 @@
           "id": "outpost_sigma",
           "name": "Outpost Sigma",
           "type": "station",
-          "description": "Nobody built this station with intention. It just accumulated over decades \u2014 modules bolted on as needed, never taken off.",
+          "description": "Nobody built this station with intention. It just accumulated over decades — modules bolted on as needed, never taken off.",
           "atmosphere": "improvised and weathered",
-          "factionId": null,
           "mass": 0,
           "radius": 28,
           "position": {
@@ -2117,7 +2307,18 @@
             }
           ],
           "rotationSpeed": 0.002,
-          "seed": 10001
+          "seed": 10001,
+          "factionControl": [
+            {
+              "factionId": "independents",
+              "share": 55
+            },
+            {
+              "factionId": "frontier_clans",
+              "share": 45
+            }
+          ],
+          "controlState": "treaty"
         }
       ]
     },
@@ -2177,7 +2378,6 @@
           "type": "station",
           "description": "The Syndicate's primary base of operations, hidden in a debris field. Dark, cold, and unwelcoming to outsiders.",
           "atmosphere": "predatory and secretive",
-          "factionId": "pirates",
           "mass": 0,
           "radius": 38,
           "position": {
@@ -2198,7 +2398,14 @@
             }
           ],
           "rotationSpeed": 0.007,
-          "seed": 11001
+          "seed": 11001,
+          "factionControl": [
+            {
+              "factionId": "pirates",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     },
@@ -2347,7 +2554,6 @@
           "type": "station",
           "description": "An isolated deep-edge outpost with a skeleton crew and long-range scanners watching the void.",
           "atmosphere": "quiet, isolated, and austere",
-          "factionId": "federation",
           "mass": 40000,
           "radius": 36,
           "position": {
@@ -2371,7 +2577,14 @@
             }
           ],
           "rotationSpeed": 0,
-          "seed": 6030
+          "seed": 6030,
+          "factionControl": [
+            {
+              "factionId": "federation",
+              "share": 100
+            }
+          ],
+          "controlState": "sole"
         }
       ]
     }
@@ -2419,7 +2632,7 @@
         }
       ],
       "price": 18740,
-      "name": "Interceptor \u2014 Raw",
+      "name": "Interceptor — Raw",
       "description": "raw factory fit for Interceptor Mk I."
     },
     {
@@ -2464,7 +2677,7 @@
         }
       ],
       "price": 20380,
-      "name": "Interceptor \u2014 Basic",
+      "name": "Interceptor — Basic",
       "description": "basic factory fit for Interceptor Mk I."
     },
     {
@@ -2509,7 +2722,7 @@
         }
       ],
       "price": 21740,
-      "name": "Interceptor \u2014 Advanced",
+      "name": "Interceptor — Advanced",
       "description": "advanced factory fit for Interceptor Mk I."
     },
     {
@@ -2546,7 +2759,7 @@
         }
       ],
       "price": 10640,
-      "name": "Shuttle \u2014 Raw",
+      "name": "Shuttle — Raw",
       "description": "raw factory fit for Shuttle Mk I."
     },
     {
@@ -2583,7 +2796,7 @@
         }
       ],
       "price": 12240,
-      "name": "Shuttle \u2014 Basic",
+      "name": "Shuttle — Basic",
       "description": "basic factory fit for Shuttle Mk I."
     },
     {
@@ -2620,7 +2833,7 @@
         }
       ],
       "price": 13840,
-      "name": "Shuttle \u2014 Advanced",
+      "name": "Shuttle — Advanced",
       "description": "advanced factory fit for Shuttle Mk I."
     }
   ]

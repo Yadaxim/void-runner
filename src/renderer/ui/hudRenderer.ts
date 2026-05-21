@@ -1,6 +1,7 @@
 import { COLOURS } from '../../constants';
 import { LANDING_SPEED_THRESHOLD } from '../../constants';
 import type { WorldState } from '../../core/worldState';
+import { formatGameTime } from '../../simulation/gameTime';
 import { Vector2 } from '../../physics/vector2';
 import type { ShipEntity } from '../../simulation/shipEntity';
 import type { GridCoord, Landable, Mission, WeaponFireKey, WeaponSlot } from '../../types';
@@ -76,6 +77,7 @@ export class HudRenderer {
     const autoBrakeInstalled = playerShip.hasAutoBrake(worldState);
     const creditsText = `CR: ${credits.toString()}`;
     const sectorText = `SEC ${sectorCoord.x}:${sectorCoord.y}`;
+    const gameTimeText = formatGameTime(worldState.getGameTimeEpoch());
     const hyperspaceCoord = worldState.getHyperspaceTargetCoord();
     const speedGaugeMax = Math.max(1, Math.round(playerShip.getTopSpeed(worldState)));
     // Draw target strips before HUD chrome so expanded HUD remains on top.
@@ -84,6 +86,7 @@ export class HudRenderer {
       speed,
       speedGaugeMax,
       sectorText,
+      gameTimeText,
       fuelCurrent,
       fuelMax,
       fuelPercent,
@@ -382,6 +385,7 @@ export class HudRenderer {
     /** Hull top speed (same basis as simulation clamp); needle full scale at this value. */
     speedGaugeMax: number;
     sectorText: string;
+    gameTimeText: string;
     fuelCurrent: number;
     fuelMax: number;
     fuelPercent: number;
@@ -437,6 +441,9 @@ export class HudRenderer {
       panelX + panelWidth / 2,
       headerY
     );
+    this.ctx.textAlign = 'left';
+    this.ctx.fillStyle = COLOURS.UI_ACCENT;
+    this.ctx.fillText(fitTextToWidth(this.ctx, config.gameTimeText, 120), panelX + 8, headerY);
     this.ctx.textAlign = 'right';
     this.ctx.fillStyle = COLOURS.UI_PRIMARY;
     this.ctx.fillText(config.creditsText, panelX + panelWidth - 8, headerY);

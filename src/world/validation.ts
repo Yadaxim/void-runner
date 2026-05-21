@@ -56,6 +56,8 @@ const FACTION_TYPES = new Set(['major_nation', 'minor_nation', 'independent']);
 
 const BUBBLE_STANCES = new Set(['reunifier', 'isolationist', 'breaker', 'indifferent']);
 
+const LANDABLE_CONTROL_STATES = new Set(['sole', 'treaty', 'cooperation', 'dispute']);
+
 function isRegionCompatible(templateRegion: RegionType, sectorRegion: RegionType): boolean {
   if (templateRegion === sectorRegion) {
     return true;
@@ -390,8 +392,37 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
         push(`Duplicate landable id "${land.id}" in sector ${sector.coord.x},${sector.coord.y}`);
       }
       sectorLandableIds.add(land.id);
-      if (land.factionId && !factionIds.has(land.factionId)) {
-        push(`Landable "${land.id}" references unknown factionId: ${land.factionId}`);
+      if (!LANDABLE_CONTROL_STATES.has(land.controlState)) {
+        push(`Landable "${land.id}" has invalid controlState: ${String(land.controlState)}`);
+      }
+      if (!Array.isArray(land.factionControl)) {
+        push(`Landable "${land.id}" factionControl must be an array`);
+        continue;
+      }
+      let shareTotal = 0;
+      const seenControlFactions = new Set<string>();
+      for (const control of land.factionControl) {
+        if (!factionIds.has(control.factionId)) {
+          push(`Landable "${land.id}" factionControl references unknown factionId: ${control.factionId}`);
+        }
+        if (seenControlFactions.has(control.factionId)) {
+          push(`Landable "${land.id}" factionControl duplicates factionId: ${control.factionId}`);
+        }
+        seenControlFactions.add(control.factionId);
+        if (typeof control.share !== 'number' || !Number.isFinite(control.share) || control.share <= 0) {
+          push(`Landable "${land.id}" factionControl share must be finite and > 0`);
+        } else {
+          shareTotal += control.share;
+        }
+      }
+      if (land.factionControl.length > 0 && shareTotal !== 100) {
+        push(`Landable "${land.id}" factionControl shares must sum to 100`);
+      }
+      if (land.controlState === 'sole' && land.factionControl.length !== 1) {
+        push(`Landable "${land.id}" controlState sole requires exactly one factionControl entry`);
+      }
+      if (land.controlState !== 'sole' && land.factionControl.length < 2) {
+        push(`Landable "${land.id}" controlState ${land.controlState} requires at least two factionControl entries`);
       }
     }
 
@@ -440,6 +471,90 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
           push(`Landable "${land.id}" shipyard references unknown listing id: ${lid}`);
         }
       }
+    }
+  }
+
+  const missionTemplateIds = new Set(world.missionTemplates.map((t) => t.id));
+  const treeIds = new Set<string>();
+
+  for (const tree of world.missionTreeTemplates ?? []) {
+    if (treeIds.has(tree.id)) {
+      push(`Duplicate mission tree id: ${tree.id}`);
+    }
+    treeIds.add(tree.id);
+    if (!factionIds.has(tree.factionId)) {
+      push(`Mission tree "${tree.id}" references unknown factionId: ${tree.factionId}`);
+    }
+    if (!missionTemplateIds.has(tree.rootMissionTemplateId)) {
+      push(`Mission tree "${tree.id}" rootMissionTemplateId unknown: ${tree.rootMissionTemplateId}`);
+    }
+    const nodeIds = new Set<string>();
+    for (const node of tree.nodes) {
+      if (nodeIds.has(node.id)) {
+        push(`Mission tree "${tree.id}" duplicate node id: ${node.id}`);
+      }
+      nodeIds.add(node.id);
+      if (!missionTemplateIds.has(node.missionTemplateId)) {
+        push(`Mission tree "${tree.id}" node "${node.id}" references unknown missionTemplateId: ${node.missionTemplateId}`);
+      }
+      const checkPrereq = (prereq: { type?: string; treeId?: string; nodeId?: string; factionId?: string }, label: string): void => {
+        if (!prereq?.type) {
+          push(`${label} prerequisite missing type`);
+          return;
+        }
+        if (prereq.type === 'tree_node_completed' || prereq.type === 'tree_node_failed') {
+          if (prereq.treeId !== tree.id && !treeIds.has(prereq.treeId ?? '')) {
+            push(`${label} references unknown treeId: ${String(prereq.treeId)}`);
+          }
+          if (!nodeIds.has(prereq.nodeId ?? '') && !tree.nodes.some((n) => n.id === prereq.nodeId)) {
+            push(`${label} references unknown nodeId: ${String(prereq.nodeId)}`);
+          }
+        }
+        if (prereq.type === 'reputation_at_least' && prereq.factionId && !factionIds.has(prereq.factionId)) {
+          push(`${label} references unknown factionId: ${prereq.factionId}`);
+        }
+      };
+      for (const prereq of node.prerequisites) {
+        checkPrereq(prereq as { type?: string; treeId?: string; nodeId?: string; factionId?: string }, `Mission tree "${tree.id}" node "${node.id}"`);
+      }
+      for (const prereq of node.outcomes?.onComplete ?? []) {
+        checkPrereq(prereq as { type?: string; treeId?: string; nodeId?: string; factionId?: string }, `Mission tree "${tree.id}" node "${node.id}" onComplete`);
+      }
+    }
+    const hasRootNode = tree.nodes.some((n) => n.missionTemplateId === tree.rootMissionTemplateId);
+    if (!hasRootNode) {
+      push(`Mission tree "${tree.id}" must include a node for rootMissionTemplateId`);
+    }
+    for (const effect of tree.finalConsequences) {
+      if (!effect?.type) {
+        push(`Mission tree "${tree.id}" finalConsequence missing type`);
+        continue;
+      }
+      if (effect.type === 'control_shift') {
+        if (!allLandableIds.has(effect.landableId)) {
+          push(`Mission tree "${tree.id}" control_shift references unknown landable: ${effect.landableId}`);
+        }
+        if (!factionIds.has(effect.factionId)) {
+          push(`Mission tree "${tree.id}" control_shift references unknown faction: ${effect.factionId}`);
+        }
+      }
+      if (effect.type === 'change_disposition') {
+        if (!factionIds.has(effect.factionA) || !factionIds.has(effect.factionB)) {
+          push(`Mission tree "${tree.id}" change_disposition references unknown faction`);
+        }
+      }
+      if (effect.type === 'unlock_equipment' && !equipIds.has(effect.equipmentItemId)) {
+        push(`Mission tree "${tree.id}" unlock_equipment references unknown item: ${effect.equipmentItemId}`);
+      }
+      if (effect.type === 'unlock_equipment' && !allLandableIds.has(effect.atLandableId)) {
+        push(`Mission tree "${tree.id}" unlock_equipment references unknown landable: ${effect.atLandableId}`);
+      }
+    }
+  }
+
+  if (world.metadata.gameTimeRate !== undefined) {
+    if (!(typeof world.metadata.gameTimeRate === 'number' && world.metadata.gameTimeRate > 0)) {
+      push('metadata.gameTimeRate must be a finite number > 0');
     }
   }
 

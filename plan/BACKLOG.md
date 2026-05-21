@@ -84,6 +84,30 @@ Shipped as a pure data-model foundation for world generation; no gameplay behavi
 
 ---
 
+## Phase 4.5 Session E — Multi-faction landable control (complete)
+
+- [x] Replace landable **`factionId`** with **`factionControl[]`** and **`controlState`**  
+- [x] Validate control faction references, duplicate control entries, share totals, and **`sole/treaty/cooperation/dispute`** faction-count rules  
+- [x] Update **`public/testWorld.json`** with sole ports plus one **`treaty`**, one **`cooperation`**, and one **`dispute`** example  
+- [x] Resolve multi-control ownership in landable UI, standing highlights, store/shipyard pricing, mission destination weighting, minimap dots, and station tinting  
+- [x] Apply local NPC faction disposition overrides for treaty/cooperation/dispute landables  
+- [x] Add validation and NPC behavior tests  
+
+---
+
+## Phase 4.5 Session F — In-game time + mission trees (complete)
+
+- [x] **`WorldState.gameTime`** — monotonic in-game epoch with configurable **`gameTimeRate`** (default 60 game-seconds / real second)  
+- [x] **`tickTime`** during flight and hyperspace only (**frozen while docked** at a landable)  
+- [x] Stardate readout on flight HUD and landable header (`formatGameTime`)  
+- [x] **`MissionTreeTemplate`** / **`WorldState.missionTrees`** — prerequisites, node progression, **`finalConsequences`**  
+- [x] Mission board refresh bucket uses game-time; tree missions on controlling-faction landables show arc name (e.g. `Border Accord · …`), not internal tree ids  
+- [x] Validation + **`testWorld`** example tree (`tree_fed_border_accord`)  
+- [x] Tests in **`missionTree.test.ts`**  
+- [x] Landable UI: stardate vs take-off layout; mission list status tag vs title spacing  
+
+---
+
 ## Economy and missions (depth)
 
 Roadmap **Economy and missions**; Appendix A sketches when implementing.
@@ -91,7 +115,7 @@ Roadmap **Economy and missions**; Appendix A sketches when implementing.
 - [ ] **Cargo:** replace minimal mission cargo with **`CargoItem`** model (Appendix A)  
 - [ ] **Missions:** kill-target type; sector **`missionSpawnRules`** / temporary NPCs; extend **`MissionTargetType`** with **`'kill'`** (and later **`'waypoint_visit'`**)  
 - [ ] **Equipment shop UI units:** show explicit units in item stats (mass as **`t`**, thrust as **`kTU`** via `force / 1000` display, e.g. `16.5 kTU`)  
-- [ ] **Mission chains/trees:** **`followUpMissions`**, branch copy; **`priceHidden`** on templates + UI payoff **`???`** until complete  
+- [ ] **Mission chains/trees (depth):** template-level **`followUpMissions`**, richer branch copy, **`priceHidden`** on templates + UI payoff **`???`** — basic **`MissionTreeTemplate`** runtime shipped in Session F  
 - [ ] **Waypoints:** fly-close/slow visit targets; ring + label + “waypoint reached”; **`SectorMetadata.waypoints`** or mission-spawned temporary waypoints  
 - [ ] **Trade economy:** speculative cargo (supply/demand) **after** **`CargoItem`**  
 

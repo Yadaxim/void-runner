@@ -147,6 +147,43 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('unknown factionId'))).toBe(true);
   });
 
+  it('flags landable factionControl unknown faction', () => {
+    const w = structuredClone(loadWorld());
+    const landable = w.sectors.flatMap((s) => s.landables)[0]!;
+    landable.factionControl = [{ factionId: 'not_a_faction', share: 100 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('factionControl') && e.includes('not_a_faction'))).toBe(true);
+  });
+
+  it('flags landable factionControl shares that do not sum to 100', () => {
+    const w = structuredClone(loadWorld());
+    const landable = w.sectors.flatMap((s) => s.landables)[0]!;
+    landable.factionControl = [{ factionId: w.factions[0].id, share: 80 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('factionControl shares must sum to 100'))).toBe(true);
+  });
+
+  it('flags sole landable control with multiple factions', () => {
+    const w = structuredClone(loadWorld());
+    const landable = w.sectors.flatMap((s) => s.landables)[0]!;
+    landable.controlState = 'sole';
+    landable.factionControl = [
+      { factionId: 'federation', share: 50 },
+      { factionId: 'veth_collective', share: 50 }
+    ];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('controlState sole requires exactly one'))).toBe(true);
+  });
+
+  it('flags treaty/cooperation/dispute landable control with fewer than two factions', () => {
+    const w = structuredClone(loadWorld());
+    const landable = w.sectors.flatMap((s) => s.landables)[0]!;
+    landable.controlState = 'treaty';
+    landable.factionControl = [{ factionId: 'federation', share: 100 }];
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('controlState treaty requires at least two'))).toBe(true);
+  });
+
   it('flags mission template faction requirement unknown faction', () => {
     const w = structuredClone(loadWorld());
     w.missionTemplates[0].factionRequirements.push({ factionId: 'nope', minReputation: 0 });

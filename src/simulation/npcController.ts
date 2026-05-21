@@ -23,7 +23,7 @@ import {
 import { childPRNG, SplitMix64 } from '../core/prng';
 import type { WorldState } from '../core/worldState';
 import { Vector2 } from '../physics/vector2';
-import type { Landable } from '../types';
+import { isLandableControlledBy, type Landable } from '../types';
 import type { ShipControlFrame } from './shipControlFrame';
 import { defaultControlFrame, zeroControlFrame } from './shipControlFrame';
 import type { ShipEntity } from './shipEntity';
@@ -163,7 +163,7 @@ export class NPCController {
     if (this.state === 'patrol' || this.state === 'transit' || this.state === 'trade') {
       if (
         playerDistance <= this.aggroRange &&
-        this.isHostileToward(self.state.factionId, player.state.factionId, 'player', worldState)
+        this.isHostileToward(self.state.factionId, player.state.factionId, 'player', worldState, landables)
       ) {
         this.aggroTargetId = 'player';
         this.aggroTargetType = 'player';
@@ -173,7 +173,7 @@ export class NPCController {
       for (const npc of otherNPCs) {
         const npcDistance = Vector2.distance(selfPos, npc.state.position as Vector2);
         if (npcDistance > this.aggroRange) continue;
-        if (this.isHostileToward(self.state.factionId, npc.state.factionId, npc.state.id, worldState)) {
+        if (this.isHostileToward(self.state.factionId, npc.state.factionId, npc.state.id, worldState, landables)) {
           this.aggroTargetId = npc.state.id;
           this.aggroTargetType = 'npc';
           this.state = 'hostile';
@@ -549,9 +549,23 @@ export class NPCController {
     selfFactionId: string | null,
     targetFactionId: string | null,
     targetId: string,
-    worldState: WorldState
+    worldState: WorldState,
+    landables: Landable[]
   ): boolean {
     if (this.threatMemory.has(targetId)) return true;
+    if (selfFactionId && targetFactionId) {
+      for (const landable of landables) {
+        if (
+          landable.factionControl.length < 2 ||
+          !isLandableControlledBy(landable, selfFactionId) ||
+          !isLandableControlledBy(landable, targetFactionId)
+        ) {
+          continue;
+        }
+        if (landable.controlState === 'treaty' || landable.controlState === 'cooperation') return false;
+        if (landable.controlState === 'dispute') return true;
+      }
+    }
     if (selfFactionId && targetFactionId && worldState.areFactionsHostile(selfFactionId, targetFactionId)) return true;
     if (targetId === 'player' && selfFactionId) return worldState.getReputationTier(selfFactionId) === 'hostile';
     return false;

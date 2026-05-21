@@ -10,7 +10,7 @@ Authoritative **session notes:** **`plan/CONTEXT.md` → Last changes**. Routine
 
 **In the codebase today:** Vitest + broad coverage; **`validateWorldFile`** at load/export boundaries in principle (portable **file** import/export still backlog); **shipyard** + equipment store + customize-on-buy; player/NPC combat parity; **galaxy map + hyperspace**; **torus** wrap and wrap-aware distances.
 
-**Phase 4.5 foundation:** Sessions **A–D** are largely shipped (NPC battle parity, torus topology + minimap seam hint, galaxy map + hyperspace, species/faction data model). Sessions **E–F** remain (multi-faction landables, game time + mission trees).
+**Phase 4.5 foundation:** Sessions **A–F** are shipped (through game time + mission trees). Next: **Phase 5** world generator MVP.
 
 **Hygiene:** When **`testWorld.json`** hull lists change, align **`simulation.test.ts`** / fixtures so starter hull ids still resolve (`shipyardListings` / `startingConditions`).
 
@@ -33,10 +33,10 @@ Six sessions establishing the conceptual layers and infrastructure the generatio
 - [x] **Shipped** — `world.species` array and `Species` data model; factions now carry `type`, `speciesComposition`, `homeLandableId`, `bubbleStance`, and `techArchetype`; validation and `testWorld` fixtures cover the new invariants. No gameplay change yet — purely data model expansion.
 
 ### Session E — Multi-faction landable control + treaty system
-Replace `landable.factionId` with `landable.factionControl[]` and `controlState`. Implement NPC behavior changes for treaty / cooperation / dispute states. Update store, mission board, and standing screens to handle multi-faction landables. Update validation. Update testWorld with at least one multi-faction landable per state to verify behavior.
+- [x] **Shipped** — replaced `landable.factionId` with `landable.factionControl[]` and `controlState`; validation enforces control shares and state/faction counts; stores, mission weighting, standing/UI, minimap/station visuals, and local NPC hostility now resolve multi-faction control. `testWorld` includes treaty, cooperation, and dispute examples.
 
 ### Session F — In-game time + mission tree data model
-Add `WorldState.gameTime` clock. Tick during gameplay. Add `MissionTreeTemplate` and `WorldState.missionTrees` state. Implement basic tree node progression: prerequisites, completion, branching. Apply `finalConsequences` on tree completion (faction control shifts, equipment unlocks, world-state flags). Update testWorld with one example tree end-to-end.
+- [x] **Shipped** — `gameTime` epoch + rate (default 60:1), `tickTime` during flight/hyperspace only (frozen while docked), stardate HUD, `MissionTreeTemplate` / runtime `missionTrees`, prerequisite gating, completion branching, `finalConsequences`, mission-board integration + arc display titles, `testWorld` example tree (`tree_fed_border_accord`).
 
 ---
 

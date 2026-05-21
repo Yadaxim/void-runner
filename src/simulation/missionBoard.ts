@@ -1,12 +1,14 @@
 import {
   MISSION_BOARD_COUNT,
+  MISSION_BOARD_REFRESH_GAME_SECONDS,
   MISSION_MAX_DISTANCE,
   MISSION_MIN_DISTANCE,
   MISSION_PAYOFF_MIN
 } from '../constants';
 import { childPRNG, SplitMix64 } from '../core/prng';
 import type { WorldState } from '../core/worldState';
-import type { GridCoord, Landable, Mission, MissionTemplate, RegionType } from '../types';
+import { getAvailableTreeMissionsForLandable } from './missionTree';
+import { isLandableControlledBy, type GridCoord, type Landable, type Mission, type MissionTemplate, type RegionType } from '../types';
 
 interface LandableInWorld {
   landable: Landable;
@@ -84,7 +86,7 @@ function pickDestination(
   const primaryFaction = template.factionRequirements[0]?.factionId ?? null;
   const weights = all.map((candidate) => {
     const distance = getDistance(originSectorCoord, candidate.sectorCoord);
-    const factionWeight = primaryFaction && candidate.landable.factionId === primaryFaction ? 2 : 1;
+    const factionWeight = primaryFaction && isLandableControlledBy(candidate.landable, primaryFaction) ? 2 : 1;
     const distanceWeight =
       distance >= MISSION_MIN_DISTANCE && distance <= MISSION_MAX_DISTANCE
         ? 2
@@ -131,7 +133,27 @@ function instantiateMission(
     payoff,
     reputationRewards: template.reputationRewards,
     expiryTime: undefined,
-    acceptedAt: Date.now()
+    acceptedAt: worldState.getGameTimeEpoch()
+  };
+}
+
+function instantiateTreeMission(
+  template: MissionTemplate,
+  treeId: string,
+  nodeId: string,
+  originLandable: Landable,
+  originSectorCoord: GridCoord,
+  worldState: WorldState,
+  rng: SplitMix64
+): Mission | null {
+  const mission = instantiateMission(template, originLandable, originSectorCoord, worldState, rng);
+  if (!mission) {
+    return null;
+  }
+  return {
+    ...mission,
+    missionTreeId: treeId,
+    missionTreeNodeId: nodeId
   };
 }
 
@@ -154,17 +176,41 @@ export class MissionBoard {
       return [];
     }
 
-    const refreshBucket = Math.floor(Date.now() / (1000 * 60 * 5));
+    const epoch = worldState.getGameTimeEpoch();
+    const refreshBucket = Math.floor(epoch / MISSION_BOARD_REFRESH_GAME_SECONDS);
     const seedDomain = `mission_board:${landable.id}:${landable.seed}:${refreshBucket}`;
     const rng = childPRNG(worldState.getWorldFile().metadata.seed, seedDomain);
+
+    const missions: Mission[] = [];
+    const treeOffers = getAvailableTreeMissionsForLandable(worldState, landable.id);
+    const templateById = new Map(eligible.map((tpl) => [tpl.id, tpl]));
+    for (const offer of treeOffers.slice(0, 2)) {
+      const tpl = templateById.get(offer.templateId) ?? worldState.getWorldFile().missionTemplates.find((t) => t.id === offer.templateId);
+      if (!tpl || !isRegionCompatible(tpl.regionType, currentRegion)) {
+        continue;
+      }
+      const treeMission = instantiateTreeMission(
+        tpl,
+        offer.treeId,
+        offer.nodeId,
+        landable,
+        currentSectorCoord,
+        worldState,
+        rng
+      );
+      if (treeMission) {
+        missions.push(treeMission);
+      }
+    }
+
     const shuffled = [...eligible];
     for (let i = shuffled.length - 1; i > 0; i -= 1) {
       const j = rng.nextInt(0, i);
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
 
-    const selected = shuffled.slice(0, Math.max(0, count));
-    const missions: Mission[] = [];
+    const remaining = Math.max(0, count - missions.length);
+    const selected = shuffled.slice(0, remaining);
     for (const template of selected) {
       const mission = instantiateMission(template, landable, currentSectorCoord, worldState, rng);
       if (mission) {
