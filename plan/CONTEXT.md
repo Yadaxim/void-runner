@@ -16,7 +16,7 @@ A 2D browser-based space trading and combat game inspired by Escape Velocity (Am
 - Energy economy — fuel → reactor → Joules → shields (and future energy weapons); **NPCs use the same tick and equipment rules**  
 - World file at runtime — no API calls during play; optional Claude API **only** in the offline world generator  
 - Faction reputation with per-action floors and ceilings  
-- **Future:** trainable escort AI (TensorFlow.js), fleet command, hyperspace, trade economy  
+- **Future:** trainable escort AI (TensorFlow.js), fleet command, trade economy — see **`plan/GDD.md`** §11  
 
 **Target platform:** browser — TypeScript, HTML5 Canvas 2D, Vite. No game engine, no UI framework, no raster art assets (procedural drawing).
 
@@ -43,7 +43,7 @@ Vanilla DOM — no React/Vue.
 |------|----------|
 | `plan/README.md` | Directory index for **`plan/`** (canonical vs supplementary docs) |
 | `plan/CONTEXT.md` | This document — paste for new sessions; runtime architecture and priorities |
-| `plan/GDD.md` | Game design (persistence section live; expand other topics as needed) |
+| `plan/GDD.md` | Game design — shipped rules, fiction, world schema, planned features by phase |
 | **`plan/worldgen/WORLDGEN.md`** | Full generator pipeline — schemas per step, procedural vs LLM, progressive save, assembly into `WorldFile` |
 | **`plan/worldgen/WEAPONS_WORLDGEN.md`** | Bullet/weapon rules for generator step 9 |
 | `plan/ART_GUIDELINES_V1.0.md` | Visual design, renderer spec |
@@ -58,6 +58,7 @@ Vanilla DOM — no React/Vue.
 
 Short dated bullets when behaviour or priorities shift — complements **`plan/BACKLOG.md`** checkboxes.
 
+- **2026-05-09** — **`plan/GDD.md`:** full restructure (vision, shipped §2–8, world data §10, planned §11 by BACKLOG phase; persistence in appendix).  
 - **2026-05-09** — **Docs:** merged **`plan/ROADMAP.md`** into **`plan/BACKLOG.md`** (single checklist); worldgen docs under **`plan/worldgen/`**; removed **`BULLET_MODEL_REFACTOR.md`** (shipped).  
 - **2026-05-09** — **Bullet model refactor:** `damageCategory` removed; `BulletSpec` uses `matterType` + stackable `abilities` (`seeking`, `dot`, `knockback`, `ballistic`, `explosive`); armour `reductions` are four matter keys only; explosive splash with separate `splashDamage`; see **`plan/worldgen/WEAPONS_WORLDGEN.md`**.  
 - **2026-05-09** — **Phase 4.5 Session F shipped:** in-game **`gameTime`** (`epoch` + `rate`, default 60:1) via **`tickTime`** in flight/hyperspace only — **paused while docked**; stardate on flight HUD + landable header. **`MissionTreeTemplate`** / **`missionTrees`** with prerequisites, completion, and **`finalConsequences`**; mission board refresh uses game-time; example tree **`tree_fed_border_accord`** (“Border Accord”) in **`testWorld.json`**. Landable UI: mission titles show arc name not tree id; header/mission-list layout fixes.  
@@ -151,7 +152,7 @@ Per faction, roughly −100 … +100. Floors/ceilings by event kind (e.g. combat
 
 ## Implemented vs remaining
 
-**Authoritative checklist:** **`plan/BACKLOG.md`** (phases 1–4.5 shipped; **Phase 5** world gen MVP is next; portable saves after gen; phases 6–9 listed as future).
+**Authoritative checklist:** **`plan/BACKLOG.md`** (phases 1–4.5 shipped; **next 5→9:** achievements, procedural imagery, UI polish, pre-worldgen balance, world generator; then 10–13).
 
 When behaviour changes, extend Session 4 test files and **`validateWorldFile`** in the same PR.
 

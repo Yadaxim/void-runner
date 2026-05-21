@@ -1,453 +1,468 @@
-# VOID RUNNER — Game design document (living)
+# VOID RUNNER — Game design document
 
-> High-level design and player-facing rules. Runtime architecture: `plan/CONTEXT.md`. Delivery checklist: `plan/BACKLOG.md`. World generator: `plan/worldgen/WORLDGEN.md`.
+> **Living design reference** — player intent, shipped rules, world fiction, and planned features.  
+> **Not** the implementation handoff: see **`plan/CONTEXT.md`**. **Not** the schedule: see **`plan/BACKLOG.md`**.  
+> **Controls primer:** **`PLAYER_GUIDE.md`** (repo root).
 
-This file is intentionally partial: expand sections as features ship. Sections below are authoritative when present.
-
----
-
-## Persistence and saves (planned)
-
-**Problem:** `localStorage` is per browser profile and origin; players lose progress when switching devices, clearing site data, or using strict privacy modes.
-
-**Direction:** Treat the same logical snapshot the game already persists (`PersistedWorldState`) as the canonical save blob. Store it in two tiers:
-
-1. `localStorage` — frequent writes for same-session resilience.
-2. JSON on disk (portable) — same payload + small header (`formatVersion`, `seed`, optional world name, `savedAt`).
-
-**Browser constraints:** Silent arbitrary disk writes are not available in standard web apps. Use explicit flows (`Export save`, `Import save`) and optionally File System Access API where supported.
-
-**Disk vs localStorage frequency:**
-- `localStorage`: unchanged philosophy, save often.
-- file writes: coarser milestones (sector changes, landable enter/exit, credit/loadout mutations, hyperspace target changes, main menu exit, `beforeunload`/`visibilitychange` best effort, optional debounced flush if file handle exists).
-
-**Load order (conceptual):** Prefer selected imported file if seed matches loaded world, else local save for that seed. Reconcile by `savedAt` if both exist.
-
-**Non-goals for v1:** Cloud saves, multiplayer sync, encryption.
+Canonical combat math and generator weapon bands: **`plan/worldgen/WEAPONS_WORLDGEN.md`**. Type definitions: **`src/types/`**.
 
 ---
 
-## 1. Bubble lore (canonical baseline)
+## 0. How to read this document
 
-Every Void Runner galaxy shares one piece of canonical fiction: the galaxy is sealed inside a space-time bubble.
+| Part | Sections | Use when you need… |
+|------|----------|-------------------|
+| **A — Vision** | §1 | Pitch, pillars, design constraints |
+| **B — Shipped** | §2–8 | What players experience **today** in the browser build |
+| **C — Fiction** | §9 | Bubble lore and per-world variation |
+| **D — World data** | §10 | Schema and validation for **`WorldFile`** (implemented) |
+| **E — Planned** | §11 | Features by **BACKLOG phase** (not in game yet) |
+| **F — Open questions** | §12 | Decisions still leaning one way |
+| **Appendix** | §A | Portable saves (planned) |
 
-**The story.** Long ago, a unified civilization spanned this galaxy. They came into conflict with an extragalactic enemy that became impossible to fight directly. As destruction loomed, the unified civilization's leadership and scientists isolated the galaxy inside a space-time bubble — permanent, impenetrable from outside, unbreakable from inside. The galaxy survived. The unified civilization fell anyway, fragmented over millennia. The bubble remains.
-
-**Why it matters mechanically:**
-- Justifies torus topology (sector edges wrap)
-- Generates faction ideology axis: `bubbleStance: 'reunifier' | 'isolationist' | 'breaker' | 'indifferent'`
-- Justifies ancient ruins scattered through the galaxy (legacy of unified civ)
-- Justifies presence of unique/lost technology
-- Justifies "shimmer zones" near the conceptual edge of the bubble (mechanically, the wrap line)
-- Sets up long-term mystery: did something get inside the bubble? Did the enemy follow?
-
-**Mechanical anchors (summary):** torus topology; `bubbleStance`; ruins and lost tech; shimmer zones near the conceptual bubble edge.
-
-**Per-world variation.** Worlds differ in *what they reveal* about the bubble — which factions know the full history, which think it's myth, what evidence has surfaced this generation. The lore is fixed; the world's relationship to it varies.
+**Status tags** in §11: `[Phase N]` = scheduled in **`plan/BACKLOG.md`**. No tag in §2–8 = shipped unless noted *partial*.
 
 ---
 
-## 2. Galaxy topology — torus
+## 1. Vision and pillars
 
-The galaxy boundary wraps on both axes. Crossing the right edge of the easternmost sector lands the player in the westernmost sector; same for north/south. There is no boundary wall.
+### Pitch
 
-**Implications:**
-- Distance calculations use shortest torus path (wrap-aware)
-- Mini-map and galaxy map render with wrap visualization (subtle indicator at edge / seam)
-- Hyperspace route planning considers wrap shortcuts
-- "Edge of galaxy" is not a position — it's a conceptual property of the bubble lore, not a place you fly to
+**Void Runner** is a 2D browser space trading and combat game inspired by *Escape Velocity* (1996). The player is a freelance pilot in a authored galaxy: take missions, manage reputation, upgrade equipment, fight when necessary, and cross the map via hyperspace. Story emerges from faction relationships, mission trees, and (later) generated worlds — not from a fixed campaign script.
 
-**Shimmer zones.** A small number of sectors are flagged `shimmer: true`. These are the conceptual edge of the bubble — sensor anomalies, ambient voidtype damage, ancient salvage opportunities, occasional unexplained NPC behavior. Generation seeds roughly **2–5%** of sectors as shimmer.
+### Design pillars
+
+1. **Newtonian flight** — momentum matters; thrust, gravity, and deliberate braking define handling.  
+2. **Equipment-driven ships** — mass, thrust, shields, weapons, and jump range come from **installed** catalog items, not hull stats alone.  
+3. **Fair combat** — **same** damage, energy, and shield rules for player and NPC.  
+4. **Faction memory** — reputation with floors/ceilings; prices and tone at ports react to standing.  
+5. **Offline worlds** — gameplay reads a **`WorldFile`** JSON bundle; no network APIs during play.  
+6. **Procedural presentation** — Canvas geometry, not sprite sheets; future **procedural imagery** params in JSON (Phase 6).  
+7. **Emergent scope** — mission trees, multi-faction ports, and (later) faction projects and wildlife add depth without a separate “story mode.”
+
+### Platform constraints
+
+- TypeScript, Vite, HTML5 Canvas 2D, vanilla DOM.  
+- Saves: **`localStorage`** per world seed today; portable JSON files planned (Appendix A).  
+- World **text** generation (Claude API) only in the **offline** generator (Phase 9), never at runtime.
 
 ---
 
-## 3. Species layer
+## 2. Core loop *(shipped)*
 
-A conceptual layer above factions. Galaxies contain a small number of species (target: **5**). Factions are composed of one or more species; most are dominated by one but multi-species coalitions exist.
+```text
+Main menu → load WorldFile + career save
+    → Flight in sector (combat, traffic, radiation)
+    → Land at port (services gated by station)
+    → Missions / shop / shipyard / repair / standing
+    → Galaxy map (K) → set hyperspace target → jump (J) when ready
+    → repeat across torus-wrapped sectors
+```
 
-### Data model
+**Career persistence:** credits, hull, loadout, reputation, visited sectors, hyperspace target, mission progress, mission tree state, insurance flags — keyed to world **`metadata.seed`**.
+
+**Failure state:** hull destruction → **insurance** choice (reinstate ship at cost or payout + starter hull). Campaign continues.
+
+**World fixture:** development uses **`public/testWorld.json`**; validation runs on load in DEV.
+
+---
+
+## 3. Flight and sectors *(shipped)*
+
+### Newtonian motion
+
+- No space drag; thrusters apply force; velocity persists.  
+- **Auto-brake** modes (linear / angular) damp only when matching thrusters are **not** actively firing this frame.  
+- **Gravity** from landable **`mass`**; minimum approach distance enforced.  
+- **Landing:** proximity, low speed, alignment; confirm at prompt (**L**).
+
+### Sector grid
+
+- Fixed-size sectors; **edge crossing** transitions to adjacent sector coordinates.  
+- **Torus wrap:** leaving the east edge enters the west edge (and likewise north/south). Distances and hyperspace hops use **shortest torus path**.  
+- **Radiation zones:** sectors flagged in metadata; ambient damage while inside.
+
+### Presentation
+
+- Ship-centred camera; layered render pipeline (stars → bodies → ships → HUD).  
+- Sector **grid backdrop** in flight for orientation.  
+- *Planned:* always-visible **sector boundary** cue (Phase 7).
+
+---
+
+## 4. Combat and equipment *(shipped)*
+
+### Layered damage (player + NPC)
+
+No overflow between layers — excess damage on a layer is discarded:
+
+```text
+Hit → shield (if online; no per-matter resist on shield)
+    → armour layers 0…N (per-matter reduction)
+    → hull
+```
+
+**Matter types** on projectiles: `normal` | `anti` | `dark` | `void`. Armour **`reductions`** use the same four keys.
+
+**Behaviours** via stackable **`abilities[]`** on **`BulletSpec`**: `seeking`, `dot`, `knockback`, `ballistic`, `explosive` (splash damage separate; splash does not apply reputation). Full field semantics: **`plan/worldgen/WEAPONS_WORLDGEN.md`**.
+
+### Energy and shields
+
+Per-frame tick for **player and every NPC**:
+
+- Fuel → reactor → **Joules** → shield regen and weapon draw.  
+- Shield **reboot** timer after collapse.  
+- NPC spawns receive armour layers, shield HP, joules, and fuel from loadout resolution — same pipeline as the player.
+
+### Equipment model
+
+- Items install into **typed slots** on the hull; no separate inventory bag for gear.  
+- **Required slots:** forward thruster, rotate thruster, fuel tank.  
+- Representative slot types: weapons, armour, shield, reactor, auto-brake, hyperspace drive, sensor array; neural slots exist for future Phase 12.  
+- Hull **`defaultLoadouts`** (`raw` / `basic` / `advanced`); **`slotCounts`** cap installations; shipyard listings reference catalog ids.  
+- Buy/sell uses catalog **`price`**; sell returns a fraction of purchase price.
+
+### Targeting and weapons
+
+- **Tab** / **Shift+Tab** cycle or lock NPC ship targets; minimap highlights lock.  
+- Multiple **weapon keys** fire separate banks; fire rate and energy cost per weapon item.  
+- Muzzle offset from **`hullClass`**, not arbitrary string ids on hull spec.
+
+*Planned:* **turret** weapons that fire toward locked target (§11). *Not implemented:* legacy `seekingMode` / `targetingMode` fields from older docs.
+
+### Insurance
+
+On destruction, player chooses reinstatement (fee, retain progression) or cash payout + replacement hull — prevents hard campaign end.
+
+---
+
+## 5. Ports, missions, and cargo *(shipped)*
+
+### Landable services
+
+Tabbed UI per station: overview, reputation, supplies/repair, equipment store, shipyard (when listed), missions, etc. Services depend on **`landable.services`** and listing data — not every port has every tab.
+
+**Pricing** scales with faction standing at that port. **Overview** copy prefers **`landable.description`**; pirate stations fall back to faction flavour text.
+
+### Missions (freelance board)
+
+- Primary type today: **cargo delivery** — accept → cargo added to hold by weight → fly to named landable → complete on dock.  
+- **Mission board** refreshes on **game-time** buckets while docked rules apply to time (see §10).  
+- Active missions visible in flight (**M**). Cancel returns cargo capacity.  
+- Payoff and reputation consequences defined per template.
+
+### Mission trees *(shipped runtime)*
+
+- **`MissionTreeTemplate`** in world file; runtime **`missionTrees`** tracks node states.  
+- **Prerequisites** and branch outcomes (`onComplete` / `onFail`).  
+- **Final consequences** apply world effects when the tree completes (same effect vocabulary as planned faction projects).  
+- UI shows **arc display name** on board (e.g. “Border Accord · …”), not internal tree ids.
+
+*Planned:* kill targets, waypoints, `followUpMissions`, hidden payoffs — BACKLOG “after Phase 9.”
+
+### Cargo
+
+- Minimal **cargo** model tied to missions (weight in hold).  
+- *Planned:* richer **`CargoItem`** and trade economy.
+
+---
+
+## 6. Reputation and diplomacy *(shipped)*
+
+### Standing
+
+- Per faction, roughly **−100…+100**.  
+- **Floors and ceilings** by event kind (e.g. combat hits, kills, mission complete).  
+- **Pirate** reputation derived from non-pirate standings.  
+- HUD and landable **Standing** tab reflect state; store and landing costs react.
+
+### Multi-faction landables
+
+A port may list multiple controlling factions with **share** percentages and a **control state**:
+
+| State | Factions | NPCs in sector | Missions | Pricing |
+|-------|----------|----------------|----------|---------|
+| `sole` | 1 | Standard disposition | Full set | Standard |
+| `treaty` | 2+ | Coexisting; **neutral** to each other locally | Reduced set per faction | Standard |
+| `cooperation` | 2+ | **Allied** locally; may joint-escort | Joint missions possible | Slight discount |
+| `dispute` | 2+ | **Hostile** to each other locally | “Drive out” style missions | War economy (higher) |
+
+**Spawn rules** remain sector-level. Local disposition **overrides** the global matrix for NPCs affiliated with the landable’s controlling factions.
+
+**Player combat:** attacking one faction in a dispute does not cause the other controlling faction’s NPCs to proxy-aggro unless rep rules say otherwise.
+
+Validation: shares sum to **100**; `sole` ↔ exactly one faction; other states require ≥2.
+
+---
+
+## 7. Galaxy map and hyperspace *(shipped)*
+
+### Galaxy map
+
+- Open in flight with **K**; square sector grid; visited vs unvisited styling.  
+- **Cursor** + **Enter** sets **hyperspace target**; **Backspace** clears.  
+- **Faction colours** on visited sectors; radiation overlay.  
+- **Sector summary** pane for cursor cell (coords, controller, landable names).  
+- **One-hop range** tint + ring when a **`hyperspaceDrive`** is fitted.
+
+*Planned:* zoom; faction tint only after visit; grid coordinate labels (Phase 7).
+
+### Hyperspace jump
+
+Requires: drive installed, fuel, cooldown elapsed (career **`playTimeSeconds`**), speed below threshold, heading aligned to hop vector.
+
+- Jump **snaps** heading and **zeros** velocity; streak animation.  
+- Hops along **grid ray** toward target; **partial hops** if target farther than **`jumpRange`** (Euclidean sector units).  
+- Flight HUD: edge **beacon** + **`[ J ]`** prompt when legal.
+
+*Deferred:* fleet align-all-ships rules until Phase 11.
+
+---
+
+## 8. NPCs and traffic *(shipped)*
+
+- **`npcSpawnRules`** per sector: faction, hull spec id, counts, behaviour.  
+- **`NPCController`** + **`ScriptedNPCPilot`** feed the same **`ShipControlFrame`** as the player (pre-neural bus).  
+- Disposition matrix: hostile / neutral / friendly / pirate; minimap colour cues.  
+- Hostile aim deadband and weapon-range rotation tuning for readable dogfights.
+
+**Control bus (foundation for Phase 12):** record/replay of control frames; neural encode/decode stub exists — escort autopilot not gameplay yet.
+
+---
+
+## 9. World fiction — the bubble
+
+Every galaxy shares one canonical fact: civilization sealed itself inside an **impenetrable space-time bubble** to survive an unwinnable war. The old unified culture collapsed into today’s factions; the bubble remains.
+
+**Why it matters:**
+
+- Explains **torus** topology (no literal rim to fly off).  
+- **`bubbleStance`** on factions: `reunifier` | `isolationist` | `breaker` | `indifferent`.  
+- Justifies **ruins** (legacy tech) and **shimmer** sectors (conceptual bubble edge) — gameplay in Phase 10.  
+- Long mystery hook: intruders, enemy follow-through, partial histories.
+
+**Per-world variation:** lore is fixed; each **`WorldFile`** chooses what factions believe, what ruins reveal this generation, and how shimmer is treated in local myth.
+
+---
+
+## 10. World data reference *(shipped schema)*
+
+Runtime loads **`WorldFile`** once; **`validateWorldFile`** enforces invariants. Generator (Phase 9) must output compatible JSON.
+
+### Species
+
+Conceptual layer above factions (~**5** species target per galaxy).
 
 ```typescript
 Species {
   id: string
-  name: string                    // LLM-generated, evocative
-  archetype: SpeciesArchetype     // constrained menu, see below
-  physiology: string              // 1-2 sentence description
-  ethos: string                   // 1 sentence value system
-  techProfile: {
-    weaponStyle: string           // e.g. "kinetic-heavy", "missile-swarm", "energy-focused"
-    hullAesthetic: string          // e.g. "organic curves", "geometric crystal"
-    namingConvention: string       // e.g. "Latin scientific terms"
-  }
-  preferredHabitat?: HabitatPreference  // affects home placement during gen
+  name: string
+  archetype: 'biological' | 'machine' | 'hive' | 'energy' | 'hybrid'
+         | 'ascended' | 'parasitic' | 'symbiotic' | 'voidtouched'
+  physiology: string
+  ethos: string
+  techProfile: { weaponStyle, hullAesthetic, namingConvention }
+  preferredHabitat?: 'core' | 'mid' | 'rim' | 'nebula' | 'radiation' | 'shimmer'
 }
-
-SpeciesArchetype =
-  | 'biological'
-  | 'machine'
-  | 'hive'
-  | 'energy'
-  | 'hybrid'
-  | 'ascended'
-  | 'parasitic'
-  | 'symbiotic'
-  | 'voidtouched'
-
-HabitatPreference =
-  | 'core' | 'mid' | 'rim'
-  | 'nebula' | 'radiation' | 'shimmer'
 ```
 
-**World root:** `WorldFile.species: Species[]`
+`WorldFile.species: Species[]`. Factions reference species in **`speciesComposition`** (percentages sum to **100**).
 
-**Faction-species link:** each faction declares a species composition that sums to 100 — see §4.
-
----
-
-## 4. Faction extensions
-
-Faction model is extended to support multi-species composition, optional home, ideology, and the bubble stance axis.
-
-### Data model
+### Factions
 
 ```typescript
 Faction {
-  id: string
-  name: string
-  type: 'major_nation' | 'minor_nation' | 'independent'
-  speciesComposition: { speciesId: string, percentage: number }[]  // sums to 100
+  id, name
+  type: 'major_nation' | 'minor_nation' | 'independent'   // + 'wildlife' when Phase 10 ships
+  speciesComposition: { speciesId, percentage }[]
   homeLandableId: string | null    // null for independents
-  ideology: string                  // 1-2 sentence flavor
+  ideology: string
   bubbleStance: 'reunifier' | 'isolationist' | 'breaker' | 'indifferent'
-  flagColor: string                 // hex
-  techArchetype: string             // derived from species composition + flavor
-  // existing fields: behaviour profile, default disposition, etc.
+  flagColor: string
+  techArchetype: string
+  // behaviour, default disposition, isPirate, …
 }
 ```
 
-### Validation
+**Generation ratio targets** (landable-scoped, not absolute):
 
-- `speciesComposition` percentages sum to exactly **100**
-- All `speciesId` values exist in `world.species`
-- `type === 'independent'` ↔ `homeLandableId === null` (mutually consistent)
-- Major and minor nations must have a **non-null** home
+- ~1 major per **30–50** landables  
+- **1–2** minors per major  
+- **3–7** independents per galaxy  
 
-### Faction tier ratios (generation targets)
+`independent` ↔ `homeLandableId === null`; majors/minors require a home.
 
-Ratios are scoped to galaxy size, not absolute counts. Suggested defaults:
-
-- ~1 major nation per **30–50** landables
-- **1–2** minor nations per major
-- **3–7** independents per galaxy regardless of size
-
-Examples: a 30×30 galaxy with ~80 landables → ~2 majors, 2–4 minors, ~5 independents. A 50×50 galaxy with ~150 landables → ~3 majors, 4–6 minors, ~5–7 independents.
-
----
-
-## 5. Multi-faction landable control
-
-Landables can be controlled by more than one faction simultaneously. Replaces single `landable.factionId`.
-
-### Data model
+### Landables
 
 ```typescript
 Landable {
-  // ... existing fields
-  factionControl: { factionId: string, share: number }[]  // shares sum to 100
+  type: 'planet' | 'moon' | 'station'   // + 'ruin' Phase 10
+  factionControl: { factionId, share }[]
   controlState: 'sole' | 'treaty' | 'cooperation' | 'dispute'
+  // position, mass, services, shipyard listings, …
 }
 ```
 
-### Control state semantics
-
-| State | Faction count | NPC behavior on landable approach | Mission availability | Pricing |
-|------|---------------|-------------------------------------|----------------------|---------|
-| `sole` | 1 | Standard | Faction's full mission set | Standard |
-| `treaty` | 2+ | All controlling factions present, ignore each other | Each faction offers reduced mission set | Standard |
-| `cooperation` | 2+ | All present, friendly to each other, may escort jointly | Special joint missions available | Slight discount |
-| `dispute` | 2+ | Open combat between controlling factions | Mission set per faction includes "drive out" missions targeting the other | Doubled (war economy) |
-
-### NPC spawning at multi-faction landables
-
-Spawn rules remain **per-sector** (not per-landable). For sectors containing a multi-faction landable, spawn rules can include multiple factions. NPC dispositions toward each other override the global disposition matrix locally based on `controlState`:
-
-- `treaty`: same-target-faction NPCs treat each other as **neutral** regardless of faction matrix
-- `cooperation`: same-target-faction NPCs treat each other as **allied**
-- `dispute`: same-target-faction NPCs treat each other as **hostile**
-
-### Validation
-
-- All `factionId` values exist in `world.factions`
-- `share` values sum to exactly **100**
-- `controlState === 'sole'` ↔ exactly **1** faction in `factionControl`
-- All other states require **≥ 2** factions
-
----
-
-## 6. Wildlife factions
-
-Wildlife (biological or robotic creatures) is implemented as a special **faction type**, not a parallel simulation system.
-
-### Data model
+### In-game time *(shipped)*
 
 ```typescript
-Faction {
-  type: 'major_nation' | 'minor_nation' | 'independent' | 'wildlife'
-  // ... existing fields
-}
+gameTime: { epoch: number, rate: number }   // default rate: 60 game-sec / real-sec
 ```
 
-**Wildlife defaults and behaviour:**
-- Always `homeLandableId: null`
-- Always `bubbleStance: 'indifferent'`
-- Hostile/neutral/friendly default disposition (one-time gen choice)
-- "Ships" are creature designs (organic-aesthetic hulls or robotic per archetype)
-- **No mission board**; reputation still tracked and affected by missions/events
-- Spawn rules like any faction (typically wandering or zone-defensive)
+| Context | Time advances? |
+|---------|----------------|
+| Flight, hyperspace | Yes, at `rate` |
+| Docked (landable UI) | **No** |
+| Galaxy map, insurance, pause | **No** |
 
-### Mission interaction
+**Uses today:** mission board refresh buckets; stardate HUD; mission tree timing hooks.  
+**Uses later:** faction project ticks, mission expiry (Phase 10+).
 
-Mission trees from nation factions can affect wildlife reputation. Examples:
+Display: decorative stardate string; authoritative value is **`epoch`**.
 
-- "Drive out the [creature] infestation in Sector X" → completion tanks wildlife rep; creatures become hostile
-- "Restore the [creature] sanctuary" → completion raises wildlife rep; creatures become neutral or friendly in the affected zone
-- "Cull [creature] for research" → small per-mission rep hits
-
-Wildlife rep gates and floors mirror nation faction rep, with per-creature-faction tuning.
-
----
-
-## 7. Ancient ruins
-
-Some sectors contain ruins from the unified civilization. Mechanically, they are landables that do not appear on standard scanners until revealed.
-
-### Data model
-
-```typescript
-Landable {
-  type: 'planet' | 'moon' | 'station' | 'ruin'
-  hidden: boolean                   // ruins start hidden
-  detectionRequirement?: number      // sensor threshold to reveal
-  // ... existing fields
-}
-```
-
-### Detection rules
-
-- Sensor array equipment has **`detectionStrength`** (and optionally range); see §13.
-- When the player enters a sector containing a hidden landable, if `sensor.detectionStrength >= landable.detectionRequirement`, the landable is **revealed** (known landables / minimap).
-- Once revealed, stays revealed for that save.
-
-### Ruin landables offer
-
-- Salvage equipment (rare, possibly unique, possibly voidtype damage profile)
-- Lore fragments (text artifacts that build the bubble narrative)
-- Occasional triggers for mission trees ("translate this glyph…")
-- **No** standard services (no fuel, no mission board, no shipyard)
-
-**Generation target:** ruins in roughly **5–10%** of sectors.
-
----
-
-## 8. In-game time
-
-```typescript
-WorldState {
-  // ... existing fields
-  gameTime: {
-    epoch: number      // ms since galaxy start, monotonic
-    rate: number       // game seconds per real second
-  }
-}
-```
-
-### Default tick rate
-
-**Default:** **60** game seconds per real second (1 real minute ≈ 1 game hour). Rationale: a typical session of 1–2 real hours covers ~1–2 game days — enough for project progress to feel meaningful without events rushing past. Tunable per world for testing; saved with `WorldState`.
-
-### Display
-
-In-game time can be shown in a stardate-style format (e.g. `Cycle 247.13.4`); format is decorative — underlying value is the epoch.
-
-### What time gates
-
-- **Faction projects** — tick forward at the configured rate
-- **Mission expiry** — missions may use `expiresAt: gameTime` (later phase; clock supports it)
-- **Mission board refresh** — landable boards regenerate every N game hours
-- **Faction relationship drift** (optional) — disposition matrix slowly drifts toward attractors from ideology compatibility
-
-### When time runs
-
-- **Flight and hyperspace:** in-game time advances at `gameTime.rate` (career `playTimeSeconds` advances in parallel for cooldowns).
-- **Landable screens (docked):** in-game time **does not** advance — browsing shops/missions does not pass time.
-- **Galaxy map overlay, insurance screen, pause / save-load menus:** time **stops**.
-
----
-
-## 9. Faction projects
-
-Each faction may have **0–2** visible long-term goals: narrative texture, mission threads, progress in game time independent of the player.
-
-### Data model
-
-```typescript
-FactionProject {
-  id: string
-  factionId: string
-  name: string
-  description: string
-  progress: number              // 0..100
-  rate: number                  // progress per game hour
-  effectOnComplete: ProjectEffect
-  playerInfluence: 'helpful' | 'hostile' | 'both' | 'none'
-}
-
-ProjectEffect =
-  | { type: 'control_shift', sectorCoord, fromFactionId, toFactionId, share }
-  | { type: 'unlock_equipment', equipmentItemId, atLandableId }
-  | { type: 'spawn_landable', landable: LandableSpec }
-  | { type: 'change_disposition', factionA, factionB, newDisposition }
-  | { type: 'world_flag_set', flagId, value }
-```
-
-### Player interaction
-
-- `playerInfluence === 'helpful'` — related missions **accelerate** the project
-- `'hostile'` — missions can **sabotage** progress
-- `'both'` — both paths exist (helpful from owning faction, hostile from rivals)
-
-### Visibility
-
-Shown from relevant faction landables (e.g. standing tab): progress and estimated time to completion.
-
----
-
-## 10. Mission trees
-
-Missions link into trees with story arcs and **final consequences** that write world state.
-
-### Data model
+### Mission trees (templates)
 
 ```typescript
 MissionTreeTemplate {
-  id: string
-  name: string
-  factionId: string                // which faction offers it
-  rootMissionTemplateId: string
+  id, name, factionId
+  rootMissionTemplateId
   nodes: MissionTreeNode[]
   finalConsequences: ProjectEffect[]
 }
-
-MissionTreeNode {
-  missionTemplateId: string
-  prerequisites: NodeOutcome[]      // must hold for this node to be offered
-  outcomes: {
-    onComplete: NodeOutcome[]
-    onFail: NodeOutcome[]
-  }
-}
-
-NodeOutcome =
-  | { type: 'tree_node_completed', treeId, nodeId }
-  | { type: 'tree_node_failed', treeId, nodeId }
-  | { type: 'reputation_at_least', factionId, value }
-  | { type: 'world_flag', flagId, value }
 ```
 
-### State
+**`ProjectEffect`** vocabulary (shared with planned faction projects): control shift, unlock equipment, spawn landable, change disposition, set world flag.
+
+### Combat catalog
+
+- **`bulletSpecs`** + weapon equipment entries — see WEAPONS_WORLDGEN.  
+- **`hullSpecs`** with loadouts and slot counts — archetype tuning in **`plan/pre-worldgen/`**.
+
+*Planned on `HullSpec`:* **`renderAnchors`** + procedural style params (Phase 6).
+
+---
+
+## 11. Planned systems (by phase)
+
+Schedule detail and checkboxes: **`plan/BACKLOG.md`**.
+
+### Phase 5 — Achievements `[Phase 5]`
+
+- Landable **Achievements** screen; **player-scoped** progress in career metadata.  
+- Tone: discovery milestones — **no** kill-count ladders.  
+- Starter examples: first landing, first hyperspace jump, first kill, first mission, explored N% galaxy, met another faction.  
+- Hard: visit every sector; meet every faction.
+
+### Phase 6 — Procedural imagery `[Phase 6]`
+
+- Unified procedural draw from **`WorldFile`** params everywhere: hulls, landables, equipment icons, shop/shipyard previews, on-ship weapons at anchors.  
+- Replaces current placeholder landable/hull rendering.  
+- **`renderAnchors`** on hull specs; generator emits same fields in Phase 9.  
+- Shield/armour look **TBD:** material texture vs per-item tint vs resistance display.
+
+### Phase 7 — UI polish `[Phase 7]`
+
+- Galaxy map **zoom**; faction colour **only after visit**; **grid coordinate** labels.  
+- **Always-visible** sector edge boundary in flight.  
+- Smaller **minimap** landable markers.
+
+### Phase 8 — Pre–world-gen balance `[Phase 8]`
+
+- Hand-tune **`testWorld.json`** + **`src/constants.ts`** per **`plan/pre-worldgen/`**.  
+- Close archetype checklists (`interceptor` done, `shuttle` in progress, more hull classes).  
+- Does not block generator but improves template quality for Phase 9.
+
+### Phase 9 — World generator MVP `[Phase 9]`
+
+- 13-step pipeline — **`plan/worldgen/WORLDGEN.md`**.  
+- Procedural + LLM; progressive save; playable **`WorldFile`** export.  
+- Emits species, factions, landables, catalog, bullets, missions, trees — including Phase 6 procedural fields when ready.
+
+### After Phase 9 (unnumbered)
+
+- **Portable JSON saves** (Appendix A).  
+- **Economy depth:** `CargoItem`, kill/waypoint missions, trade.  
+- **Combat flavour:** exotic gear, disabled ships, boarding.
+
+### Phase 10 — World gen v2 `[Phase 10]`
+
+**Wildlife factions** — faction `type: 'wildlife'`; creature “ships”; no mission board; rep still tracked; mission trees can affect wildlife standing.
+
+**Ancient ruins** — `type: 'ruin'`, `hidden: true`, `detectionRequirement`; revealed by **sensor array** `detectionStrength` when entering sector; salvage + lore; no standard services. Target **5–10%** of sectors.
+
+**Shimmer zones** — `shimmer: true` sectors (~**2–5%**); sensor anomalies, ambient void damage, salvage; bubble-edge fiction.
+
+**Faction projects** — long-running goals per faction (0–2 visible); tick with game time; player missions accelerate or sabotage.
 
 ```typescript
-WorldState.missionTrees: {
-  [treeId: string]: {
-    started: boolean
-    nodeStates: { [nodeId]: 'unavailable' | 'available' | 'active' | 'completed' | 'failed' }
-  }
+FactionProject {
+  id, factionId, name, description
+  progress: 0..100
+  rate: number              // per game hour
+  effectOnComplete: ProjectEffect
+  playerInfluence: 'helpful' | 'hostile' | 'both' | 'none'
 }
 ```
 
-### Branching and rewards
+Visibility lean: controlling landables only (Standing / news tab).
 
-Trees are not strictly linear: nodes can have multiple children gated by different prerequisites; failed steps may recover via alternate branches. Per-mission rewards are normal (credits, rep, items). **Tree completion** applies **`finalConsequences`** — typically larger world shifts (control, unlocks, relationships).
+### Phase 11 — Fleet `[Phase 11]`
 
----
+- Multi-ship ownership (~5), fleet landing, hyperspace weakest-drive rule, guard mode, escort insurance.
 
-## 11. Turrets
+### Phase 12 — Neural AI gameplay `[Phase 12]`
 
-Weapons gain a **`targetingMode`**.
+- Sensor **`detectionRange`** (optional); **neural brain** + **memory card**; training simulator landable; autopilot modes; pre-trained cards in worlds.
 
-```typescript
-WeaponItem {
-  // ... existing fields
-  targetingMode: 'forward' | 'turret'
-}
-```
+### Phase 13 — Presentation polish `[Phase 13]`
 
-**Behaviour:**
-- **`forward`:** fires in the direction the ship faces (baseline)
-- **`turret`:** fires toward the **current ship target** if one is selected; if none, fires forward
+- Web Audio; engine glow / damage VFX beyond procedural hulls; **settings** (incl. game-time rate); world sharing UX.
 
-**Slots:** turrets and forward weapons share the existing **`weapon`** slot type; mode is an **item** property, not a separate slot type. (Alternative: dedicated `turret` slots on some hulls — deferred; keep slots flexible.)
+### Parked / design-only (no phase commitment)
 
-**Implications:** slow heavy ships gain viability with turrets; fast ships still favour forward weapons for nose-on damage and accuracy. Expands build variety.
+| Topic | Notes |
+|-------|--------|
+| **Turret weapons** | `targetingMode: 'forward' \| 'turret'` on weapon items; fire toward locked target. Same `weapon` slot type. |
+| **Lead missiles** | Use `seeking` ability with intercept logic — specify in WEAPONS_WORLDGEN when added, not separate `seekingMode` field. |
+| **Reputation decay** | Out of scope unless design revisits. |
+| **Multiplayer** | Out of scope. |
 
----
-
-## 12. Smart missiles
-
-```typescript
-BulletSpec {
-  // ... existing fields
-  seekingMode: 'none' | 'simple' | 'lead'
-  turnRate: number      // applies to simple and lead homing
-}
-```
-
-**Behaviour:**
-- **`none`:** straight-line (slugs, bolts)
-- **`simple`:** turns toward target's **current** position at `turnRate`
-- **`lead`:** computes **intercept** from position + velocity each frame; turns toward intercept
-
-**Implications:** lead missiles hit fast movers more reliably; countered by erratic manoeuvres (prediction uses linear extrapolation). Generation: advanced/expensive missiles → `lead`; basics → `simple`.
+Longer “when to pull” notes: **`plan/PARKED_IDEAS_DETAIL.md`**.
 
 ---
 
-## 13. Sensor arrays (expanded role)
+## 12. Open questions
 
-Sensor arrays exist as equipment; role expands for ruins and (later) long-range detection.
-
-```typescript
-SensorArrayItem {
-  // ... existing fields
-  detectionStrength: number   // reveal hidden landables when ≥ landable.detectionRequirement
-  targetLockSpeed?: number    // optional: lock acquisition speed
-  detectionRange?: number      // sectors — long-range detection (future)
-}
-```
-
-Cheap arrays detect nothing; premium arrays reveal most ruins. Generation produces tiers at multiple strength levels.
+| Question | Current lean |
+|----------|----------------|
+| Ruins offer services beyond salvage? | **No** — keep mysterious. |
+| Faction projects visible from non-controlling landables? | **No** — only controlling factions’ ports. |
+| Wildlife ↔ nation `treaty` / `cooperation`? | **Yes** — sanctuaries and protected zones. |
+| Game-time rate player-tunable? | **Yes** — Phase 13 settings. |
+| Achievement “met another faction” rule? | TBD — first positive standing vs first dock at foreign faction. |
+| Shield/armour: material vs item colour? | TBD — Phase 6 design pass. |
 
 ---
 
-## 14. Treaty / cooperation / dispute — combat and diplomacy detail
+## Appendix A — Persistence and saves *(planned)*
 
-When two factions share a landable in **`dispute`** and both have NPCs in the sector:
+**Problem:** `localStorage` is per browser profile; progress is lost when switching devices or clearing site data.
 
-- Opposing factions' NPCs spawn **hostile** to each other (override global disposition)
-- If the player has positive rep with one faction and attacks the other, the friendly faction's NPCs do **not** proxy-aggro allies (rep applies to the faction attacked)
+**Direction:** Same canonical blob as today’s **`PersistedWorldState`**, plus a small header (`formatVersion`, `seed`, optional world name, `savedAt`).
 
-**`cooperation`:**
-- NPCs of both factions treat each other as **allied** (escort behaviour, shared ally alerts)
-- Joint missions reference both factions; completion can grant rep to **both**
+| Tier | When |
+|------|------|
+| `localStorage` | Frequent — same-session resilience |
+| JSON file | Coarser milestones — sector change, landable enter/exit, credit/loadout/fuel/hull mutations, hyperspace target set/clear, menu exit, `beforeunload` / `visibilitychange` best effort |
 
-**`treaty`:**
-- NPCs **ignore** each other (no engagement, no escort)
-- Mission boards remain **independent** per faction
+**UX:** explicit **Export save** / **Import save**; optional File System Access API where supported. No silent arbitrary disk writes in a normal browser.
+
+**Load policy (conceptual):** imported file if seed matches loaded world; else local save for that seed; reconcile by **`savedAt`** if both exist.
+
+**v1 non-goals:** cloud saves, multiplayer sync, encryption.
+
+**Schedule:** after Phase 9 world generator MVP — **`plan/BACKLOG.md`**.
 
 ---
 
-## Open questions (v0.5 freeze)
-
-- Should ruins ever offer services beyond salvage? *(Lean: no — keeps them mysterious.)*
-- Should faction projects be visible from anywhere, or only from controlling landables? *(Lean: only controlled landables — encourages exploration.)*
-- Should wildlife factions ever have treaty or cooperation states with nation factions? *(Lean: yes — "protected sanctuary" arrangements.)*
-- Should game-time rate be player-tunable in settings? *(Lean: yes — defer to settings phase.)*
+*Last updated **2026-05-09** — full restructure: shipped §2–8, world data §10, planned §11 by phase.*
