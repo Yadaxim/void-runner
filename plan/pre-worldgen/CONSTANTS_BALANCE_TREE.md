@@ -2,8 +2,8 @@
 
 This document maps how values in `src/constants.ts` depend on each other (in code or in gameplay), how they interact with **world data** (`HullSpec`, equipment items, landables, bullets), and a practical order for tuning. It is aimed at ship/equipment balancing and giving the world generator sane defaults per ship type.
 
-Path: **`plan/CONSTANTS_BALANCE_TREE.md`**
-Related archetype tracker: **`plan/ARCHETYPE_CHECKLIST.md`**
+Path: **`plan/pre-worldgen/CONSTANTS_BALANCE_TREE.md`**
+Related archetype tracker: **`plan/pre-worldgen/ARCHETYPE_CHECKLIST.md`**
 
 ---
 
@@ -238,7 +238,7 @@ These are **data conventions**, not `constants.ts` fields. Goal: generated world
 
 ### 6.1.1 Hand-tuned anchor — Interceptor Mk I (`interceptor_mk1`)
 
-Authoritative data lives in **`public/testWorld.json`** (also summarized in **`plan/ARCHETYPE_CHECKLIST.md`**).
+Authoritative data lives in **`public/testWorld.json`** (also summarized in **`plan/pre-worldgen/ARCHETYPE_CHECKLIST.md`**).
 
 - **`equipmentCapacity`:** 40 — **advanced** loadout is intentionally tuned so Σ equipped item **`mass`** equals this cap at close-of-session numbers (tight budget; any buff to armour/weapons/tank mass needs a matching trim elsewhere or a hull capacity bump).
 - **Fuel:** **`fuel_tank_s`** is the extended-range tank used on the advanced/starter-aligned fits so the archetype keeps range without pretending the hull mounts the **`fuel_tank_large`** form factor.
