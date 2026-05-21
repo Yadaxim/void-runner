@@ -45,4 +45,4 @@ PLAYER_GUIDE.md           # pilot-facing controls (repo root)
 
 - Types in `src/types/` are the source of truth for cross-module contracts.
 - `validateWorldFile` runs on bundled worlds in development.
-- World generation UI exists (`WorldGenScreen`); pipeline stages in `src/worldgen/` are not implemented yet — see **Phase 5** in `plan/BACKLOG.md`.
+- World generation UI exists (`WorldGenScreen`); pipeline stages in `src/worldgen/` are not implemented yet — see **Phase 9** in `plan/BACKLOG.md` (after phases 5–8).

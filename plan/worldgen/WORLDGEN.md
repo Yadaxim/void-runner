@@ -556,7 +556,7 @@ Total: ~15-25 LLM calls per generation. At Sonnet rates and ~2k tokens per call,
 ## Out of scope for v1 of the gen pipeline
 
 - Wildlife creature design beyond "uses a species archetype"
-- Pre-trained AI cards for ship combat (Phase 7)
+- Pre-trained AI cards for ship combat (Phase 12)
 - Per-station service customization beyond station type
 - Procedural faction language / glyphs
 - Music or sound design generation

@@ -15,7 +15,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Pre-trained AI cards as loot
 **What:** Rare NPC drops or ruin loot. Pre-trained neural brain cards with quirky personalities — "aggressive trader", "paranoid escort", "alpha hunter". Players collect and slot them into escort ships.
-**Trigger to pull in:** After Phase 8 (neural net AI) is stable and players are training their own.
+**Trigger to pull in:** After Phase 12 (neural net AI) is stable and players are training their own.
 
 ### Energy weapons (separate from kinetic/missile)
 **What:** Currently the damage type system supports laser and plasma but no equipment uses them as primary energy weapons. Add laser turrets and plasma launchers that consume battery rather than fuel.
@@ -27,7 +27,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Voidtype weapons
 **What:** Voidtype damage exists in code but no items use it. Reserve for ancient/exotic equipment found in ruins or shimmer zones.
-**Trigger to pull in:** With ruins (Phase 6).
+**Trigger to pull in:** With ruins (Phase 10).
 
 ### Equipment-only inventory
 **What:** Currently equipment is bound to ships. Allow a player-side equipment locker so the player can buy without installing immediately, transfer between fleet ships, etc.
@@ -55,7 +55,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Trade economy
 **What:** Speculative cargo buying and selling between landables. Prices vary by supply/demand. Trade routes emerge.
-**Trigger to pull in:** When the player has cash but nothing meaningful to buy. Or as a Phase 6+ flavor pass after worldgen produces named goods.
+**Trigger to pull in:** When the player has cash but nothing meaningful to buy. Or as a Phase 10+ flavor pass after worldgen produces named goods.
 
 ### Player-editable post-generation
 **What:** UI to edit a generated world after the fact. Add/rename factions, edit faction relationships, place new landables manually.
@@ -67,7 +67,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Gen on shared seeds
 **What:** Worlds with the same seed produce the same galaxy. Players can share seeds for known worlds.
-**Trigger to pull in:** With the world sharing UI in Phase 9.
+**Trigger to pull in:** With the world sharing UI in Phase 13.
 
 ### Multi-shape galaxies
 **What:** Compound shapes — disc with a ring around it, twin spirals, etc.
@@ -79,7 +79,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Procedural ship hull aesthetics
 **What:** Hull rendering varies by faction tech archetype. Biological hulls render with curves, machine hulls with geometric panels, etc. Procedural Canvas variation.
-**Trigger to pull in:** When art guidelines refresh in Phase 9.
+**Trigger to pull in:** When art guidelines refresh in Phase 13.
 
 ---
 
