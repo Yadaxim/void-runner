@@ -1,6 +1,12 @@
 import { GRAVITY_CONSTANT, MIN_GRAVITY_DISTANCE } from '../constants';
 import { Vector2 } from '../physics/vector2';
-import { getBulletSeekingAbility, type BulletInstance, type BulletSpec, type ShipState } from '../types';
+import {
+  getBulletBallisticScale,
+  getBulletSeekingAbility,
+  type BulletInstance,
+  type BulletSpec,
+  type ShipState
+} from '../types';
 import type { ShipEntity } from './shipEntity';
 
 let bulletCounter = 0;
@@ -54,7 +60,8 @@ export class BulletEntity {
     gravitySources: { position: Vector2; mass: number }[],
     target: ShipEntity | null
   ): void {
-    if (this.spec.attractedByGravity && gravitySources.length > 0) {
+    const ballisticScale = getBulletBallisticScale(this.spec);
+    if (ballisticScale > 0 && gravitySources.length > 0) {
       let gravityAcceleration = Vector2.zero();
       for (const source of gravitySources) {
         const toSource = (source.position as Vector2).sub(this.instance.body.position as Vector2);
@@ -69,7 +76,9 @@ export class BulletEntity {
         const accelMagnitude = (GRAVITY_CONSTANT * source.mass) / distanceSq;
         gravityAcceleration = gravityAcceleration.add(direction.scale(accelMagnitude));
       }
-      this.instance.body.velocity = (this.instance.body.velocity as Vector2).add(gravityAcceleration.scale(dt));
+      this.instance.body.velocity = (this.instance.body.velocity as Vector2).add(
+        gravityAcceleration.scale(dt * ballisticScale)
+      );
     }
 
     const seeking = getBulletSeekingAbility(this.spec);

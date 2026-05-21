@@ -2,7 +2,7 @@ import { REQUIRED_SLOT_TYPES } from '../constants';
 import { expandSlotsToFullHull } from '../shipyard/slotLayout';
 import {
   emptyReductionProfile,
-  type DamageTypeKey,
+  MATTER_TYPES,
   type EquipmentItem,
   type EquipmentSlot,
   type FuelTankItem,
@@ -30,7 +30,7 @@ export class WorldFileValidationError extends Error {
   }
 }
 
-const DAMAGE_KEYS = Object.keys(emptyReductionProfile()) as DamageTypeKey[];
+const MATTER_REDUCTION_KEYS = Object.keys(emptyReductionProfile()) as (typeof MATTER_TYPES)[number][];
 
 const SPAWN_BEHAVIOURS = new Set(['patrol', 'transit', 'trade', 'hostile', 'flee']);
 
@@ -343,8 +343,12 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     }
   }
 
-  const knownBulletAbilityTypes = new Set(['seeking']);
+  const knownBulletAbilityTypes = new Set(['seeking', 'dot', 'knockback', 'ballistic', 'explosive']);
   for (const spec of world.bulletSpecs) {
+    if (!MATTER_TYPES.includes(spec.matterType as (typeof MATTER_TYPES)[number])) {
+      push(`Bullet "${spec.id}" has invalid matterType: ${String(spec.matterType)}`);
+    }
+
     const abilities = spec.abilities;
     if (abilities === undefined) {
       continue;
@@ -354,13 +358,13 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       continue;
     }
 
-    let seekingCount = 0;
+    const seenTypes = new Set<string>();
     abilities.forEach((entry, i) => {
       if (!entry || typeof entry !== 'object') {
         push(`Bullet "${spec.id}" abilities[${i}] is invalid`);
         return;
       }
-      const a = entry as { type?: unknown; turnRatio?: unknown };
+      const a = entry as unknown as Record<string, unknown>;
       if (typeof a.type !== 'string') {
         push(`Bullet "${spec.id}" abilities[${i}] is missing type`);
         return;
@@ -369,17 +373,43 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
         push(`Bullet "${spec.id}" abilities[${i}] unknown type "${a.type}"`);
         return;
       }
+      if (seenTypes.has(a.type)) {
+        push(`Bullet "${spec.id}" has duplicate ability type "${a.type}"`);
+        return;
+      }
+      seenTypes.add(a.type);
+
       if (a.type === 'seeking') {
-        seekingCount += 1;
         if (typeof a.turnRatio !== 'number' || !Number.isFinite(a.turnRatio) || a.turnRatio < 0) {
           push(`Bullet "${spec.id}" seeking ability requires finite turnRatio >= 0`);
         }
+      } else if (a.type === 'dot') {
+        if (typeof a.damagePerSecond !== 'number' || !Number.isFinite(a.damagePerSecond) || a.damagePerSecond < 0) {
+          push(`Bullet "${spec.id}" dot ability requires finite damagePerSecond >= 0`);
+        }
+        if (typeof a.duration !== 'number' || !Number.isFinite(a.duration) || a.duration <= 0) {
+          push(`Bullet "${spec.id}" dot ability requires finite duration > 0`);
+        }
+      } else if (a.type === 'knockback' || a.type === 'ballistic') {
+        if (a.scale !== undefined) {
+          if (typeof a.scale !== 'number' || !Number.isFinite(a.scale) || a.scale < 0) {
+            push(`Bullet "${spec.id}" ${a.type} ability scale must be finite and >= 0 when set`);
+          }
+        }
+      } else if (a.type === 'explosive') {
+        if (typeof a.radius !== 'number' || !Number.isFinite(a.radius) || a.radius <= 0) {
+          push(`Bullet "${spec.id}" explosive ability requires finite radius > 0`);
+        }
+        if (typeof a.splashDamage !== 'number' || !Number.isFinite(a.splashDamage) || a.splashDamage < 0) {
+          push(`Bullet "${spec.id}" explosive ability requires finite splashDamage >= 0`);
+        }
+        if (a.falloffExponent !== undefined) {
+          if (typeof a.falloffExponent !== 'number' || !Number.isFinite(a.falloffExponent) || a.falloffExponent <= 0) {
+            push(`Bullet "${spec.id}" explosive falloffExponent must be finite and > 0 when set`);
+          }
+        }
       }
     });
-
-    if (seekingCount > 1) {
-      push(`Bullet "${spec.id}" must have at most one seeking ability`);
-    }
   }
 
   for (const sector of world.sectors) {
@@ -603,7 +633,7 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
 
   for (const item of world.equipmentCatalog) {
     if (item.type === 'armour' && item.reductions) {
-      for (const key of DAMAGE_KEYS) {
+      for (const key of MATTER_REDUCTION_KEYS) {
         if (typeof item.reductions[key] !== 'number') {
           push(`Armour "${item.id}" reductions missing or invalid key: ${key}`);
         }

@@ -1,6 +1,6 @@
 import {
   COLOURS,
-  DAMAGE_TYPE_LABELS,
+  MATTER_TYPE_LABELS,
   EQUIPMENT_STORE_COUNT,
   MISSION_DELIVERY_DISPLAY_TIME,
   REFUEL_PRICE_PER_UNIT,
@@ -35,7 +35,7 @@ import { emptyReductionProfile } from '../types';
 import type {
   ArmourItem,
   ArmourReductionProfile,
-  DamageTypeKey,
+  MatterType,
   EquipmentItem,
   ReactorItem,
   ShieldItem
@@ -70,21 +70,7 @@ export class LandableScreen implements Screen {
     return item?.type === 'armour';
   }
 
-  private static readonly DAMAGE_TYPE_ORDER: DamageTypeKey[] = [
-    'kinetic',
-    'antimatter_kinetic',
-    'darkmatter_kinetic',
-    'explosive',
-    'antimatter_explosive',
-    'darkmatter_explosive',
-    'laser',
-    'anti_photon_laser',
-    'dark_energy_laser',
-    'plasma',
-    'antimatter_plasma',
-    'darkmatter_plasma',
-    'void'
-  ];
+  private static readonly MATTER_TYPE_ORDER: MatterType[] = ['normal', 'anti', 'dark', 'void'];
   private static readonly DEV_CREDIT_GRANT = 1000;
   private activeTab: TabId = 'overview';
   private isSuppliesFuelHeld = false;
@@ -1202,15 +1188,15 @@ export class LandableScreen implements Screen {
     const rowStartY = y + 26;
     const columnWidth = 120;
     const valueOffset = 52;
-    for (let i = 0; i < LandableScreen.DAMAGE_TYPE_ORDER.length; i += 1) {
-      const key = LandableScreen.DAMAGE_TYPE_ORDER[i];
-      const row = Math.floor(i / 3);
-      const col = i % 3;
+    for (let i = 0; i < LandableScreen.MATTER_TYPE_ORDER.length; i += 1) {
+      const key = LandableScreen.MATTER_TYPE_ORDER[i];
+      const row = Math.floor(i / 2);
+      const col = i % 2;
       const drawX = x + col * columnWidth;
       const drawY = rowStartY + row * 20;
       const value = profile[key];
       ctx.fillStyle = COLOURS.UI_PRIMARY;
-      ctx.fillText(DAMAGE_TYPE_LABELS[key], drawX, drawY);
+      ctx.fillText(MATTER_TYPE_LABELS[key], drawX, drawY);
       ctx.fillStyle = value > 0 ? COLOURS.SAFE : value < 0 ? COLOURS.DANGER : COLOURS.UI_SECONDARY;
       const display = value > 0 ? `+${value}` : `${value}`;
       ctx.fillText(display.padStart(4, ' '), drawX + valueOffset, drawY);
@@ -1220,7 +1206,7 @@ export class LandableScreen implements Screen {
   private sumArmourReductions(armourItems: Array<{ reductions: ArmourReductionProfile }>): ArmourReductionProfile {
     const total = emptyReductionProfile();
     for (const item of armourItems) {
-      for (const key of LandableScreen.DAMAGE_TYPE_ORDER) {
+      for (const key of LandableScreen.MATTER_TYPE_ORDER) {
         total[key] += item.reductions[key] ?? 0;
       }
     }
@@ -2142,7 +2128,7 @@ export class LandableScreen implements Screen {
         return [`Force: ${item.force}`, `Mass: ${item.mass}`];
       case 'weapon': {
         const spec = this.worldState.getBulletSpec(item.bulletSpecId);
-        return [`${this.formatDamageType(spec)} Dmg: ${spec?.damage ?? '?'}`, `Rate: ${item.fireRate}/s  Mass: ${item.mass}`];
+        return [`${this.formatBulletSummary(spec)} Dmg: ${spec?.damage ?? '?'}`, `Rate: ${item.fireRate}/s  Mass: ${item.mass}`];
       }
       case 'armour':
         return [`HP +${item.hpBonus}  Mass: ${item.mass}`, this.formatArmourSummary(item.reductions)];
@@ -2175,18 +2161,19 @@ export class LandableScreen implements Screen {
     return ['Mass: ?'];
   }
 
-  private formatDamageType(spec: ReturnType<WorldState['getBulletSpec']>): string {
+  private formatBulletSummary(spec: ReturnType<WorldState['getBulletSpec']>): string {
     if (!spec) return '?';
-    const cat = spec.damageCategory.charAt(0).toUpperCase() + spec.damageCategory.slice(1);
-    const mat = spec.matterType === 'normal' ? '' : ` / ${spec.matterType}`;
-    return `${cat}${mat}`;
+    const mat = spec.matterType.charAt(0).toUpperCase() + spec.matterType.slice(1);
+    const tags =
+      spec.abilities?.map((a) => a.type).join(', ') ?? '';
+    return tags ? `${mat} (${tags})` : mat;
   }
 
   private formatArmourSummary(reductions: ArmourReductionProfile): string {
     const parts = Object.entries(reductions)
       .filter(([, value]) => value !== 0)
-      .map(([key, value]) => `${DAMAGE_TYPE_LABELS[key as DamageTypeKey]} ${value > 0 ? '+' : ''}${value}`)
-      .slice(0, 6);
+      .map(([key, value]) => `${MATTER_TYPE_LABELS[key as MatterType]} ${value > 0 ? '+' : ''}${value}`)
+      .slice(0, 4);
     return parts.join('  ') || 'No resistances';
   }
 

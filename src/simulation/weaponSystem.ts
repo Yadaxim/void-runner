@@ -11,8 +11,19 @@ import {
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
-import type { BulletSpec, Landable, ShipState, WeaponFireKey, WeaponItem } from '../types';
-import { applyPlasmaDotToShip, resolveShipBulletDamage } from '../combat/damage';
+import {
+  computeSplashDamage,
+  getBulletExplosiveAbility,
+  getBulletKnockbackScale,
+  mergeDotAbilities,
+  type BulletSpec,
+  type Landable,
+  type MatterType,
+  type ShipState,
+  type WeaponFireKey,
+  type WeaponItem
+} from '../types';
+import { resolveShipBulletDamage, resolveShipDamage, applyMatterDotToShip } from '../combat/damage';
 import { BulletEntity } from './bulletEntity';
 import { ParticleSystem } from './particleSystem';
 import type { ShipEntity } from './shipEntity';
@@ -30,6 +41,7 @@ function isWeaponItem(item: unknown): item is WeaponItem {
 
 export interface BurnEffect {
   targetId: string;
+  matterType: MatterType;
   damagePerSecond: number;
   remainingDuration: number;
   totalDuration: number;
@@ -98,51 +110,37 @@ export class WeaponSystem {
       const targetShip = targetId ? ships.find((ship) => ship.state.id === targetId) ?? null : null;
       bullet.update(dt, gravitySources, targetShip);
 
+      let impacted = false;
       for (const ship of ships) {
         if (ship.state.id === bullet.instance.ownerId) {
           continue;
         }
         const hitRadius = this.getShipHitRadius(ship, worldState);
         if (pointInCircle(bullet.getPosition(), ship.state.position as Vector2, hitRadius)) {
-          const attackerFactionId = this.getAttackerFactionId(bullet.instance.ownerId, player, otherNPCs);
-          const npcController = ship.getNPCController();
-          if (npcController && !ship.state.isPlayerControlled) {
-            npcController.receiveAttack(
-              bullet.instance.ownerId,
-              attackerFactionId,
-              this.getBulletDamage(bullet)
-            );
-            this.alertNearbyAllies(ship, bullet.instance.ownerId, attackerFactionId, otherNPCs);
-          }
-
-          const isPlayerAggressor = bullet.instance.ownerId === 'player' && !ship.state.isPlayerControlled;
-          if (isPlayerAggressor && ship.state.factionId) {
-            worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT, 'combat_hit');
-          }
-          const damageResult = this.applyBulletDamage(bullet.getSpec(), ship, worldState);
-          this.tryApplyPlasmaBurn(bullet.getSpec(), ship);
-          const nextHP = ship.state.currentHullHP;
-          const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
-          if (nextVelocity) {
-            ship.state = { ...ship.state, velocity: nextVelocity };
-          }
-          bullet.markHit();
-          this.particles.spawnImpact(
-            bullet.getPosition(),
-            this.getImpactColour(this.getBulletColour(bullet), damageResult)
-          );
-          if (nextHP <= 0) {
-            ship.markDestroyed();
-            if (isPlayerAggressor && ship.state.factionId) {
-              worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL, 'combat_kill');
-            }
-            if (ship.state.isPlayerControlled) {
-              this.playerDestroyed = true;
-            }
-          }
+          this.processDirectImpact(bullet, ship, worldState, player, otherNPCs);
+          impacted = true;
           break;
         }
       }
+
+      if (impacted) {
+        const spec = bullet.getSpec();
+        const explosive = getBulletExplosiveAbility(spec);
+        if (explosive) {
+          this.processExplosiveSplash(
+            bullet.getPosition(),
+            bullet.instance.ownerId,
+            spec,
+            explosive,
+            ships,
+            worldState,
+            player,
+            otherNPCs
+          );
+        }
+        bullet.markHit();
+      }
+
       if (bullet.isExpired()) {
         continue;
       }
@@ -154,7 +152,7 @@ export class WeaponSystem {
         return false;
       }
       burn.remainingDuration -= dt;
-      this.applyBurnDamage(target.state, burn.damagePerSecond, dt, worldState);
+      this.applyBurnDamage(target.state, burn.damagePerSecond, burn.matterType, dt, worldState);
       if (target.state.currentHullHP <= 0) {
         target.markDestroyed();
         if (target.state.isPlayerControlled) {
@@ -181,8 +179,94 @@ export class WeaponSystem {
     return this.playerDestroyed;
   }
 
-  private getBulletDamage(bullet: BulletEntity): number {
-    return bullet.getSpec().damage;
+  private processDirectImpact(
+    bullet: BulletEntity,
+    ship: ShipEntity,
+    worldState: WorldState,
+    player: ShipEntity | null,
+    otherNPCs: ShipEntity[]
+  ): void {
+    const spec = bullet.getSpec();
+    const attackerFactionId = this.getAttackerFactionId(bullet.instance.ownerId, player, otherNPCs);
+    const npcController = ship.getNPCController();
+    if (npcController && !ship.state.isPlayerControlled) {
+      npcController.receiveAttack(bullet.instance.ownerId, attackerFactionId, spec.damage);
+      this.alertNearbyAllies(ship, bullet.instance.ownerId, attackerFactionId, otherNPCs);
+    }
+
+    const isPlayerAggressor = bullet.instance.ownerId === 'player' && !ship.state.isPlayerControlled;
+    if (isPlayerAggressor && ship.state.factionId) {
+      worldState.changeReputation(ship.state.factionId, REP_PENALTY_HIT, 'combat_hit');
+    }
+
+    const damageResult = this.applyBulletDamage(spec, ship, worldState);
+    this.tryApplyDotBurn(spec, ship);
+    const nextHP = ship.state.currentHullHP;
+    const nextVelocity = this.applyImpactMomentum(ship, bullet, worldState);
+    if (nextVelocity) {
+      ship.state = { ...ship.state, velocity: nextVelocity };
+    }
+    this.particles.spawnImpact(
+      bullet.getPosition(),
+      this.getImpactColour(spec.colour, damageResult)
+    );
+    if (nextHP <= 0) {
+      ship.markDestroyed();
+      if (isPlayerAggressor && ship.state.factionId) {
+        worldState.changeReputation(ship.state.factionId, REP_PENALTY_KILL, 'combat_kill');
+      }
+      if (ship.state.isPlayerControlled) {
+        this.playerDestroyed = true;
+      }
+    }
+  }
+
+  private processExplosiveSplash(
+    center: Vector2,
+    ownerId: string,
+    spec: BulletSpec,
+    explosive: NonNullable<ReturnType<typeof getBulletExplosiveAbility>>,
+    ships: ShipEntity[],
+    worldState: WorldState,
+    player: ShipEntity | null,
+    otherNPCs: ShipEntity[]
+  ): void {
+    const falloffExponent = explosive.falloffExponent ?? 1;
+    const dotParams = mergeDotAbilities(spec);
+    const attackerFactionId = this.getAttackerFactionId(ownerId, player, otherNPCs);
+
+    for (const ship of ships) {
+      if (ship.isDestroyed()) {
+        continue;
+      }
+      const distance = Vector2.distance(center, ship.state.position as Vector2);
+      const splashAmount = computeSplashDamage(
+        explosive.splashDamage,
+        distance,
+        explosive.radius,
+        falloffExponent
+      );
+      if (splashAmount <= 0) {
+        continue;
+      }
+
+      const npcController = ship.getNPCController();
+      if (npcController && !ship.state.isPlayerControlled) {
+        npcController.receiveAttack(ownerId, attackerFactionId, splashAmount);
+      }
+
+      this.applyDamageAmount(spec.matterType, splashAmount, ship, worldState, ship.state.isPlayerControlled);
+      if (dotParams) {
+        this.applyDotBurnToShip(ship, spec.matterType, dotParams.damagePerSecond, dotParams.duration);
+      }
+
+      if (ship.state.currentHullHP <= 0) {
+        ship.markDestroyed();
+        if (ship.state.isPlayerControlled) {
+          this.playerDestroyed = true;
+        }
+      }
+    }
   }
 
   private applyBulletDamage(
@@ -190,49 +274,71 @@ export class WeaponSystem {
     target: ShipEntity,
     worldState: WorldState
   ): BulletDamageResult {
+    return this.applyDamageAmount(bulletSpec.matterType, bulletSpec.damage, target, worldState, true);
+  }
+
+  private applyDamageAmount(
+    matterType: MatterType,
+    damage: number,
+    target: ShipEntity,
+    worldState: WorldState,
+    syncPlayer: boolean
+  ): BulletDamageResult {
     const ship = target.state;
     const view = {
       isShieldOnline: (s: ShipState) => worldState.isShieldOnlineForShip(s),
       getEquipmentItem: (id: string) => worldState.getEquipmentItem(id)
     };
-    const result = resolveShipBulletDamage(bulletSpec, ship, view);
-    if (ship.isPlayerControlled) {
+    const result = resolveShipDamage(damage, matterType, ship, view);
+    if (syncPlayer && ship.isPlayerControlled) {
       worldState.updatePlayerShipState(ship);
     }
     return result;
   }
 
-  private applyBurnDamage(targetState: ShipState, damagePerSecond: number, dt: number, worldState: WorldState): void {
+  private applyBurnDamage(
+    targetState: ShipState,
+    damagePerSecond: number,
+    matterType: MatterType,
+    dt: number,
+    worldState: WorldState
+  ): void {
     const damage = damagePerSecond * dt;
-    applyPlasmaDotToShip(targetState, damage, (id) => worldState.getEquipmentItem(id));
+    applyMatterDotToShip(targetState, damage, matterType, (id) => worldState.getEquipmentItem(id));
   }
 
-  private tryApplyPlasmaBurn(bulletSpec: BulletSpec, target: ShipEntity): void {
-    if (
-      bulletSpec.damageCategory !== 'plasma' ||
-      !bulletSpec.dotDuration ||
-      !bulletSpec.dotDamagePerSecond ||
-      target.state.currentHullHP <= 0
-    ) {
+  private tryApplyDotBurn(bulletSpec: BulletSpec, target: ShipEntity): void {
+    const dot = mergeDotAbilities(bulletSpec);
+    if (!dot || target.state.currentHullHP <= 0) {
+      return;
+    }
+    this.applyDotBurnToShip(target, bulletSpec.matterType, dot.damagePerSecond, dot.duration);
+  }
+
+  private applyDotBurnToShip(
+    target: ShipEntity,
+    matterType: MatterType,
+    damagePerSecond: number,
+    duration: number
+  ): void {
+    if (target.state.currentHullHP <= 0) {
       return;
     }
     const existing = this.activeBurns.find((burn) => burn.targetId === target.state.id);
     if (existing) {
-      existing.remainingDuration = Math.max(existing.remainingDuration, bulletSpec.dotDuration);
-      existing.damagePerSecond = Math.max(existing.damagePerSecond, bulletSpec.dotDamagePerSecond);
-      existing.totalDuration = Math.max(existing.totalDuration, bulletSpec.dotDuration);
+      existing.remainingDuration = Math.max(existing.remainingDuration, duration);
+      existing.damagePerSecond = Math.max(existing.damagePerSecond, damagePerSecond);
+      existing.totalDuration = Math.max(existing.totalDuration, duration);
+      existing.matterType = matterType;
       return;
     }
     this.activeBurns.push({
       targetId: target.state.id,
-      damagePerSecond: bulletSpec.dotDamagePerSecond,
-      remainingDuration: bulletSpec.dotDuration,
-      totalDuration: bulletSpec.dotDuration
+      matterType,
+      damagePerSecond,
+      remainingDuration: duration,
+      totalDuration: duration
     });
-  }
-
-  private getBulletColour(bullet: BulletEntity): string {
-    return bullet.getSpec().colour;
   }
 
   private getImpactColour(baseColour: string, damageResult: BulletDamageResult): string {
@@ -261,6 +367,10 @@ export class WeaponSystem {
     bullet: BulletEntity,
     worldState: WorldState
   ): Vector2 | null {
+    const knockbackScale = getBulletKnockbackScale(bullet.getSpec());
+    if (knockbackScale === null) {
+      return null;
+    }
     const hullSpec = worldState.getHullSpec(ship.state.hullSpecId);
     if (!hullSpec) {
       return null;
@@ -272,7 +382,9 @@ export class WeaponSystem {
     }
     const bulletMass = Math.max(0.001, bullet.getSpec().mass);
     const shipMass = Math.max(1, hullSpec.hullMass);
-    const bulletMomentum = bulletVelocity.scale(bulletMass * BULLET_MOMENTUM_TRANSFER_SCALE);
+    const bulletMomentum = bulletVelocity.scale(
+      bulletMass * BULLET_MOMENTUM_TRANSFER_SCALE * knockbackScale
+    );
     let deltaV = bulletMomentum.scale(1 / shipMass);
     const deltaVMagnitude = deltaV.magnitude();
     if (deltaVMagnitude > BULLET_MAX_IMPACT_DELTA_V) {

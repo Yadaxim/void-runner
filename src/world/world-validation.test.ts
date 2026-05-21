@@ -235,10 +235,10 @@ describe('validateWorldFile', () => {
     const arm = w.equipmentCatalog.find((i) => i.type === 'armour');
     expect(arm).toBeTruthy();
     const next = { ...(arm as { reductions: Record<string, number> }).reductions };
-    delete next.kinetic;
+    delete next.normal;
     (arm as { reductions: Record<string, number> }).reductions = next;
     const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('Armour') && e.includes('kinetic'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('Armour') && e.includes('normal'))).toBe(true);
   });
 
   it('flags starting sector coord missing', () => {
@@ -440,7 +440,7 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('finite turnRatio'))).toBe(true);
   });
 
-  it('flags duplicate seeking abilities on one bullet', () => {
+  it('flags duplicate ability type on one bullet', () => {
     const w = structuredClone(loadWorld());
     const spec = w.bulletSpecs.find((b) => b.id === 'seeker_missile')!;
     spec.abilities = [
@@ -448,7 +448,9 @@ describe('validateWorldFile', () => {
       { type: 'seeking', turnRatio: 2 }
     ];
     const r = validateWorldFile(w);
-    expect(r.errors.some((e) => e.includes('at most one seeking'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('duplicate ability type') && e.includes('seeking'))).toBe(
+      true
+    );
   });
 
   it('flags bullet abilities when not an array', () => {

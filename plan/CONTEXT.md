@@ -107,7 +107,7 @@ Hit → shield (if online; no resistances on shield)
     → hull
 ```
 
-Damage typing: `DamageCategory` × `MatterType` → **`DamageTypeKey`** (13 keys + `void`; see types under `src/types/`). Armour holds per-key flat reduction (negative = vulnerability). Instant hits and plasma DoT use **`resolveShipBulletDamage`** and **`applyPlasmaDotToShip`** in `src/combat/damage.ts`, invoked from **`WeaponSystem`**. Shield absorption gating uses **`WorldState.isShieldOnlineForShip(ship)`**.
+Damage typing: **`matterType`** (`normal` | `anti` | `dark` | `void`) on **`BulletSpec`**; armour **`reductions`** use the same four keys. Behaviours are **`abilities[]`** (`seeking`, `dot`, `knockback`, `ballistic`, `explosive`). Instant hits and DoT use **`resolveShipBulletDamage`** / **`applyMatterDotToShip`** in `src/combat/damage.ts`; **`WeaponSystem`** handles splash (no rep on splash), owner-only projectile skip. See **`plan/BULLET_MODEL_REFACTOR.md`**.
 
 **Fuel, reactor, battery, shields:** **`tickShipEnergyAndShield`** in `src/sim/shipEnergyShield.ts` runs each frame in **`SectorSimulation.update`** for the **player ship and every NPC** (reactor charges from fuel, shield reboot timer, shield HP regen from joules — same rules as each other). NPC spawn fills **`armourLayers`**, shield HP, **`currentJoules`**, and **full fuel** from the NPC loadout via **`WorldState.getCombatStateFromEquipmentSlots`**.
 

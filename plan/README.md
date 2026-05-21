@@ -16,6 +16,8 @@ Read **`plan/CONTEXT.md` first** — single handoff for new sessions (architectu
 | File | Role |
 |------|------|
 | **`plan/WORLDGEN.md`** | Full pipeline — step schemas, procedural vs LLM, UI flow, validation, assembly |
+| **`plan/WEAPONS_WORLDGEN.md`** | `bulletSpecs` + weapon catalog semantics for generators (fields, variation axes, bands) |
+| **`plan/BULLET_MODEL_REFACTOR.md`** | Bullet/ability/matter refactor — **design locked**, ready to implement |
 
 ## Balance & art
 

@@ -1,4 +1,4 @@
-import type { BulletSpec, DamageCategory, MatterType, ShipState } from '../types';
+import type { BulletSpec, MatterType, ShipState } from '../types';
 import { emptyReductionProfile, type ArmourItem, type ArmourReductionProfile, type ReactorItem, type ShieldItem, type WeaponItem } from '../types';
 import { Vector2 } from '../physics/vector2';
 
@@ -126,8 +126,7 @@ export function makeBullet(
     Pick<
       BulletSpec,
       | 'damage'
-      | 'dotDuration'
-      | 'dotDamagePerSecond'
+      | 'matterType'
       | 'id'
       | 'name'
       | 'mass'
@@ -135,12 +134,8 @@ export function makeBullet(
       | 'lifespan'
       | 'abilities'
     >
-  > & {
-    damageType?: { category: DamageCategory; matter: MatterType };
-  }
+  >
 ): BulletSpec {
-  const cat = overrides.damageType?.category ?? 'kinetic';
-  const matter = overrides.damageType?.matter ?? 'normal';
   return {
     id: overrides.id ?? 'test_bullet',
     name: overrides.name ?? 'Test',
@@ -148,15 +143,11 @@ export function makeBullet(
     speed: overrides.speed ?? 400,
     inheritShipVelocity: false,
     damage: overrides.damage ?? 10,
-    damageCategory: cat,
-    matterType: matter,
-    attractedByGravity: false,
+    matterType: overrides.matterType ?? 'normal',
     infinite: false,
     lifespan: overrides.lifespan ?? 5,
     visualType: 'bolt',
     colour: '#fff',
-    dotDuration: overrides.dotDuration,
-    dotDamagePerSecond: overrides.dotDamagePerSecond,
     ...(overrides.abilities !== undefined ? { abilities: overrides.abilities } : {})
   };
 }

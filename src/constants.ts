@@ -1,4 +1,4 @@
-import type { DamageTypeKey, EquipmentSlot } from './types';
+import type { EquipmentSlot, MatterType } from './types';
 
 // Physics and simulation
 export const GRAVITY_CONSTANT = 5;
@@ -166,19 +166,10 @@ export const COLOURS = {
 
 export const STAR_COLOURS = [COLOURS.STAR_DIM, COLOURS.STAR_MID, COLOURS.STAR_BRIGHT, COLOURS.UI_PRIMARY] as const;
 
-export const DAMAGE_TYPE_LABELS: Record<DamageTypeKey, string> = {
-  kinetic: 'KIN',
-  antimatter_kinetic: 'A-KIN',
-  darkmatter_kinetic: 'DM-KIN',
-  explosive: 'EXP',
-  antimatter_explosive: 'A-EXP',
-  darkmatter_explosive: 'DM-EXP',
-  laser: 'LSR',
-  anti_photon_laser: 'A-LSR',
-  dark_energy_laser: 'DE-LSR',
-  plasma: 'PLA',
-  antimatter_plasma: 'A-PLA',
-  darkmatter_plasma: 'DM-PLA',
+export const MATTER_TYPE_LABELS: Record<MatterType, string> = {
+  normal: 'NRM',
+  anti: 'ANTI',
+  dark: 'DRK',
   void: 'VOID'
 };
 

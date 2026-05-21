@@ -1,5 +1,5 @@
 import type { BrainMode } from './ai';
-import type { DamageTypeKey } from './bullet';
+import type { MatterType } from './bullet';
 import type { EquipmentSlotType } from './ship';
 
 export type EquipType =
@@ -50,22 +50,13 @@ export interface ArmourItem extends BaseEquipment {
   reductions: ArmourReductionProfile;
 }
 
-export type ArmourReductionProfile = Record<DamageTypeKey, number>;
+export type ArmourReductionProfile = Record<MatterType, number>;
 
 export function emptyReductionProfile(): ArmourReductionProfile {
   return {
-    kinetic: 0,
-    antimatter_kinetic: 0,
-    darkmatter_kinetic: 0,
-    explosive: 0,
-    antimatter_explosive: 0,
-    darkmatter_explosive: 0,
-    laser: 0,
-    anti_photon_laser: 0,
-    dark_energy_laser: 0,
-    plasma: 0,
-    antimatter_plasma: 0,
-    darkmatter_plasma: 0,
+    normal: 0,
+    anti: 0,
+    dark: 0,
     void: 0
   };
 }

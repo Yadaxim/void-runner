@@ -1,6 +1,5 @@
 // extracted from src/simulation/weaponSystem.ts for testability
-import type { BulletSpec, EquipmentItem, ShieldItem, ShipState } from '../types';
-import { getDamageTypeKey } from '../types';
+import type { BulletSpec, EquipmentItem, MatterType, ShieldItem, ShipState } from '../types';
 
 export interface BulletDamageResult {
   effectiveDamage: number;
@@ -12,18 +11,23 @@ export interface ShipDamageWorldView {
   getEquipmentItem(id: string): EquipmentItem | null;
 }
 
+function armourReductionForMatter(
+  armourItem: EquipmentItem | null,
+  matterType: MatterType
+): number {
+  if (armourItem?.type !== 'armour') return 0;
+  return armourItem.reductions[matterType] ?? 0;
+}
+
 /**
- * Instant bullet resolution: shield (if online and HP), then first armour layer with HP, then hull.
- * Mutates `ship` in place. Used for player and NPC ships.
+ * Instant damage: shield (if online and HP), then first armour layer with HP, then hull (no reduction).
  */
-export function resolveShipBulletDamage(
-  bulletSpec: BulletSpec,
+export function resolveShipDamage(
+  damage: number,
+  matterType: MatterType,
   ship: ShipState,
   world: ShipDamageWorldView
 ): BulletDamageResult {
-  const typeKey = getDamageTypeKey(bulletSpec.damageCategory, bulletSpec.matterType);
-  const damage = bulletSpec.damage;
-
   if (world.isShieldOnline(ship) && ship.currentShieldHP > 0) {
     const absorbed = Math.min(damage, ship.currentShieldHP);
     ship.currentShieldHP -= absorbed;
@@ -41,7 +45,7 @@ export function resolveShipBulletDamage(
   for (const layer of ship.armourLayers) {
     if (layer.currentHP <= 0) continue;
     const armourItem = world.getEquipmentItem(layer.itemId);
-    const reduction = armourItem?.type === 'armour' ? armourItem.reductions[typeKey] ?? 0 : 0;
+    const reduction = armourReductionForMatter(armourItem, matterType);
     const effectiveDamage = Math.max(0, damage - reduction);
     const absorbed = Math.min(effectiveDamage, layer.currentHP);
     layer.currentHP -= absorbed;
@@ -54,16 +58,17 @@ export function resolveShipBulletDamage(
   return { effectiveDamage: damage, totalReduction: 0 };
 }
 
-/** Plasma DoT: outermost armour with HP, else hull (does not go through shield). Mutates `state`. */
-export function applyPlasmaDotToShip(
+/** DoT tick: outermost armour with HP, else hull. Does not go through shield. */
+export function applyMatterDotToShip(
   state: ShipState,
   damage: number,
+  matterType: MatterType,
   getEquipmentItem: (id: string) => EquipmentItem | null
 ): void {
   for (const layer of state.armourLayers) {
     if (layer.currentHP <= 0) continue;
     const armourItem = getEquipmentItem(layer.itemId);
-    const reduction = armourItem?.type === 'armour' ? armourItem.reductions.plasma ?? 0 : 0;
+    const reduction = armourReductionForMatter(armourItem, matterType);
     const effectiveDamage = Math.max(0, damage - reduction);
     const absorbed = Math.min(effectiveDamage, layer.currentHP);
     layer.currentHP -= absorbed;
@@ -71,3 +76,13 @@ export function applyPlasmaDotToShip(
   }
   state.currentHullHP = Math.max(0, state.currentHullHP - damage);
 }
+
+/** Direct impact damage from a bullet spec. */
+export function resolveShipBulletDamage(
+  bulletSpec: BulletSpec,
+  ship: ShipState,
+  world: ShipDamageWorldView
+): BulletDamageResult {
+  return resolveShipDamage(bulletSpec.damage, bulletSpec.matterType, ship, world);
+}
+

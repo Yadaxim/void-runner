@@ -415,6 +415,8 @@ Templates carry stats; LLM provides naming and flavor only.
 
 Each item may reference a `manufacturerFactionId` and have flavor matching that faction's species.
 
+**Weapon/bullet semantics (required reading for step 9):** **`plan/WEAPONS_WORLDGEN.md`** — two-layer model (`bulletSpecs` + `type: "weapon"` launchers), per-field runtime meaning, variation axes, T1 numeric bands, validation, and generator recipes.
+
 **Validation:**
 - Reference to existing validateWorldFile equipment rules
 - Every weapon's `bulletSpecId` exists
