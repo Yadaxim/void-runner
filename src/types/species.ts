@@ -3,11 +3,17 @@ export type SpeciesArchetype =
   | 'machine'
   | 'hive'
   | 'energy'
-  | 'hybrid'
-  | 'ascended'
-  | 'parasitic'
-  | 'symbiotic'
-  | 'voidtouched';
+  | 'voidtouched'
+  | 'hybrid';
+
+
+export type TechArchetype =
+  | 'mechanical'
+  | 'robotic'
+  | 'synthetic'
+  | 'biological'
+  | 'energetic'
+  | 'void';
 
 export type HabitatPreference = 'core' | 'mid' | 'rim' | 'nebula' | 'radiation' | 'shimmer';
 
@@ -17,10 +23,6 @@ export interface Species {
   archetype: SpeciesArchetype;
   physiology: string;
   ethos: string;
-  techProfile: {
-    weaponStyle: string;
-    hullAesthetic: string;
-    namingConvention: string;
-  };
+  techArchetype: TechArchetype;
   preferredHabitat?: HabitatPreference;
 }

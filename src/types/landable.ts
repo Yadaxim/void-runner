@@ -22,6 +22,17 @@ export interface LandableShipyard {
   listingIds: string[];
 }
 
+/** Procedural planet/moon appearance (Phase 6). See plan/procedural/void_runner_planets.md */
+export interface LandableProceduralBody {
+  paletteSeed?: number;
+  noiseScale?: number;
+  rocky?: number;
+  chaos?: number;
+  cloudDensity?: number;
+  atmoThickness?: number;
+  forceRing?: boolean;
+}
+
 export interface Landable {
   id: string;
   name: string;
@@ -38,6 +49,7 @@ export interface Landable {
   shipyard?: LandableShipyard;
   rotationSpeed: number;
   seed: number;
+  proceduralBody?: LandableProceduralBody;
 }
 
 export function getLandablePrimaryFactionId(landable: Landable): string | null {

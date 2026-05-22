@@ -11,6 +11,7 @@ import { RadiationLayer } from './layers/radiationLayer';
 import { ShipLayer } from './layers/shipLayer';
 import { HudRenderer } from './ui/hudRenderer';
 import { MinimapRenderer } from './ui/minimapRenderer';
+import { PlanetTextureCache } from './planets/textureCache';
 import type { BulletEntity } from '../simulation/bulletEntity';
 import type { Particle } from '../simulation/particleSystem';
 import type { ShipEntity } from '../simulation/shipEntity';
@@ -44,6 +45,8 @@ interface RenderPipelineState {
 }
 
 export class RenderPipeline {
+  private readonly planetTextureCache = new PlanetTextureCache();
+
   private backgroundLayer: BackgroundLayer;
 
   private landableLayer: LandableLayer;
@@ -74,7 +77,7 @@ export class RenderPipeline {
     this.ctx = context;
 
     this.backgroundLayer = new BackgroundLayer(this.ctx, canvas.width, canvas.height, sectorSeed, nebulaConfig);
-    this.landableLayer = new LandableLayer(this.ctx);
+    this.landableLayer = new LandableLayer(this.ctx, this.planetTextureCache);
     this.bulletLayer = new BulletLayer(this.ctx);
     this.effectsLayer = new EffectsLayer(this.ctx);
     this.radiationLayer = new RadiationLayer(this.ctx, this.canvas);
@@ -92,6 +95,7 @@ export class RenderPipeline {
       starDensityMultiplier: number;
     }
   ): void {
+    this.planetTextureCache.clear();
     this.backgroundLayer = new BackgroundLayer(
       this.ctx,
       this.canvas.width,
@@ -99,6 +103,10 @@ export class RenderPipeline {
       sectorSeed,
       nebulaConfig
     );
+  }
+
+  warmLandableTextures(landables: Landable[]): void {
+    this.planetTextureCache.warm(landables);
   }
 
   render(state: RenderPipelineState): void {

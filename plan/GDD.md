@@ -251,36 +251,65 @@ Runtime loads **`WorldFile`** once; **`validateWorldFile`** enforces invariants.
 
 ### Species
 
-Conceptual layer above factions (~**5** species target per galaxy).
+Conceptual layer above factions (~**5** species target per galaxy). Each species defines **biology/culture** (`archetype`, `physiology`, `ethos`) and **how they build** (`techArchetype`). Factions inherit technology flavor from their **`speciesComposition`** — there is no separate faction-level tech field.
 
 ```typescript
 Species {
   id: string
   name: string
-  archetype: 'biological' | 'machine' | 'hive' | 'energy' | 'hybrid'
-         | 'ascended' | 'parasitic' | 'symbiotic' | 'voidtouched'
-  physiology: string
-  ethos: string
-  techProfile: { weaponStyle, hullAesthetic, namingConvention }
-  preferredHabitat?: 'core' | 'mid' | 'rim' | 'nebula' | 'radiation' | 'shimmer'
+  archetype: SpeciesArchetype
+  physiology: string      // 20–200 chars
+  ethos: string           // 20–200 chars
+  techArchetype: TechArchetype
+  preferredHabitat?: HabitatPreference
 }
 ```
+
+**`SpeciesArchetype`** — what they are (validated enum):
+
+| Value | Meaning |
+|--------|---------|
+| `biological` | Organic life; conventional ecosystems and bodies |
+| `machine` | Fully artificial or uploaded machine intelligences |
+| `hive` | Collective or swarm intelligence |
+| `energy` | Plasma, field, or radiation-native beings |
+| `voidtouched` | Shaped by void / shimmer exposure |
+| `hybrid` | Mixed lineage or engineered crossbreeds |
+
+**`TechArchetype`** — dominant engineering tradition (validated enum; drives world-gen equipment/hull flavor):
+
+| Value | Meaning |
+|--------|---------|
+| `mechanical` | Gears, hydraulics, industrial fabrication |
+| `robotic` | Autonomous drones, modular automata |
+| `synthetic` | Designer materials, integrated bio-synth |
+| `biological` | Grown hulls, organic systems |
+| `energetic` | Field projectors, plasma conduits |
+| `void` | Exotic void/shimmer-derived systems |
+
+**`HabitatPreference`** (optional): `core` · `mid` · `rim` · `nebula` · `radiation` · `shimmer` — biases faction home scoring in world-gen.
 
 `WorldFile.species: Species[]`. Factions reference species in **`speciesComposition`** (percentages sum to **100**).
 
 ### Factions
 
+Political/military layer. Visual and mission tone use **`shipStyle`**, **`missionFlavour`**, and colors; technology tone comes from composed species' **`techArchetype`** values.
+
 ```typescript
 Faction {
-  id, name
-  type: 'major_nation' | 'minor_nation' | 'independent'   // + 'wildlife' when Phase 10 ships
+  id, name, demonym
+  type: 'major_nation' | 'minor_nation' | 'independent'   // + 'wildlife' when Phase 10
+  description: string
+  shipStyle: string
+  missionFlavour: string
   speciesComposition: { speciesId, percentage }[]
+  homeSector: GridCoord
   homeLandableId: string | null    // null for independents
-  ideology: string
+  territoryRadius: number
   bubbleStance: 'reunifier' | 'isolationist' | 'breaker' | 'indifferent'
-  flagColor: string
-  techArchetype: string
-  // behaviour, default disposition, isPirate, …
+  primaryColour, secondaryColour: { h, s, l }
+  disposition: Record<factionId, number>
+  isPirate: boolean
 }
 ```
 
@@ -354,10 +383,10 @@ Schedule detail and checkboxes: **`plan/BACKLOG.md`**.
 
 ### Phase 6 — Procedural imagery `[Phase 6]`
 
-- Unified procedural draw from **`WorldFile`** params everywhere: hulls, landables, equipment icons, shop/shipyard previews, on-ship weapons at anchors.  
-- Replaces current placeholder landable/hull rendering.  
-- **`renderAnchors`** on hull specs; generator emits same fields in Phase 9.  
-- Shield/armour look **TBD:** material texture vs per-item tint vs resistance display.
+- Unified procedural draw from **`WorldFile`** params everywhere.  
+- **Landables (flight):** **`plan/procedural/void_runner_planets.md`** — procedural planet/moon spheres (noise, atmosphere, rings); stations later.  
+- Then UI/minimap landables, hulls/`renderAnchors`, equipment icons — **`plan/procedural/README.md`**.  
+- Shield/armour look **TBD** (material vs item tint).
 
 ### Phase 7 — UI polish `[Phase 7]`
 

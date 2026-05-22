@@ -6,11 +6,15 @@ import { worldToScreen } from '../camera';
 import { drawPlanet } from '../landables/planetRenderer';
 import { drawMoon } from '../landables/moonRenderer';
 import { drawStation } from '../landables/stationRenderer';
+import type { PlanetTextureCache } from '../planets/textureCache';
 
 export class LandableLayer {
   private readonly stationAngles = new Map<string, number>();
 
-  constructor(private readonly ctx: CanvasRenderingContext2D) {}
+  constructor(
+    private readonly ctx: CanvasRenderingContext2D,
+    private readonly planetTextureCache: PlanetTextureCache
+  ) {}
 
   render(
     landables: Landable[],
@@ -23,9 +27,9 @@ export class LandableLayer {
     for (const landable of landables) {
       const pos = worldToScreen(landable.position, camera);
       if (landable.type === 'planet') {
-        drawPlanet(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
+        drawPlanet(this.ctx, pos.x, pos.y, landable, undefined, this.planetTextureCache);
       } else if (landable.type === 'moon') {
-        drawMoon(this.ctx, pos.x, pos.y, landable.radius, landable.seed);
+        drawMoon(this.ctx, pos.x, pos.y, landable, undefined, this.planetTextureCache);
       } else if (
         landable.type === 'station' ||
         landable.type === 'military_outpost' ||

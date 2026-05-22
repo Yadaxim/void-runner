@@ -23,7 +23,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 
 ### Anti-matter and dark-matter weapons
 **What:** Ships can mount AM/DM-flavored weapons. Their bullets do `antimatter_X` and `darkmatter_X` damage. Counters specialized armor profiles.
-**Trigger to pull in:** When armor design feels too uniform. Probably a world-gen feature unlocked by faction tech archetype.
+**Trigger to pull in:** When armor design feels too uniform. Probably a world-gen feature unlocked by species `techArchetype`.
 
 ### Voidtype weapons
 **What:** Voidtype damage exists in code but no items use it. Reserve for ancient/exotic equipment found in ruins or shimmer zones.
@@ -78,7 +78,7 @@ Ideas parked for later. Not in any active phase. Each entry notes what would tri
 **Trigger to pull in:** With faction projects.
 
 ### Procedural ship hull aesthetics
-**What:** Hull rendering varies by faction tech archetype. Biological hulls render with curves, machine hulls with geometric panels, etc. Procedural Canvas variation.
+**What:** Hull rendering varies by species `techArchetype`. Biological hulls render with curves, machine hulls with geometric panels, etc. Procedural Canvas variation.
 **Trigger to pull in:** When art guidelines refresh in Phase 13.
 
 ---

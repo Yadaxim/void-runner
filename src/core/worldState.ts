@@ -598,9 +598,7 @@ export class WorldState {
     return {
       factionId: id,
       primaryColour: `hsl(${faction.primaryColour.h}, ${faction.primaryColour.s}%, ${faction.primaryColour.l}%)`,
-      secondaryColour: `hsl(${faction.secondaryColour.h}, ${faction.secondaryColour.s}%, ${faction.secondaryColour.l}%)`,
-      geometryBias: faction.geometryBias,
-      densityBias: faction.densityBias
+      secondaryColour: `hsl(${faction.secondaryColour.h}, ${faction.secondaryColour.s}%, ${faction.secondaryColour.l}%)`
     };
   }
 

@@ -176,9 +176,7 @@ export const MATTER_TYPE_LABELS: Record<MatterType, string> = {
 export const DEFAULT_FACTION_VISUAL = {
   factionId: 'player',
   primaryColour: '#e8e8f0',
-  secondaryColour: '#40c0ff',
-  geometryBias: 'angular' as const,
-  densityBias: 'sparse' as const
+  secondaryColour: '#40c0ff'
 };
 
 // AI and neural controls (canonical output = thrusters 6 + weapon keys Z–V–B 5)

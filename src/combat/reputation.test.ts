@@ -24,13 +24,9 @@ const FACTIONS: FactionDefinition[] = [
     territoryRadius: 1,
     speciesComposition: [{ speciesId: 'rep_test_species', percentage: 100 }],
     bubbleStance: 'reunifier',
-    techArchetype: 'test patrol',
     primaryColour: { h: 0, s: 0, l: 0 },
     secondaryColour: { h: 0, s: 0, l: 0 },
-    geometryBias: 'angular',
-    densityBias: 'dense',
     disposition: {},
-    missionTiers: [],
     isPirate: false
   },
   {
@@ -46,13 +42,9 @@ const FACTIONS: FactionDefinition[] = [
     territoryRadius: 1,
     speciesComposition: [{ speciesId: 'rep_test_species', percentage: 100 }],
     bubbleStance: 'indifferent',
-    techArchetype: 'test salvage',
     primaryColour: { h: 0, s: 0, l: 0 },
     secondaryColour: { h: 0, s: 0, l: 0 },
-    geometryBias: 'rounded',
-    densityBias: 'sparse',
     disposition: {},
-    missionTiers: [],
     isPirate: false
   },
   {
@@ -68,13 +60,9 @@ const FACTIONS: FactionDefinition[] = [
     territoryRadius: 1,
     speciesComposition: [{ speciesId: 'rep_test_species', percentage: 100 }],
     bubbleStance: 'breaker',
-    techArchetype: 'test raider',
     primaryColour: { h: 0, s: 0, l: 0 },
     secondaryColour: { h: 0, s: 0, l: 0 },
-    geometryBias: 'rounded',
-    densityBias: 'sparse',
     disposition: {},
-    missionTiers: [],
     isPirate: true
   }
 ];

@@ -68,7 +68,7 @@
 - [x] Covered under Phase 4  
 
 ### Session D — Species + faction extensions
-- [x] `WorldFile.species`, faction `type` / composition / home / bubble / tech archetype; validation + `testWorld`  
+- [x] `WorldFile.species`, faction `type` / composition / home / bubble; species `techArchetype`; validation + `testWorld`  
 
 ### Session E — Multi-faction landables
 - [x] `factionControl[]`, `controlState` (sole/treaty/cooperation/dispute); UI, economy, NPC local rules  
@@ -104,48 +104,55 @@
 
 ## Next — Phase 6: Procedural imagery
 
-**Goal:** One procedural drawing system **everywhere** images appear. Parameters in **`WorldFile`** (`testWorld.json` first; Phase 9 generator emits the same fields). Replaces today’s placeholder landable and hull drawing.
+**Goal:** One procedural drawing system **everywhere** images appear. Parameters in **`WorldFile`** (`testWorld.json` first; Phase 9 generator emits the same fields).
 
 **Principle:** Runtime reads JSON + seed only; `validateWorldFile` enforces params and anchor counts vs `slotCounts`.
 
-### Schema and validation
+**Design docs:** **`plan/procedural/void_runner_planets.md`** (planet / moon); stations and hulls later.
 
-- [ ] Shared procedural param types on `Landable`, `HullSpec`, equipment catalog entries, etc.  
-- [ ] `validateWorldFile` rules (ranges, anchor counts vs slots)  
-- [ ] Example params in **`public/testWorld.json`** (≥1 hull, landable, equipment item)  
+### 6.0 — Schema and shared validation
 
-### `HullSpec` — world JSON
+- [x] `LandableProceduralBody` on `Landable` (`rocky`, `chaos`, `cloudDensity`, `atmoThickness`, `noiseScale`, `forceRing`, `paletteSeed`)  
+- [x] `validateWorldFile` rules for `proceduralBody` (ranges; moon `atmoThickness` & no rings)  
+- [x] Example `proceduralBody` on Vethos Prime + Vethos Moon in **`public/testWorld.json`**  
+- [ ] `HullProceduralStyle`, equipment style types (see procedural README)  
 
-- [ ] **`renderAnchors`** per slot kind (weapons, armour, shield) — positions/angles; count matches `slotCounts`  
-- [ ] Procedural **hull silhouette** params on `HullSpec`  
-- [ ] **Equipped weapons** at weapon anchors (player + NPC)  
-- [ ] **Shield / armour on hull** at armour/shield anchors  
+### 6.1 — Landables: flight sector
 
-### Shield and armour look *(TBD)*
+Spec: **`plan/procedural/void_runner_planets.md`**. Code: `src/renderer/planets/`, `src/renderer/landables/`, `landableLayer.ts`.
 
-- [ ] Design: **material** → texture/pattern; **per-item** → tint colour; **resistances** → stat UI vs on-sprite hint  
-- [ ] Implement on hull layers + equipment inspect/shop UI  
+**Planets / moons**
 
-### Landables — replace current renderer
+- [x] Noise-based sphere renderer (`renderPlanet`, `SplitMix64`, spherical UV)  
+- [x] Texture cache; warm on sector enter  
+- [x] `drawPlanet` / `drawMoon` consume `Landable` + optional `proceduralBody`  
+- [x] Landable screen portrait uses shared cache  
 
-- [ ] Procedural **planet / moon / station** body (replaces current render)  
-- [ ] **Flight sector** — body at world position  
-- [ ] **Landable screen** — portrait / banner from same params  
-- [ ] **Minimap** — small icon from same params (coordinate with Phase 7 minimap scale)  
+**Stations** (`station`, `military_outpost`, `shipyard_station`) — later
 
-### Equipment imagery — all surfaces
+- [ ] Tiered module layout; faction geometry — doc TBD (`STATIONS_FLIGHT.md`)  
+- [ ] Rotation unchanged (`rotationSpeed` + `LandableLayer` angle map)  
 
-- [ ] **On ship in flight** — weapons at anchors; other gear per design  
-- [ ] **Equipment store** — list/detail icon per catalog item  
-- [ ] **Shipyard + customize** — hull + per-slot previews  
-- [ ] **Cargo / inventory** when shown  
-- [ ] **Landable UI** — service/room imagery  
-- [ ] **Missions / HUD** — equipment or faction pictograms  
+### 6.2 — Landables: UI and minimap
 
-### Phase 9 handoff
+- [x] Landable screen portrait — cached procedural body at larger radius  
+- [ ] Minimap — unchanged (faction dot + radius scale only)  
 
-- [ ] Document procedural fields in **`plan/worldgen/WORLDGEN.md`** (step 9 + landable steps)  
-- [ ] Generator outputs same param shapes as hand-authored JSON  
+### 6.3 — Hulls and loadouts (flight)
+
+- [ ] **`HullSpec.renderAnchors`** — weapons, armour, shield; count matches `slotCounts`  
+- [ ] Procedural hull silhouette params on `HullSpec`  
+- [ ] Equipped weapons at anchors (player + NPC)  
+- [ ] Shield / armour on hull — **TBD:** material texture vs per-item tint vs resistance UI (doc + implement)  
+
+### 6.4 — Equipment imagery (all surfaces)
+
+- [ ] On ship in flight · equipment store · shipyard/customize · cargo · landable UI · missions/HUD pictograms  
+
+### 6.5 — World generator handoff
+
+- [ ] Document procedural fields in **`plan/worldgen/WORLDGEN.md`** (landable placement + step 9 hulls)  
+- [ ] Generator emits same JSON shapes as hand-authored `testWorld`  
 
 ---
 

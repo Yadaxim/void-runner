@@ -11,6 +11,7 @@ import {
   type ReactorItem,
   type RegionType,
   type ShieldItem,
+  type Landable,
   type WorldFile
 } from '../types';
 
@@ -38,16 +39,55 @@ const HULL_LOADOUT_VARIANTS = ['raw', 'basic', 'advanced'] as const;
 
 const LOADOUT_VARIANT_SET = new Set<string>(HULL_LOADOUT_VARIANTS);
 
+function validateLandableProceduralBody(land: Landable, push: (msg: string) => void): void {
+  const body = land.proceduralBody;
+  if (!body) {
+    return;
+  }
+  const check01 = (value: number | undefined, field: string): void => {
+    if (value === undefined) {
+      return;
+    }
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      push(`Landable "${land.id}" proceduralBody.${field} must be a number in [0, 1]`);
+    }
+  };
+  check01(body.rocky, 'rocky');
+  check01(body.chaos, 'chaos');
+  check01(body.cloudDensity, 'cloudDensity');
+  check01(body.atmoThickness, 'atmoThickness');
+  if (body.noiseScale !== undefined) {
+    if (!Number.isFinite(body.noiseScale) || body.noiseScale < 1 || body.noiseScale > 7) {
+      push(`Landable "${land.id}" proceduralBody.noiseScale must be in [1, 7]`);
+    }
+  }
+  if (body.paletteSeed !== undefined && !Number.isFinite(body.paletteSeed)) {
+    push(`Landable "${land.id}" proceduralBody.paletteSeed must be finite`);
+  }
+  if (land.type === 'moon' && body.atmoThickness !== undefined && body.atmoThickness >= 0.05) {
+    push(`Landable "${land.id}" moon proceduralBody.atmoThickness must be < 0.05`);
+  }
+  if (land.type === 'moon' && body.forceRing) {
+    push(`Landable "${land.id}" moon cannot set proceduralBody.forceRing`);
+  }
+}
+
 const SPECIES_ARCHETYPES = new Set([
   'biological',
   'machine',
   'hive',
   'energy',
-  'hybrid',
-  'ascended',
-  'parasitic',
-  'symbiotic',
-  'voidtouched'
+  'voidtouched',
+  'hybrid'
+]);
+
+const TECH_ARCHETYPES = new Set([
+  'mechanical',
+  'robotic',
+  'synthetic',
+  'biological',
+  'energetic',
+  'void'
 ]);
 
 const HABITAT_PREFERENCES = new Set(['core', 'mid', 'rim', 'nebula', 'radiation', 'shimmer']);
@@ -215,17 +255,8 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     if (typeof entry.ethos !== 'string' || entry.ethos.length < 20 || entry.ethos.length > 200) {
       push(`Species "${entry.id}" ethos must be 20-200 characters`);
     }
-    const tech = entry.techProfile;
-    if (
-      !tech ||
-      typeof tech.weaponStyle !== 'string' ||
-      !tech.weaponStyle ||
-      typeof tech.hullAesthetic !== 'string' ||
-      !tech.hullAesthetic ||
-      typeof tech.namingConvention !== 'string' ||
-      !tech.namingConvention
-    ) {
-      push(`Species "${entry.id}" techProfile must define weaponStyle, hullAesthetic, and namingConvention`);
+    if (!TECH_ARCHETYPES.has(entry.techArchetype)) {
+      push(`Species "${entry.id}" has invalid techArchetype: ${String(entry.techArchetype)}`);
     }
   }
 
@@ -235,9 +266,6 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     }
     if (!BUBBLE_STANCES.has(faction.bubbleStance)) {
       push(`Faction "${faction.id}" has invalid bubbleStance: ${String(faction.bubbleStance)}`);
-    }
-    if (typeof faction.techArchetype !== 'string' || !faction.techArchetype.trim()) {
-      push(`Faction "${faction.id}" must define non-empty techArchetype`);
     }
     if (!Array.isArray(faction.speciesComposition) || faction.speciesComposition.length === 0) {
       push(`Faction "${faction.id}" must define speciesComposition`);
@@ -454,6 +482,7 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
       if (land.controlState !== 'sole' && land.factionControl.length < 2) {
         push(`Landable "${land.id}" controlState ${land.controlState} requires at least two factionControl entries`);
       }
+      validateLandableProceduralBody(land, push);
     }
 
     for (const rule of sector.npcSpawnRules) {

@@ -125,7 +125,7 @@ For v1, seed shimmer and nebulae here. Defer ruin placement to step 7 (after ter
 
 **LLM prompt structure:**
 - System: explain the bubble lore and the design constraints
-- User: "Generate {count} species. Pick {count} archetypes from this menu that maximize contrast: {menu}. For each, provide [name, archetype, physiology, ethos, techProfile]. Return JSON only."
+- User: "Generate {count} species. Pick {count} archetypes from this menu that maximize contrast: {menu}. For each, provide [name, archetype, physiology, ethos, techArchetype]. Return JSON only."
 
 **Output:**
 ```typescript
@@ -135,7 +135,7 @@ Species[]   // schema as defined in GDD section 3
 **Validation:**
 - All species have unique IDs and names
 - All archetype values are from the menu
-- All techProfile fields are non-empty strings
+- All `techArchetype` values are from the `TechArchetype` enum (see GDD)
 - All physiology and ethos strings are 20-200 characters
 
 **Retry logic:** On validation failure, re-prompt with the specific error appended.
@@ -197,7 +197,7 @@ Species[]   // schema as defined in GDD section 3
 }
 ```
 
-**LLM prompt structure:** For each skeleton, ask for `name`, `ideology`, `bubbleStance`, `flagColor`, `techArchetype`. Pass species composition so the LLM can produce coherent identities.
+**LLM prompt structure:** For each skeleton, ask for `name`, `description`, `shipStyle`, `missionFlavour`, `bubbleStance`, `primaryColour`, `secondaryColour`. Pass **`speciesComposition`** and the referenced **`Species`** rows so tone aligns with dominant species **`techArchetype`** (species-level only).
 
 **Output:**
 ```typescript
@@ -208,8 +208,8 @@ Faction[]   // fully populated except home and faction-control data
 - All names unique across factions
 - `bubbleStance` from enum
 - `flagColor` is a valid hex string
-- `ideology` 30-300 chars
-- `techArchetype` references the dominant species' techProfile in some sensible way (validated by string length and presence, not semantically)
+- `description`, `shipStyle`, `missionFlavour` are non-empty strings
+- Dominant species in `speciesComposition` must exist; tech tone inferred from their `techArchetype` enums (no faction tech field)
 
 ---
 
@@ -317,7 +317,7 @@ Faction[]   // fully populated except home and faction-control data
 - For each faction pair, compute baseline disposition from:
   - Ideology similarity (text-based heuristic or LLM-precomputed similarity score)
   - Bubble stance compatibility (reunifier-isolationist = hostile, etc.)
-  - Species-archetype affinity (machine-biological often tense, biological-symbiotic compatible, etc.)
+  - Species-archetype affinity (machine–biological often tense, energy–voidtouched odd, etc.)
 - Result: baseline matrix in [-100, 100]
 
 **LLM deviation pass:**

@@ -36,6 +36,17 @@ Implementation: `src/worldgen/` (15 stub stages today — align with WORLDGEN do
 
 ---
 
+## Procedural imagery (`plan/procedural/`) — Phase 6
+
+Flight, UI, hulls, equipment — params on `WorldFile`, Canvas draw only.
+
+| File | Role |
+|------|------|
+| **`plan/procedural/README.md`** | Index of procedural docs |
+| **`plan/procedural/void_runner_planets.md`** | **Planet / moon** procedural sphere rendering |
+
+---
+
 ## Pre–world-gen balancing (`plan/pre-worldgen/`)
 
 Hand-tune fixture world and constants in **Phase 8**, after procedural imagery and UI polish.
@@ -70,4 +81,5 @@ Hand-tune fixture world and constants in **Phase 8**, after procedural imagery a
 2. **CONTEXT** — architecture + short changelog; trim long “done” walls.  
 3. **GDD** — design intent; mark sections not in code as forward-looking.  
 4. **Worldgen** — keep under `plan/worldgen/`; step 9 weapon stats follow **WEAPONS_WORLDGEN.md**.  
-5. **Pre-worldgen balance** — archetypes and constants tuning under `plan/pre-worldgen/`.
+5. **Pre-worldgen balance** — archetypes and constants tuning under `plan/pre-worldgen/`.  
+6. **Procedural imagery** — flight/UI rules under `plan/procedural/`; BACKLOG §6 checkboxes.

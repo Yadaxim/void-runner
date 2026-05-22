@@ -23,6 +23,14 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('Duplicate species id'))).toBe(true);
   });
 
+  it('flags invalid species archetype and techArchetype', () => {
+    const w = structuredClone(loadWorld());
+    w.species[0] = { ...w.species[0], archetype: 'symbiotic' as never, techArchetype: 'plasma' as never };
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('invalid archetype'))).toBe(true);
+    expect(r.errors.some((e) => e.includes('invalid techArchetype'))).toBe(true);
+  });
+
   it('flags faction speciesComposition referencing unknown species', () => {
     const w = structuredClone(loadWorld());
     w.factions[0].speciesComposition = [{ speciesId: 'ghost_species', percentage: 100 }];

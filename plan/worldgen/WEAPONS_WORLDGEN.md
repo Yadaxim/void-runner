@@ -185,7 +185,7 @@ effective_range      ≈ speed × lifespan                     (straight line)
 | Veth / exotic | `anti` or `dark` matter, `dot` orbs |
 | Rare/exotic loot | `void` matter, low plate `reductions.void` on enemy gear |
 
-Align with `species[].techProfile.weaponStyle` for LLM naming, not runtime enums.
+Align weapon naming with species `techArchetype` (and faction `shipStyle` / composition), not runtime enums beyond validation.
 
 ---
 

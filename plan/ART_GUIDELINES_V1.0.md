@@ -42,10 +42,8 @@ CREDITS         #ffd700    // currency, mission payoff
 Each faction is assigned at world-gen time:
 - A **primary colour** (hull fill, station accent)
 - A **secondary colour** (engine glow, detail lines)
-- A **geometry bias**: `angular` (sharp points, hard angles) or `rounded` (curves, blunt noses)
-- A **density bias**: `sparse` (minimal detail, open hull shapes) or `dense` (many modules, complex outlines)
 
-These four properties cascade automatically into all faction-owned ships and stations. A player can identify a faction's ships at a glance after encountering them once.
+These cascade into all faction-owned ships and stations. A player can identify a faction's ships at a glance after encountering them once. Hull/station silhouette variety may later use species **`techArchetype`** (see GDD §10), not separate faction geometry/density fields.
 
 **Pirates** always use desaturated, mixed colours — deliberately mismatched, as if their ships are salvaged from multiple factions. No coherent palette.
 
@@ -124,9 +122,7 @@ Each hull class has a **silhouette template** — a parametric path generator th
 - Short angular wings with notches
 - Four engine nodes
 
-**Geometry bias** from faction modifies all templates:
-- `angular`: sharpen all curves to points, add notches to wings
-- `rounded`: soften wing tips, round the nose
+**Future:** species `techArchetype` or hull class may soften/sharpen templates (no faction geometry field in schema).
 
 ### 4.3 Equipment Visibility
 
@@ -210,7 +206,7 @@ Station complexity scales with service tier:
 - Standard (station): core + ring + 4 spokes + dock arms
 - Full (shipyard/military): core + ring + 8 spokes + module pods + antennas
 
-Faction geometry bias applies: `angular` stations have hexagon cores and pointed spokes; `rounded` stations have circle cores and curved spokes.
+Station shape tier is procedural (Phase 6); no faction geometry field in schema yet.
 
 Stations rotate very slowly (0.5–2 RPM depending on type) — always in the same direction for a given station, seeded per world-gen.
 
@@ -336,7 +332,7 @@ These are guidelines for the engineering implementation of the art system.
 - **Offscreen canvas caching**: Ship silhouettes are drawn once to an offscreen canvas on initialisation and when equipment changes. The cached canvas is used for all subsequent renders. This avoids re-computing paths every frame.
 - **Layer order** (back to front): nebulae → deep stars → mid stars → near stars → landable atmosphere glows → landables → bullet trails → bullets → ship engine glows → ship hulls → ship damage particles → explosion effects → HUD → UI panels
 - **World-to-screen transform**: a single transform function converts world coordinates to screen coordinates given the player's world position. All rendering goes through this function — no object knows its own screen position.
-- **Faction visual objects**: at world-gen load time, a `FactionVisual` object is constructed per faction containing its colours and geometry bias. This is passed to all renderers for faction-owned entities.
+- **Faction visual objects**: at world-gen load time, a `FactionVisual` object is constructed per faction containing its primary and secondary colours. This is passed to all renderers for faction-owned entities.
 - **Seed-based randomness**: all procedural visual decisions (star positions, planet surface ellipses, station spoke counts) use a seeded PRNG keyed on the sector or entity ID. This guarantees visual consistency across sessions without storing visual state.
 
 ---

@@ -188,6 +188,7 @@ export class FlightScreen implements Screen {
     });
     this.landables.length = 0;
     this.landables.push(...this.worldState.getLandablesInCurrentSector());
+    this.pipeline.warmLandableTextures(this.landables);
     this.worldState.markVisited(currentSector.coord);
     this.playerShip = new ShipEntity(this.worldState.getPlayerShipState());
     this.playerShip.recalculateMaxHP(this.worldState);

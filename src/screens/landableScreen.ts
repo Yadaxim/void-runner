@@ -29,6 +29,7 @@ import type { CompletedMission } from '../types';
 import type { Mission } from '../types';
 import { drawPlanet } from '../renderer/landables/planetRenderer';
 import { drawMoon } from '../renderer/landables/moonRenderer';
+import { sharedPlanetTextureCache } from '../renderer/planets/textureCache';
 import { drawStation } from '../renderer/landables/stationRenderer';
 import type { HullSpec, Landable, ShipyardListing } from '../types';
 import { emptyReductionProfile } from '../types';
@@ -2538,11 +2539,11 @@ export class LandableScreen implements Screen {
     radius: number
   ): void {
     if (this.landable.type === 'planet') {
-      drawPlanet(ctx, x, y, radius, this.landable.seed);
+      drawPlanet(ctx, x, y, this.landable, radius, sharedPlanetTextureCache);
       return;
     }
     if (this.landable.type === 'moon') {
-      drawMoon(ctx, x, y, radius, this.landable.seed);
+      drawMoon(ctx, x, y, this.landable, radius, sharedPlanetTextureCache);
       return;
     }
     drawStation(
