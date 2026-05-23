@@ -267,7 +267,7 @@
             <option value="inorganic">Inorganic</option>
           </select>
         </label>
-        <span class="hint">One row per body type · 40×24 px hitbox (1 canvas px = 1 game px)</span>
+        <span class="hint">One row per body type · click a ship to edit it · 40×24 px hitbox</span>
       </div>
       <canvas id="gallery-canvas"></canvas>
     </div>
@@ -321,15 +321,21 @@
       rect: [{ key: 'tipChord', label: 'Tip chord scale', min: 0.4, max: 1.1, step: 0.01 }],
       blade: [{ key: 'bladeWidth', label: 'Blade width', min: 0.04, max: 0.3, step: 0.01 }],
       insect: [
-        { key: 'fSpan', label: 'Forward span', min: 0.5, max: 1.1, step: 0.01 },
-        { key: 'rSpan', label: 'Rear span', min: 0.25, max: 0.9, step: 0.01 },
-        { key: 'fBulge', label: 'Forward bulge', min: 0.3, max: 1.2, step: 0.01 },
-        { key: 'rBulge', label: 'Rear bulge', min: 0.2, max: 0.9, step: 0.01 },
+        { key: 'fSpan', label: 'Forward span', min: 0.55, max: 1.05, step: 0.01 },
+        { key: 'sizeRatio', label: 'Rear / forward span', min: 0.3, max: 0.85, step: 0.01 },
+        { key: 'pitchF', label: 'Forward pitch (nose)', min: 0.05, max: 0.45, step: 0.01 },
+        { key: 'pitchR', label: 'Rear pitch (tail)', min: 0.05, max: 0.5, step: 0.01 },
+        { key: 'bulge', label: 'Outer bulge', min: 0.05, max: 0.45, step: 0.01 },
+        { key: 'bulgeX', label: 'Bulge along span', min: 0.2, max: 0.75, step: 0.01 },
       ],
       tentacle: [
-        { key: 'curl', label: 'Curl', min: -0.5, max: 0.5, step: 0.02 },
-        { key: 'w0', label: 'Root width', min: 0.15, max: 0.7, step: 0.01 },
-        { key: 'w1Ratio', label: 'Tip width ratio', min: 0.02, max: 0.35, step: 0.01 },
+        { key: 'waveAmp', label: 'Wave amplitude', min: 0.1, max: 1.5, step: 0.01 },
+        { key: 'waves', label: 'Wave count', min: 0.8, max: 8, step: 0.1 },
+        { key: 'phase', label: 'Wave phase', type: 'select', options: [{ v: 0, l: '0 — drape tail' }, { v: 1, l: '1 — drape nose' }] },
+        { key: 'decay', label: 'Wave decay', min: 0.6, max: 4, step: 0.05 },
+        { key: 'w0', label: 'Base thickness', min: 0.08, max: 0.5, step: 0.01 },
+        { key: 'w1Ratio', label: 'Tip thickness', min: 0.02, max: 1.65, step: 0.01 },
+        { key: 'bulb', label: 'Tip bulb', min: 0, max: 0.3, step: 0.01 },
       ],
       lobe: [
         { key: 'bulgeX', label: 'Bulge X frac', min: 0.15, max: 0.85, step: 0.01 },
@@ -420,6 +426,45 @@
       };
     }
 
+    function galleryVariantCount() {
+      return Math.min(
+        24,
+        Math.max(4, Number(document.getElementById('gallery-variants').value) || 12)
+      );
+    }
+
+    function galleryHitTest(canvasX, canvasY) {
+      const variants = galleryVariantCount();
+      const typeCount = C.BODY_TYPES.length;
+      const rowStride = GALLERY_CELL_H + GALLERY_ROW_GAP;
+      if (canvasX < GALLERY_ROW_LABEL_W) return null;
+      const col = Math.floor((canvasX - GALLERY_ROW_LABEL_W) / (GALLERY_CELL_W + GALLERY_COL_GAP));
+      if (col < 0 || col >= variants) return null;
+      const cellX0 = GALLERY_ROW_LABEL_W + col * (GALLERY_CELL_W + GALLERY_COL_GAP);
+      if (canvasX >= cellX0 + GALLERY_CELL_W) return null;
+      const row = Math.floor(canvasY / rowStride);
+      if (row < 0 || row >= typeCount) return null;
+      const rowY = row * rowStride;
+      if (canvasY >= rowY + GALLERY_CELL_H) return null;
+      return { typeIdx: row, variantIdx: col, bodyType: C.BODY_TYPES[row] };
+    }
+
+    function openGalleryCell(hit) {
+      const seed = Number(document.getElementById('gallery-seed').value) || 1;
+      config = C.sampleShipConfig(
+        seed,
+        hit.bodyType,
+        TIER,
+        galleryCellIndex(hit.typeIdx, hit.variantIdx),
+        getWingMode()
+      );
+      const seedIn = document.getElementById('seed-input');
+      if (seedIn) seedIn.value = config.seed;
+      document.querySelector('[data-tab="editor"]').click();
+      syncControls();
+      redrawEditor();
+    }
+
     function galleryColCenterX(variantIdx) {
       return (
         GALLERY_ROW_LABEL_W +
@@ -444,10 +489,7 @@
 
     function redrawGallery() {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
-      const variants = Math.min(
-        24,
-        Math.max(4, Number(document.getElementById('gallery-variants').value) || 12)
-      );
+      const variants = galleryVariantCount();
       document.getElementById('gallery-variants').value = String(variants);
 
       const typeCount = C.BODY_TYPES.length;
@@ -578,7 +620,7 @@
       seedRow.appendChild(randomSeedBtn);
       seedSec.appendChild(seedRow);
 
-      const typeSel = el('select');
+      const typeSel = el('select', { id: 'body-type-sel' });
       C.BODY_TYPES.forEach((t) => {
         const o = el('option', { value: t });
         o.textContent = t;
@@ -735,6 +777,9 @@
       config.wings.wingMode = getWingMode();
       config = C.normalizeConfig(config);
 
+      const typeSel = document.getElementById('body-type-sel');
+      if (typeSel) typeSel.value = config.bodyType;
+
       Array.from(bodySec.querySelectorAll('.param')).forEach((n) => n.remove());
       (BODY_PARAM_DEFS[config.bodyType] || []).forEach((def) => {
         const node = bindParam(config.body, def.key, def, redrawEditor);
@@ -759,6 +804,7 @@
         });
         shapeSel.addEventListener('change', () => {
           pair.shape = shapeSel.value;
+          if (pair.shape === 'tentacle') pair.atEdge = true;
           ensureWingDetail(pair);
           syncControls();
           redrawEditor();
@@ -802,8 +848,11 @@
 
         const edgeLb = el('label');
         const edgeCb = el('input', { type: 'checkbox' });
+        if (pair.shape === 'tentacle') pair.atEdge = true;
         edgeCb.checked = pair.atEdge !== false;
+        edgeCb.disabled = pair.shape === 'tentacle';
         edgeCb.addEventListener('change', () => {
+          if (pair.shape === 'tentacle') return;
           pair.atEdge = edgeCb.checked;
           redrawEditor();
         });
@@ -868,6 +917,16 @@
       redrawGallery();
     });
 
+    galleryCanvas.addEventListener('click', (e) => {
+      const rect = galleryCanvas.getBoundingClientRect();
+      const scaleX = galleryCanvas.width / rect.width;
+      const scaleY = galleryCanvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      const hit = galleryHitTest(x, y);
+      if (hit) openGalleryCell(hit);
+    });
+
     document.querySelectorAll('.editor-zoom').forEach((btn) => {
       btn.addEventListener('click', () => {
         editorZoom = Number(btn.dataset.zoom) || 1;
@@ -879,7 +938,7 @@
     });
     document.getElementById('gallery-open-editor').addEventListener('click', () => {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
-      config = C.configFromSeed(seed, config.bodyType, 0, TIER, getWingMode());
+      config = C.sampleShipConfig(seed, config.bodyType, TIER, 0, getWingMode());
       document.querySelector('[data-tab="editor"]').click();
       syncControls();
       redrawEditor();

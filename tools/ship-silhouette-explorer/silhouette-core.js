@@ -212,16 +212,22 @@
         return { bladeWidth: r.range(0.08, 0.2) };
       case 'insect':
         return {
-          fSpan: r.range(0.7, 1),
-          rSpan: r.range(0.4, 0.7),
-          fBulge: r.range(0.5, 1),
-          rBulge: r.range(0.3, 0.6),
+          fSpan: r.range(0.72, 0.98),
+          sizeRatio: r.range(0.42, 0.68),
+          pitchF: r.range(0.12, 0.32),
+          pitchR: r.range(0.14, 0.38),
+          bulge: r.range(0.12, 0.32),
+          bulgeX: r.range(0.35, 0.55),
         };
       case 'tentacle':
         return {
-          curl: r.range(-0.4, 0.4),
-          w0: r.range(0.3, 0.55),
-          w1Ratio: r.range(0.05, 0.2),
+          waveAmp: r.range(0.28, 1.0),
+          waves: r.range(1.5, 6),
+          phase: r.chance(0.5) ? 0 : 1,
+          decay: r.range(1.3, 3.2),
+          w0: r.range(0.14, 0.48),
+          w1Ratio: r.range(0.08, 1.35),
+          bulb: r.range(0, 0.16),
         };
       case 'lobe':
         return {
@@ -241,12 +247,21 @@
     const zone = r.pick(ZONES);
     const attachFrac = r.range(zone.lo, zone.hi);
     const attachY = size.noseY + bodyLen * attachFrac;
-    const atEdge = r.chance(0.65);
+    let atEdge = r.chance(0.65);
+    if (shape === 'tentacle') atEdge = true;
     const edgeMult = atEdge ? r.range(0.95, 1.02) : 1;
     const minSpan = atEdge ? 0.5 : 1.1;
     const maxSpan = size.isRect ? (atEdge ? 2.8 : 3.2) : atEdge ? 1.8 : 2.4;
     const minChord = atEdge ? 0.1 : 0.18;
     const maxChord = size.isRect ? (atEdge ? 0.45 : 0.55) : atEdge ? 0.35 : 0.45;
+    let spanScale = r.range(minSpan, maxSpan);
+    let chordScale = r.range(minChord, maxChord);
+    let sweep = r.range(-0.3, 0.7);
+    if (shape === 'tentacle') {
+      spanScale = r.range(1.5, 3.0);
+      chordScale = r.range(0.06, 0.16);
+      sweep = r.range(0.05, 0.55);
+    }
     return {
       shape,
       zoneId: zone.id,
@@ -254,9 +269,9 @@
       attachY,
       atEdge,
       edgeMult,
-      spanScale: r.range(minSpan, maxSpan),
-      chordScale: r.range(minChord, maxChord),
-      sweep: r.range(-0.3, 0.7),
+      spanScale,
+      chordScale,
+      sweep,
       detail: sampleWingDetail(shape, r),
     };
   }
@@ -521,6 +536,21 @@
     return { hullNormalX: 1 / len, hullNormalY: -wp / len };
   }
 
+  function useHullWingAlign(pair, alignWingsToHull) {
+    return alignWingsToHull && pair.atEdge;
+  }
+
+  function wingAlignAngle(pair, side) {
+    const spine = pair.shape === 'tentacle' ? (pair.spineAngle ?? 0) : 0;
+    if (side === 1) {
+      return Math.atan2(pair.hullNormalY, pair.hullNormalX) - spine;
+    }
+    if (pair.shape === 'tentacle') {
+      return Math.atan2(pair.hullNormalY, -pair.hullNormalX) + spine;
+    }
+    return Math.atan2(pair.hullNormalY, -pair.hullNormalX);
+  }
+
   function wingLocalPair(pair) {
     const sweep = pair.sweep ?? 0;
     return {
@@ -538,22 +568,31 @@
     if (!alignToHull || !pair.atEdge) {
       return { x: wx + side * lx, y: wy + ly };
     }
+    if (pair.shape === 'tentacle') {
+      const a = wingAlignAngle(pair, side);
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      if (side === 1) {
+        return { x: wx + lx * cos - ly * sin, y: wy + lx * sin + ly * cos };
+      }
+      return { x: wx + lx * cos + ly * sin, y: wy + lx * sin - ly * cos };
+    }
     const nx = pair.hullNormalX;
     const ny = pair.hullNormalY;
     if (side === 1) {
-      const cos = nx;
-      const sin = ny;
-      return { x: wx + lx * cos - ly * sin, y: wy + lx * sin + ly * cos };
+      return { x: wx + lx * nx - ly * ny, y: wy + lx * ny + ly * nx };
     }
-    // Port: rotate to outward (-nx, ny), then flip local Y so chord follows hull tangent.
-    const cos = -nx;
-    const sin = ny;
     const flippedLy = -ly;
-    return { x: wx + lx * cos - flippedLy * sin, y: wy + lx * sin + flippedLy * cos };
+    return { x: wx + lx * -nx + flippedLy * -ny, y: wy + lx * ny + flippedLy * -nx };
   }
 
   function applyAlignedWingTransform(ctx, pair, side) {
     ctx.translate(side * pair.attachX, pair.attachY);
+    if (pair.shape === 'tentacle') {
+      ctx.rotate(wingAlignAngle(pair, side));
+      if (side === -1) ctx.scale(1, -1);
+      return;
+    }
     const nx = pair.hullNormalX;
     const ny = pair.hullNormalY;
     if (side === 1) {
@@ -566,6 +605,9 @@
 
   function wingTipWorld(pair, side, alignToHull) {
     const sweep = pair.sweep ?? 0;
+    if (pair.shape === 'tentacle') {
+      return wingLocalToWorld(pair.tipX - pair.attachX, pair.tipY - pair.attachY, pair, side, alignToHull);
+    }
     return wingLocalToWorld(pair.span, pair.span * sweep, pair, side, alignToHull);
   }
 
@@ -608,6 +650,74 @@
     return { minX, maxX, minY, maxY };
   }
 
+  function tentacleEnvelope(t, decay) {
+    return Math.pow(Math.max(0, 1 - t), decay * 0.55) * Math.exp(-decay * 0.45 * t);
+  }
+
+  function tentacleCenterAt(t, len, sb, amp, waves, phase, decay) {
+    const env = tentacleEnvelope(t, decay);
+    return {
+      x: len * t,
+      y: sb * t + amp * env * Math.sin(waves * Math.PI * t + phase),
+      env,
+    };
+  }
+
+  function tentacleParams(span, chord, sweep, d) {
+    const len = span;
+    const phase01 = (d.phase ?? 0) >= 0.5 ? 1 : 0;
+    return {
+      len,
+      sb: len * sweep * 0.4,
+      amp: chord * (d.waveAmp ?? 0.4),
+      waves: d.waves ?? 2.2,
+      phase: phase01 * Math.PI,
+      phase01,
+      decay: d.decay ?? 2,
+      w0: chord * Math.min(d.w0 ?? 0.22, 0.5),
+      w1Ratio: d.w1Ratio ?? 0.08,
+      bulb: chord * (d.bulb ?? 0.08),
+    };
+  }
+
+  function tentacleSpineTangentAngle(span, chord, sweep, d) {
+    const p = tentacleParams(span, chord, sweep, d);
+    const eps = 0.012;
+    const c0 = tentacleCenterAt(0, p.len, p.sb, p.amp, p.waves, p.phase, p.decay);
+    const c1 = tentacleCenterAt(eps, p.len, p.sb, p.amp, p.waves, p.phase, p.decay);
+    return Math.atan2(c1.y - c0.y, c1.x - c0.x);
+  }
+
+  function traceTentacleWavePath(ctx, ax, ay, span, chord, sweep, d) {
+    const p = tentacleParams(span, chord, sweep, d);
+    const steps = 24;
+    const upper = [];
+    const lower = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const center = tentacleCenterAt(t, p.len, p.sb, p.amp, p.waves, p.phase, p.decay);
+      const tPrev = Math.max(0, t - 1 / steps);
+      const tNext = Math.min(1, t + 1 / steps);
+      const prev = tentacleCenterAt(tPrev, p.len, p.sb, p.amp, p.waves, p.phase, p.decay);
+      const next = tentacleCenterAt(tNext, p.len, p.sb, p.amp, p.waves, p.phase, p.decay);
+      const dx = next.x - prev.x;
+      const dy = next.y - prev.y;
+      const tLen = Math.hypot(dx, dy) || 1;
+      const nx = -dy / tLen;
+      const ny = dx / tLen;
+      const halfW =
+        p.w0 * (p.w1Ratio + (1 - p.w1Ratio) * (1 - t)) * center.env + (i === steps ? p.bulb : 0);
+      upper.push({ x: ax + center.x + nx * halfW, y: ay + center.y + ny * halfW });
+      lower.push({ x: ax + center.x - nx * halfW, y: ay + center.y - ny * halfW });
+    }
+
+    ctx.moveTo(upper[0].x, upper[0].y);
+    for (let i = 1; i < upper.length; i++) ctx.lineTo(upper[i].x, upper[i].y);
+    for (let i = lower.length - 1; i >= 0; i--) ctx.lineTo(lower[i].x, lower[i].y);
+    ctx.closePath();
+  }
+
   function traceWingPath(ctx, pair) {
     const { shape, attachX: ax, attachY: ay, span, chord, sweep, detail } = pair;
     const tipX = ax + span;
@@ -645,44 +755,28 @@
       ctx.lineTo(ax, ay + chord * 0.4);
       ctx.closePath();
     } else if (shape === 'insect') {
-      const mid = ay + chord * 0.15;
-      const fSpan = span * (d.fSpan ?? 0.85);
-      const rSpan = span * (d.rSpan ?? 0.55);
-      const fBulge = chord * (d.fBulge ?? 0.75);
-      const rBulge = chord * (d.rBulge ?? 0.45);
-      ctx.moveTo(ax, ay - chord * 0.05);
-      ctx.bezierCurveTo(
-        ax + fSpan * 0.3,
-        ay - fBulge,
-        ax + fSpan * 0.8,
-        ay - fBulge * 0.6,
-        ax + fSpan,
-        mid - chord * 0.1
-      );
-      ctx.bezierCurveTo(ax + fSpan * 0.6, mid + chord * 0.05, ax + fSpan * 0.2, mid, ax, mid);
+      const rootGap = chord * 0.06;
+      const fSpanScale = d.fSpan ?? 0.88;
+      const fSp = span * fSpanScale;
+      const rSp = span * fSpanScale * (d.sizeRatio ?? 0.58);
+      const pitchF = span * (d.pitchF ?? 0.22);
+      const pitchR = span * (d.pitchR ?? 0.28);
+      const bulge = span * (d.bulge ?? 0.25);
+      const bulgeXF = fSp * (d.bulgeX ?? 0.48);
+      const bulgeXR = rSp * (d.bulgeX ?? 0.48) * 0.72;
+      const hinge = ay + rootGap * 0.35;
+
+      ctx.moveTo(ax, ay - rootGap);
+      ctx.lineTo(ax + fSp, ay - pitchF);
+      ctx.quadraticCurveTo(ax + bulgeXF, ay - bulge, ax, hinge);
       ctx.closePath();
-      ctx.moveTo(ax, mid);
-      ctx.bezierCurveTo(
-        ax + rSpan * 0.3,
-        mid + rBulge * 0.5,
-        ax + rSpan * 0.8,
-        mid + rBulge * 0.8,
-        ax + rSpan,
-        mid + chord * 0.4
-      );
-      ctx.bezierCurveTo(ax + rSpan * 0.5, mid + rBulge * 0.6, ax + rSpan * 0.2, ay + chord * 0.6, ax, ay + chord * 0.5);
+
+      ctx.moveTo(ax, hinge);
+      ctx.lineTo(ax + rSp, ay + pitchR);
+      ctx.quadraticCurveTo(ax + bulgeXR, ay + bulge * 0.78, ax, ay + rootGap);
       ctx.closePath();
     } else if (shape === 'tentacle') {
-      const curl = d.curl ?? 0;
-      const w0 = chord * (d.w0 ?? 0.42);
-      const w1 = w0 * (d.w1Ratio ?? 0.12);
-      const midX = ax + span * 0.5;
-      const midY = ay + span * sweep * 0.5 + chord * curl;
-      ctx.moveTo(ax, ay - w0);
-      ctx.bezierCurveTo(midX, midY - w0 * 0.5, tipX - span * 0.1, tipY - w1 * 2, tipX, tipY - w1);
-      ctx.quadraticCurveTo(tipX + w1, tipY, tipX, tipY + w1);
-      ctx.bezierCurveTo(tipX - span * 0.1, tipY + w1 * 2, midX, midY + w0 * 0.5, ax, ay + w0);
-      ctx.closePath();
+      traceTentacleWavePath(ctx, ax, ay, span, chord, sweep, d);
     } else if (shape === 'lobe') {
       const bulgeX = ax + span * (d.bulgeX ?? 0.45);
       const bulgeTop = ay - chord * (d.bulgeTop ?? 1);
@@ -709,6 +803,17 @@
       const chord = bodyLen * (raw.chordScale ?? 0.22);
       const sweep = raw.sweep ?? 0;
       const normal = atEdge ? computeHullOutwardNormal(size, attachY) : { hullNormalX: 1, hullNormalY: 0 };
+      let tipX = attachX + span;
+      let tipY = attachY + span * sweep;
+      let spineAngle = 0;
+      if (raw.shape === 'tentacle') {
+        const td = raw.detail || {};
+        const tp = tentacleParams(span, chord, sweep, td);
+        const tip = tentacleCenterAt(1, tp.len, tp.sb, tp.amp, tp.waves, tp.phase, tp.decay);
+        tipX = attachX + tip.x;
+        tipY = attachY + tip.y;
+        spineAngle = tentacleSpineTangentAngle(span, chord, sweep, td);
+      }
       return {
         ...raw,
         zoneId: zone.id,
@@ -721,8 +826,9 @@
         sweep,
         hullNormalX: normal.hullNormalX,
         hullNormalY: normal.hullNormalY,
-        tipX: attachX + span,
-        tipY: attachY + span * sweep,
+        spineAngle: raw.shape === 'tentacle' ? spineAngle : undefined,
+        tipX,
+        tipY,
       };
     });
   }
@@ -756,7 +862,7 @@
     let maxY = hull.maxY;
     for (const p of wingPairs) {
       for (const side of [1, -1]) {
-        const b = wingPairBoundsForSide(side, p, alignToHull && p.atEdge);
+        const b = wingPairBoundsForSide(side, p, useHullWingAlign(p, alignToHull));
         minX = Math.min(minX, b.minX);
         maxX = Math.max(maxX, b.maxX);
         minY = Math.min(minY, b.minY);
@@ -852,6 +958,7 @@
     c.wings.pairs = c.wings.pairs.slice(0, c.wings.count);
     c.wings.pairs.forEach((pair) => {
       if (!allowed.includes(pair.shape)) pair.shape = c.wings.primaryShape;
+      if (pair.shape === 'tentacle') pair.atEdge = true;
     });
     return c;
   }
@@ -944,7 +1051,7 @@
       for (const pair of wingPairs) {
         for (const side of [1, -1]) {
           ctx.save();
-          if (alignWingsToHull && pair.atEdge) {
+          if (useHullWingAlign(pair, alignWingsToHull)) {
             applyAlignedWingTransform(ctx, pair, side);
             ctx.beginPath();
             traceWingPath(ctx, wingLocalPair(pair));
@@ -976,7 +1083,7 @@
         ctx.lineWidth = 1 / scale;
         ctx.setLineDash([2 / scale, 2 / scale]);
         ctx.beginPath();
-        if (alignWingsToHull && pair.atEdge) {
+        if (useHullWingAlign(pair, alignWingsToHull)) {
           for (const side of [1, -1]) {
             const wx = side * pair.attachX;
             const wy = pair.attachY;
@@ -992,7 +1099,7 @@
         }
         ctx.stroke();
         ctx.setLineDash([]);
-        if (alignWingsToHull && pair.atEdge) {
+        if (useHullWingAlign(pair, alignWingsToHull)) {
           ctx.strokeStyle = '#60e0a0';
           ctx.lineWidth = 1 / scale;
           for (const side of [1, -1]) {
@@ -1010,7 +1117,7 @@
         ctx.beginPath();
         ctx.strokeStyle = '#c060ff';
         for (const side of [1, -1]) {
-          const tip = wingTipWorld(pair, side, alignWingsToHull);
+          const tip = wingTipWorld(pair, side, useHullWingAlign(pair, alignWingsToHull));
           ctx.moveTo(side * pair.attachX, pair.attachY);
           ctx.lineTo(tip.x, tip.y);
         }
