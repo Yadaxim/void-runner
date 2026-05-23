@@ -67,19 +67,35 @@
     }
     .view { display: none; flex: 1; min-height: 0; }
     .view.active { display: flex; }
-    #editor-view { flex-direction: row; }
+    #editor-view {
+      flex-direction: row;
+      min-height: 0;
+      overflow: hidden;
+      align-items: stretch;
+    }
     #gallery-view { flex-direction: column; padding: 12px; overflow: auto; min-height: 0; }
     .canvas-wrap {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 16px;
+      justify-content: flex-start;
+      padding: 12px 16px;
       min-width: 0;
       min-height: 0;
+      overflow: hidden;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      max-height: 100%;
     }
-    .editor-stage { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .editor-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
     .editor-toolbar, .zoom-bar {
       display: flex;
       gap: 4px;
@@ -111,6 +127,8 @@
     aside {
       width: 320px;
       flex-shrink: 0;
+      min-height: 0;
+      align-self: stretch;
       border-left: 1px solid var(--border);
       overflow-y: auto;
       padding: 12px;
@@ -242,6 +260,13 @@
         <button type="button" id="gallery-random">Random seed</button>
         <button type="button" id="gallery-open-editor">Open in editor</button>
         <label class="gallery-hitbox-toggle"><input type="checkbox" id="gallery-show-bbox" checked> Hitbox</label>
+        <label>Wings
+          <select class="wing-mode-select" id="gallery-wing-mode">
+            <option value="hybrid" selected>Hybrid</option>
+            <option value="organic">Organic</option>
+            <option value="inorganic">Inorganic</option>
+          </select>
+        </label>
         <span class="hint">One row per body type · 40×24 px hitbox (1 canvas px = 1 game px)</span>
       </div>
       <canvas id="gallery-canvas"></canvas>
@@ -254,12 +279,6 @@
     const TIER = C.SIZE_TIER_SMALL;
 
     const BODY_PARAM_DEFS = {
-      drop: [
-        { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
-        { key: 'w', label: 'Half-width', min: 6, max: 22, step: 0.5 },
-        { key: 'bulge', label: 'Bulge', min: 0.1, max: 0.85, step: 0.01 },
-        { key: 'flip', label: 'Flip', type: 'select', options: [{ v: 1, l: 'Nose up' }, { v: -1, l: 'Tail up' }] },
-      ],
       lens: [
         { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
         { key: 'w', label: 'Half-width', min: 6, max: 22, step: 0.5 },
@@ -268,7 +287,6 @@
       dart: [
         { key: 'len', label: 'Length', min: 24, max: 58, step: 0.5 },
         { key: 'w', label: 'Max half-width', min: 4, max: 14, step: 0.5 },
-        { key: 'bulgeFwd', label: 'Nose taper', min: 0.04, max: 0.28, step: 0.01 },
         { key: 'waistFrac', label: 'Waist position', min: 0.2, max: 0.65, step: 0.01 },
         { key: 'waistRatio', label: 'Waist width ratio', min: 0.4, max: 0.95, step: 0.01 },
       ],
@@ -276,7 +294,6 @@
         { key: 'len', label: 'Length', min: 22, max: 52, step: 0.5 },
         { key: 'spreadRatio', label: 'Spread ratio', min: 0.2, max: 0.65, step: 0.01 },
         { key: 'sweep', label: 'Sweep', min: 0.25, max: 0.85, step: 0.01 },
-        { key: 'notch', label: 'Tail notch', min: 0.01, max: 0.15, step: 0.005 },
       ],
       rect: [
         { key: 'w', label: 'Width', min: 10, max: 30, step: 0.5 },
@@ -288,12 +305,6 @@
         { key: 'h', label: 'Height', min: 14, max: 48, step: 0.5 },
         { key: 'noseW', label: 'Nose width', min: 4, max: 20, step: 0.5 },
         { key: 'tailW', label: 'Tail width', min: 14, max: 44, step: 0.5 },
-        { key: 'rad', label: 'Corner radius', min: 0, max: 8, step: 0.5 },
-      ],
-      crescent: [
-        { key: 'outerR', label: 'Outer radius', min: 12, max: 32, step: 0.5 },
-        { key: 'innerRatio', label: 'Inner / outer', min: 0.4, max: 0.9, step: 0.01 },
-        { key: 'offsetRatio', label: 'Bite offset', min: 0.15, max: 0.6, step: 0.01 },
       ],
       polygon: [
         { key: 'sides', label: 'Sides', type: 'select', options: [4, 5, 6, 7, 8].map((n) => ({ v: n, l: String(n) })) },
@@ -327,7 +338,8 @@
       ],
     };
 
-    let config = C.defaultShipConfig('drop');
+    let config = C.defaultShipConfig('lens');
+    let wingMode = 'hybrid';
     let editorZoom = 2;
     let drawOptions = {
       showBody: true,
@@ -335,6 +347,7 @@
       showWidthAt: true,
       showAttach: true,
       showBBox: true,
+      alignWingsToHull: false,
     };
 
     const editorCanvas = document.getElementById('editor-canvas');
@@ -343,7 +356,40 @@
     const galleryCtx = galleryCanvas.getContext('2d');
     const controlsEl = document.getElementById('controls');
 
-    /** Cell + gap sized so wing tips don't bleed into neighbours (game pixels). */
+    function getWingMode() {
+      return wingMode;
+    }
+
+    function setWingMode(mode) {
+      wingMode = mode;
+      document.querySelectorAll('.wing-mode-select').forEach((el) => {
+        el.value = mode;
+      });
+    }
+
+    function wingModeSelect(onChange) {
+      const sel = el('select', { className: 'wing-mode-select' });
+      [
+        ['hybrid', 'Hybrid'],
+        ['organic', 'Organic'],
+        ['inorganic', 'Inorganic'],
+      ].forEach(([value, label]) => {
+        const o = el('option', { value });
+        o.textContent = label;
+        if (value === wingMode) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', () => {
+        setWingMode(sel.value);
+        config.wings.wingMode = wingMode;
+        if (onChange) onChange();
+      });
+      return sel;
+    }
+
+    function shapesForCurrentWingMode() {
+      return C.wingShapesForMode(getWingMode());
+    }
     const GALLERY_CELL_W = 100;
     const GALLERY_CELL_H = 96;
     const GALLERY_COL_GAP = 16;
@@ -440,7 +486,7 @@
 
         for (let v = 0; v < variants; v++) {
           const cellIndex = galleryCellIndex(typeIdx, v);
-          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex);
+          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex, getWingMode());
           C.drawShip(
             galleryCtx,
             galleryColCenterX(v),
@@ -513,19 +559,23 @@
       const seedRow = el('div', { className: 'row' });
       const seedInput = el('input', { type: 'number', id: 'seed-input', value: config.seed });
       seedRow.appendChild(seedInput);
-      seedRow.appendChild(el('button', { type: 'button', textContent: 'Apply seed' }, []));
-      seedRow.lastChild.addEventListener('click', () => {
-        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0);
+      const applySeedBtn = el('button', { type: 'button', textContent: 'Apply seed' });
+      applySeedBtn.addEventListener('click', () => {
+        const coh = config.wings?.coherence ?? 0.75;
+        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0, TIER, getWingMode(), coh);
         syncControls();
         redrawEditor();
       });
-      seedRow.appendChild(el('button', { type: 'button', textContent: 'Random' }, []));
-      seedRow.lastChild.addEventListener('click', () => {
+      seedRow.appendChild(applySeedBtn);
+      const randomSeedBtn = el('button', { type: 'button', textContent: 'Random' });
+      randomSeedBtn.addEventListener('click', () => {
         seedInput.value = Math.floor(Math.random() * 100000);
-        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0);
+        const coh = config.wings?.coherence ?? 0.75;
+        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0, TIER, getWingMode(), coh);
         syncControls();
         redrawEditor();
       });
+      seedRow.appendChild(randomSeedBtn);
       seedSec.appendChild(seedRow);
 
       const typeSel = el('select');
@@ -552,6 +602,7 @@
         ['showBBox', 'Target hitbox'],
         ['showWidthAt', 'widthAt envelope'],
         ['showAttach', 'Attach points'],
+        ['alignWingsToHull', 'Align wings to hull'],
         ['showBody', 'Body'],
         ['showWings', 'Wings'],
       ].forEach(([k, label]) => {
@@ -581,6 +632,17 @@
 
       const wingSec = el('div', { className: 'section', id: 'wing-params' });
       wingSec.appendChild(el('h2', null, ['Wings']));
+      const wingModeLb = el('label');
+      wingModeLb.appendChild(document.createTextNode('Wing style'));
+      const onWingModeChange = () => {
+        config.wings.wingMode = getWingMode();
+        config = C.normalizeConfig(config);
+        syncControls();
+        redrawEditor();
+        redrawGallery();
+      };
+      wingModeLb.appendChild(wingModeSelect(onWingModeChange));
+      wingSec.appendChild(wingModeLb);
       const wingCountLb = el('label');
       wingCountLb.appendChild(document.createTextNode('Pair count'));
       const wingCountSel = el('select', { id: 'wing-count-sel' });
@@ -601,8 +663,8 @@
 
       const primLb = el('label');
       primLb.appendChild(document.createTextNode('Primary shape'));
-      const primSel = el('select');
-      C.WING_SHAPES.forEach((s) => {
+      const primSel = el('select', { id: 'primary-shape-sel' });
+      shapesForCurrentWingMode().forEach((s) => {
         const o = el('option', { value: s });
         o.textContent = s;
         if (s === config.wings.primaryShape) o.selected = true;
@@ -610,18 +672,29 @@
       });
       primSel.addEventListener('change', () => {
         config.wings.primaryShape = primSel.value;
+        C.applyPrimaryWingShape(config.wings, { allPairs: true, seed: config.seed });
+        syncControls();
         redrawEditor();
       });
-      wingSec.appendChild(primLb);
       primLb.appendChild(primSel);
+      wingSec.appendChild(primLb);
 
       const cohLb = bindParam(config.wings, 'coherence', {
         label: 'Shape coherence',
         min: 0,
         max: 1,
         step: 0.05,
-      }, () => redrawEditor());
+      }, () => {
+        C.applyWingCoherence(config.wings, config.seed);
+        syncControls();
+        redrawEditor();
+      });
       wingSec.appendChild(cohLb);
+      wingSec.appendChild(
+        el('p', { className: 'hint' }, [
+          'Primary shape sets the wing family. Apply seed / Random randomize it; coherence mixes other pairs from the pool.',
+        ])
+      );
       controlsEl.appendChild(wingSec);
 
       const jsonSec = el('div', { className: 'section' });
@@ -658,6 +731,10 @@
       const wingSec = document.getElementById('wing-params');
       if (!bodySec || !wingSec) return;
 
+      if (config.wings?.wingMode) setWingMode(config.wings.wingMode);
+      config.wings.wingMode = getWingMode();
+      config = C.normalizeConfig(config);
+
       Array.from(bodySec.querySelectorAll('.param')).forEach((n) => n.remove());
       (BODY_PARAM_DEFS[config.bodyType] || []).forEach((def) => {
         const node = bindParam(config.body, def.key, def, redrawEditor);
@@ -666,7 +743,6 @@
       });
 
       Array.from(wingSec.querySelectorAll('.wing-block')).forEach((n) => n.remove());
-      config = C.normalizeConfig(config);
       config.wings.pairs.forEach((pair, i) => {
         ensureWingDetail(pair);
         const block = el('div', { className: 'wing-block' });
@@ -675,7 +751,7 @@
         const shapeLb = el('label');
         shapeLb.appendChild(document.createTextNode('Shape'));
         const shapeSel = el('select');
-        C.WING_SHAPES.forEach((s) => {
+        shapesForCurrentWingMode().forEach((s) => {
           const o = el('option', { value: s });
           o.textContent = s;
           if (s === pair.shape) o.selected = true;
@@ -746,6 +822,19 @@
       if (seedIn) seedIn.value = config.seed;
       const wingCountSel = document.getElementById('wing-count-sel');
       if (wingCountSel) wingCountSel.value = String(config.wings.count);
+      const primSel = document.getElementById('primary-shape-sel');
+      if (primSel) {
+        const allowed = shapesForCurrentWingMode();
+        const cur = config.wings.primaryShape;
+        primSel.innerHTML = '';
+        allowed.forEach((s) => {
+          const o = el('option', { value: s });
+          o.textContent = s;
+          primSel.appendChild(o);
+        });
+        primSel.value = allowed.includes(cur) ? cur : allowed[0];
+        if (!allowed.includes(cur)) config.wings.primaryShape = primSel.value;
+      }
       const jsonTa = document.getElementById('config-json');
       if (jsonTa) jsonTa.value = JSON.stringify(config, null, 2);
     }
@@ -767,6 +856,11 @@
     });
     document.getElementById('gallery-seed').addEventListener('change', redrawGallery);
     document.getElementById('gallery-variants').addEventListener('change', redrawGallery);
+    document.getElementById('gallery-wing-mode').addEventListener('change', () => {
+      setWingMode(document.getElementById('gallery-wing-mode').value);
+      config.wings.wingMode = wingMode;
+      redrawGallery();
+    });
     document.getElementById('gallery-show-bbox').addEventListener('change', (e) => {
       drawOptions.showBBox = e.target.checked;
       const editorCb = document.querySelector('[data-opt-key="showBBox"]');
@@ -785,7 +879,7 @@
     });
     document.getElementById('gallery-open-editor').addEventListener('click', () => {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
-      config = C.configFromSeed(seed, config.bodyType, 0);
+      config = C.configFromSeed(seed, config.bodyType, 0, TIER, getWingMode());
       document.querySelector('[data-tab="editor"]').click();
       syncControls();
       redrawEditor();
