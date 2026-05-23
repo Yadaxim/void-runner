@@ -126,7 +126,7 @@ Per-frame tick for **player and every NPC**:
 
 - **Tab** / **Shift+Tab** cycle or lock NPC ship targets; minimap highlights lock.  
 - Multiple **weapon keys** fire separate banks; fire rate and energy cost per weapon item.  
-- Muzzle offset from **`hullClass`**, not arbitrary string ids on hull spec.
+- Muzzle offset and hit radius from **`HullSpec.dimensions`** (`length` / `width`). Flight silhouette from **`silhouette`**.
 
 *Planned:* **turret** weapons that fire toward locked target (§11). *Not implemented:* legacy `seekingMode` / `targetingMode` fields from older docs.
 

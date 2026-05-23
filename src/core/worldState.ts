@@ -622,25 +622,6 @@ export class WorldState {
     return expandSlotsToFullHull(hull, preset.map((s) => ({ ...s })));
   }
 
-  getHullLoadout(
-    hullClass: HullSpec['hullClass']
-  ): { equipmentSlots: EquipmentSlot[]; weaponLoadout: WeaponSlot[] } {
-    const hull =
-      this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass && candidate.defaultLoadouts) ??
-      this.worldFile.hullSpecs.find((candidate) => candidate.hullClass === hullClass) ??
-      null;
-    if (!hull || !hull.defaultLoadouts) {
-      return { equipmentSlots: [], weaponLoadout: [] };
-    }
-    const preset = hull.defaultLoadouts.basic;
-    const equipmentSlots = expandSlotsToFullHull(hull, preset.map((slot) => ({ ...slot })));
-    const weaponLoadout = deriveWeaponLoadoutFromEquipmentSlots(equipmentSlots, hull.weaponSlots);
-    return {
-      equipmentSlots,
-      weaponLoadout
-    };
-  }
-
   getNpcSpawnPack(
     hullSpecId: string,
     variant: HullLoadoutVariantKey = 'basic'

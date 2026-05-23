@@ -100,29 +100,30 @@ The ship is always drawn pointing **upward** (angle 0 = nose up). Rotation is ap
 
 ### 4.2 Hull Silhouette
 
-Each hull class has a **silhouette template** — a parametric path generator that takes hull parameters and outputs a closed polygon. Templates are defined per hull class:
+Each hull has a **`silhouette`** on **`HullSpec`** — a parametric path generator that takes **`dimensions`** and outputs a closed polygon. Allowed silhouettes:
 
-**Fighter class** — narrow, forward-tapered:
-- Long central fuselage (narrow rectangle, slightly tapered at nose)
-- Two small swept wings, low aspect ratio
-- Single engine node at rear centre
+**`fighter`** — generic narrow, forward-tapered wings.
 
-**Courier class** — balanced, slightly wider:
+**`interceptor`** — long dart nose, slim body, swept tail fins.
+
+**`shuttle`** — blunt commuter pod, wide mid-body.
+
+**`courier`** — balanced, slightly wider:
 - Moderate fuselage width
 - Two moderate wings, straight
 - Two engine nodes at rear
 
-**Freighter class** — wide, flat, boxy:
+**`freighter`** — wide, flat, boxy:
 - Wide rectangular body with flat nose
 - Short stubby wings or none
 - Two to four engine nodes, spread
 
-**Heavy class** — large, armoured, dense:
+**`heavy`** — large rectangle fallback (armoured capitals):
 - Thick fuselage, blunt nose
 - Short angular wings with notches
 - Four engine nodes
 
-**Future:** species `techArchetype` or hull class may soften/sharpen templates (no faction geometry field in schema).
+**`dimensions`** are set per hull in world JSON.
 
 ### 4.3 Equipment Visibility
 

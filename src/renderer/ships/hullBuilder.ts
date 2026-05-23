@@ -1,6 +1,4 @@
-import type { FactionVisual, HullSpec } from '../../types';
-
-type HullClass = HullSpec['hullClass'];
+import type { FactionVisual, HullDimensions, HullSilhouette } from '../../types';
 
 function brightenHex(hex: string, amount: number): string {
   const value = hex.replace('#', '');
@@ -15,11 +13,10 @@ function brightenHex(hex: string, amount: number): string {
 
 function traceFighterPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  dimensions: { length: number; width: number },
+  dimensions: HullDimensions
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
-  const wingY = halfLength * 0.15;
 
   ctx.beginPath();
   ctx.moveTo(0, -halfLength);
@@ -31,12 +28,11 @@ function traceFighterPath(
 
 function traceInterceptorPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  dimensions: { length: number; width: number },
+  dimensions: HullDimensions
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  // Narrow dart profile: long nose, slim body, swept tail fins.
   ctx.moveTo(0, -halfLength);
   ctx.lineTo(halfWidth * 0.45, -halfLength * 0.18);
   ctx.lineTo(halfWidth * 0.55, halfLength * 0.5);
@@ -50,12 +46,11 @@ function traceInterceptorPath(
 
 function traceShuttlePath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  dimensions: { length: number; width: number },
+  dimensions: HullDimensions
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  // Blunt commuter pod: wide mid-body, clipped nose, squared stern with side pods (not a fighter dart).
   ctx.moveTo(0, -halfLength * 0.52);
   ctx.lineTo(halfWidth * 0.88, -halfLength * 0.22);
   ctx.lineTo(halfWidth, halfLength * 0.28);
@@ -71,12 +66,11 @@ function traceShuttlePath(
 
 function traceCourierPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  dimensions: { length: number; width: number }
+  dimensions: HullDimensions
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  // Pointed nose, flared mid-body, clipped stern.
   ctx.moveTo(0, -halfLength);
   ctx.lineTo(halfWidth * 0.72, -halfLength * 0.25);
   ctx.lineTo(halfWidth * 0.9, halfLength * 0.25);
@@ -89,12 +83,11 @@ function traceCourierPath(
 
 function traceFreighterPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  dimensions: { length: number; width: number }
+  dimensions: HullDimensions
 ): void {
   const halfLength = dimensions.length / 2;
   const halfWidth = dimensions.width / 2;
   ctx.beginPath();
-  // Blunt, blocky hull with a broad cargo body.
   ctx.moveTo(-halfWidth * 0.55, -halfLength);
   ctx.lineTo(halfWidth * 0.55, -halfLength);
   ctx.lineTo(halfWidth, -halfLength * 0.45);
@@ -108,45 +101,42 @@ function traceFreighterPath(
 
 export function traceHullPath(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  hullClass: HullClass,
-  dimensions: { length: number; width: number },
-  renderHint?: string
+  silhouette: HullSilhouette,
+  dimensions: HullDimensions
 ): void {
-  if (hullClass === 'fighter') {
-    if (renderHint === 'shuttle') {
-      traceShuttlePath(ctx, dimensions);
-      return;
-    }
-    if (renderHint === 'interceptor') {
+  switch (silhouette) {
+    case 'interceptor':
       traceInterceptorPath(ctx, dimensions);
       return;
-    }
-    traceFighterPath(ctx, dimensions);
-    return;
+    case 'shuttle':
+      traceShuttlePath(ctx, dimensions);
+      return;
+    case 'courier':
+      traceCourierPath(ctx, dimensions);
+      return;
+    case 'freighter':
+      traceFreighterPath(ctx, dimensions);
+      return;
+    case 'heavy':
+      ctx.beginPath();
+      ctx.rect(-dimensions.width / 2, -dimensions.length / 2, dimensions.width, dimensions.length);
+      ctx.closePath();
+      return;
+    default:
+      traceFighterPath(ctx, dimensions);
   }
-  if (hullClass === 'courier') {
-    traceCourierPath(ctx, dimensions);
-    return;
-  }
-  if (hullClass === 'freighter') {
-    traceFreighterPath(ctx, dimensions);
-    return;
-  }
-  ctx.beginPath();
-  ctx.rect(-dimensions.width / 2, -dimensions.length / 2, dimensions.width, dimensions.length);
-  ctx.closePath();
 }
 
 export function drawHull(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  hullClass: HullClass,
-  dimensions: { length: number; width: number },
+  silhouette: HullSilhouette,
+  dimensions: HullDimensions,
   factionVisual: FactionVisual
 ): void {
   ctx.fillStyle = factionVisual.primaryColour;
   ctx.strokeStyle = brightenHex(factionVisual.primaryColour, 0.25);
   ctx.lineWidth = 1.5;
-  traceHullPath(ctx, hullClass, dimensions);
+  traceHullPath(ctx, silhouette, dimensions);
   ctx.fill();
   ctx.stroke();
 }

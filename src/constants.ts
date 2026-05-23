@@ -134,21 +134,6 @@ export const MINIMAP_SIZE = 160;
 export const EQUIPMENT_ICON_SIZE = 24;
 export const ARRIVAL_MESSAGE_DURATION_MS = 3000;
 
-export const HULL_DIMENSIONS = {
-  fighter: { length: 32, width: 16 },
-  courier: { length: 40, width: 24 },
-  freighter: { length: 48, width: 36 },
-  heavy: { length: 56, width: 42 }
-} as const;
-
-export type HullClassKey = keyof typeof HULL_DIMENSIONS;
-
-/** Muzzle offset length from hull centre (used for bullets); defaults to fighter if class unknown. */
-export function hullLengthForHullClass(hullClass: HullClassKey | undefined): number {
-  const key = hullClass ?? 'fighter';
-  return HULL_DIMENSIONS[key].length;
-}
-
 export const COLOURS = {
   SPACE_BLACK: '#080810',
   STAR_DIM: '#2a2a3a',

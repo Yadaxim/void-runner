@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ship Silhouette Explorer — Small</title>
+  <style>
+    :root {
+      --bg: #080810;
+      --panel: #12121c;
+      --border: #2a2a40;
+      --text: #e8e8f0;
+      --muted: #6060a0;
+      --accent: #40c0ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .tier-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #1a2a3a;
+      color: var(--accent);
+      border: 1px solid #2a4a6a;
+    }
+    .tabs { display: flex; gap: 4px; }
+    .tabs button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .tabs button.active {
+      color: var(--text);
+      border-color: var(--accent);
+      background: #0a1a28;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    .view { display: none; flex: 1; min-height: 0; }
+    .view.active { display: flex; }
+    #editor-view { flex-direction: row; }
+    #gallery-view { flex-direction: column; padding: 12px; overflow: auto; min-height: 0; }
+    .canvas-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      min-width: 0;
+      min-height: 0;
+    }
+    .editor-stage { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .editor-toolbar, .zoom-bar {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .editor-toolbar button, .zoom-bar button {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .editor-toolbar button.active, .zoom-bar button.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    canvas {
+      background: #0a0a12;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      max-width: 100%;
+    }
+    #editor-canvas { max-width: min(100%, 520px); max-height: min(80vh, 520px); }
+    #gallery-canvas { max-width: none; }
+    aside {
+      width: 320px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px;
+      background: var(--panel);
+      font-size: 0.8rem;
+    }
+    aside h2 {
+      margin: 0 0 8px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .section { margin-bottom: 16px; }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: #b0b0d0;
+    }
+    label span.val {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      min-width: 48px;
+      text-align: right;
+    }
+    input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+    select, input[type="number"], input[type="text"], textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    textarea { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; min-height: 72px; resize: vertical; }
+    .row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .row button {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .row button:hover { border-color: var(--accent); }
+    .checks { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    .checks label { font-size: 0.75rem; margin: 0; }
+    .checks input { margin-right: 4px; }
+    .wing-block {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+    .wing-block h3 { margin: 0 0 8px; font-size: 0.75rem; color: var(--accent); }
+    #gallery-canvas {
+      display: block;
+    }
+    .gallery-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .gallery-hitbox-toggle {
+      font-size: 0.75rem;
+      color: #b0b0d0;
+      margin: 0;
+    }
+    .gallery-hitbox-toggle input { margin-right: 4px; }
+    .hint { font-size: 0.7rem; color: var(--muted); line-height: 1.4; margin-top: 4px; }
+    .zone-presets { display: flex; gap: 4px; margin-bottom: 8px; }
+    .zone-presets button {
+      flex: 1;
+      font-size: 0.7rem;
+      padding: 4px 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .zone-presets button.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .zone-derived { font-size: 0.7rem; color: var(--muted); margin: -4px 0 8px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ship Silhouette Explorer</h1>
+    <span class="tier-badge">Small — 40×24 px hitbox (Courier class)</span>
+    <div class="tabs">
+      <button type="button" class="active" data-tab="editor">Editor</button>
+      <button type="button" data-tab="gallery">Gallery</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="editor-view" class="view active">
+      <div class="canvas-wrap">
+        <div class="editor-stage">
+          <div class="editor-toolbar">
+            <span>Preview zoom</span>
+            <button type="button" class="editor-zoom" data-zoom="1">1×</button>
+            <button type="button" class="editor-zoom active" data-zoom="2">2×</button>
+            <button type="button" class="editor-zoom" data-zoom="3">3×</button>
+          </div>
+          <canvas id="editor-canvas" width="520" height="520"></canvas>
+        </div>
+      </div>
+      <aside id="controls"></aside>
+    </div>
+
+    <div id="gallery-view" class="view">
+      <div class="gallery-bar">
+        <label>Gallery seed <input type="number" id="gallery-seed" value="42" style="width:100px"></label>
+        <label>Per type <input type="number" id="gallery-variants" value="12" min="4" max="24" style="width:52px"></label>
+        <button type="button" id="gallery-random">Random seed</button>
+        <button type="button" id="gallery-open-editor">Open in editor</button>
+        <label class="gallery-hitbox-toggle"><input type="checkbox" id="gallery-show-bbox" checked> Hitbox</label>
+        <span class="hint">One row per body type · 40×24 px hitbox (1 canvas px = 1 game px)</span>
+      </div>
+      <canvas id="gallery-canvas"></canvas>
+    </div>
+  </main>
+
+  <script src="silhouette-core.js"></script>
+  <script>
+    const C = SilhouetteCore;
+    const TIER = C.SIZE_TIER_SMALL;
+
+    const BODY_PARAM_DEFS = {
+      drop: [
+        { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
+        { key: 'w', label: 'Half-width', min: 6, max: 22, step: 0.5 },
+        { key: 'bulge', label: 'Bulge', min: 0.1, max: 0.85, step: 0.01 },
+        { key: 'flip', label: 'Flip', type: 'select', options: [{ v: 1, l: 'Nose up' }, { v: -1, l: 'Tail up' }] },
+      ],
+      lens: [
+        { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
+        { key: 'w', label: 'Half-width', min: 6, max: 22, step: 0.5 },
+        { key: 'bulge', label: 'Bulge peak', min: 0.15, max: 0.85, step: 0.01 },
+      ],
+      dart: [
+        { key: 'len', label: 'Length', min: 24, max: 58, step: 0.5 },
+        { key: 'w', label: 'Max half-width', min: 4, max: 14, step: 0.5 },
+        { key: 'bulgeFwd', label: 'Nose taper', min: 0.04, max: 0.28, step: 0.01 },
+        { key: 'waistFrac', label: 'Waist position', min: 0.2, max: 0.65, step: 0.01 },
+        { key: 'waistRatio', label: 'Waist width ratio', min: 0.4, max: 0.95, step: 0.01 },
+      ],
+      delta: [
+        { key: 'len', label: 'Length', min: 22, max: 52, step: 0.5 },
+        { key: 'spreadRatio', label: 'Spread ratio', min: 0.2, max: 0.65, step: 0.01 },
+        { key: 'sweep', label: 'Sweep', min: 0.25, max: 0.85, step: 0.01 },
+        { key: 'notch', label: 'Tail notch', min: 0.01, max: 0.15, step: 0.005 },
+      ],
+      rect: [
+        { key: 'w', label: 'Width', min: 10, max: 30, step: 0.5 },
+        { key: 'h', label: 'Height', min: 18, max: 52, step: 0.5 },
+        { key: 'rad', label: 'Corner radius', min: 0, max: 12, step: 0.5 },
+        { key: 'taper', label: 'Nose taper', min: 0, max: 0.45, step: 0.01 },
+      ],
+      trapezoid: [
+        { key: 'h', label: 'Height', min: 14, max: 48, step: 0.5 },
+        { key: 'noseW', label: 'Nose width', min: 4, max: 20, step: 0.5 },
+        { key: 'tailW', label: 'Tail width', min: 14, max: 44, step: 0.5 },
+        { key: 'rad', label: 'Corner radius', min: 0, max: 8, step: 0.5 },
+      ],
+      crescent: [
+        { key: 'outerR', label: 'Outer radius', min: 12, max: 32, step: 0.5 },
+        { key: 'innerRatio', label: 'Inner / outer', min: 0.4, max: 0.9, step: 0.01 },
+        { key: 'offsetRatio', label: 'Bite offset', min: 0.15, max: 0.6, step: 0.01 },
+      ],
+      polygon: [
+        { key: 'sides', label: 'Sides', type: 'select', options: [4, 5, 6, 7, 8].map((n) => ({ v: n, l: String(n) })) },
+        { key: 'rad', label: 'Radius', min: 10, max: 30, step: 0.5 },
+        { key: 'stretch', label: 'Y stretch', min: 0.7, max: 1.6, step: 0.01 },
+      ],
+    };
+
+    const WING_DETAIL_DEFS = {
+      swept: [
+        { key: 'tipLead', label: 'Tip lead chord', min: 0.02, max: 0.4, step: 0.01 },
+        { key: 'tipTrail', label: 'Tip trail chord', min: 0.02, max: 0.35, step: 0.01 },
+      ],
+      rect: [{ key: 'tipChord', label: 'Tip chord scale', min: 0.4, max: 1.1, step: 0.01 }],
+      blade: [{ key: 'bladeWidth', label: 'Blade width', min: 0.04, max: 0.3, step: 0.01 }],
+      insect: [
+        { key: 'fSpan', label: 'Forward span', min: 0.5, max: 1.1, step: 0.01 },
+        { key: 'rSpan', label: 'Rear span', min: 0.25, max: 0.9, step: 0.01 },
+        { key: 'fBulge', label: 'Forward bulge', min: 0.3, max: 1.2, step: 0.01 },
+        { key: 'rBulge', label: 'Rear bulge', min: 0.2, max: 0.9, step: 0.01 },
+      ],
+      tentacle: [
+        { key: 'curl', label: 'Curl', min: -0.5, max: 0.5, step: 0.02 },
+        { key: 'w0', label: 'Root width', min: 0.15, max: 0.7, step: 0.01 },
+        { key: 'w1Ratio', label: 'Tip width ratio', min: 0.02, max: 0.35, step: 0.01 },
+      ],
+      lobe: [
+        { key: 'bulgeX', label: 'Bulge X frac', min: 0.15, max: 0.85, step: 0.01 },
+        { key: 'bulgeTop', label: 'Bulge top', min: 0.4, max: 1.6, step: 0.01 },
+        { key: 'bulgeBot', label: 'Bulge bottom', min: 0.2, max: 1.1, step: 0.01 },
+      ],
+    };
+
+    let config = C.defaultShipConfig('drop');
+    let editorZoom = 2;
+    let drawOptions = {
+      showBody: true,
+      showWings: true,
+      showWidthAt: true,
+      showAttach: true,
+      showBBox: true,
+    };
+
+    const editorCanvas = document.getElementById('editor-canvas');
+    const editorCtx = editorCanvas.getContext('2d');
+    const galleryCanvas = document.getElementById('gallery-canvas');
+    const galleryCtx = galleryCanvas.getContext('2d');
+    const controlsEl = document.getElementById('controls');
+
+    /** Cell + gap sized so wing tips don't bleed into neighbours (game pixels). */
+    const GALLERY_CELL_W = 100;
+    const GALLERY_CELL_H = 96;
+    const GALLERY_COL_GAP = 16;
+    const GALLERY_ROW_LABEL_W = 52;
+    const GALLERY_ROW_GAP = 8;
+
+    function getDrawOptions() {
+      return {
+        ...drawOptions,
+        viewZoom: editorZoom,
+        fillStyle: '#c8d8f0',
+        strokeStyle: '#8aabcc',
+        lineWidth: 0.8,
+      };
+    }
+
+    function getGalleryDrawOptions() {
+      const bboxCb = document.getElementById('gallery-show-bbox');
+      return {
+        ...getDrawOptions(),
+        fitToHitbox: true,
+        pixelSnap: true,
+        viewZoom: 1,
+        lineWidth: 1,
+        showWidthAt: false,
+        showAttach: false,
+        showBBox: bboxCb ? bboxCb.checked : drawOptions.showBBox,
+      };
+    }
+
+    function galleryColCenterX(variantIdx) {
+      return (
+        GALLERY_ROW_LABEL_W +
+        variantIdx * (GALLERY_CELL_W + GALLERY_COL_GAP) +
+        GALLERY_CELL_W / 2
+      );
+    }
+
+    function redrawEditor() {
+      editorCtx.fillStyle = '#0a0a12';
+      editorCtx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
+      C.drawShip(editorCtx, editorCanvas.width / 2, editorCanvas.height / 2, config, getDrawOptions());
+      const jsonTa = document.getElementById('config-json');
+      if (jsonTa && document.activeElement !== jsonTa) {
+        jsonTa.value = JSON.stringify(config, null, 2);
+      }
+    }
+
+    function galleryCellIndex(typeIdx, variantIdx) {
+      return typeIdx * 100 + variantIdx;
+    }
+
+    function redrawGallery() {
+      const seed = Number(document.getElementById('gallery-seed').value) || 1;
+      const variants = Math.min(
+        24,
+        Math.max(4, Number(document.getElementById('gallery-variants').value) || 12)
+      );
+      document.getElementById('gallery-variants').value = String(variants);
+
+      const typeCount = C.BODY_TYPES.length;
+      const rowStride = GALLERY_CELL_H + GALLERY_ROW_GAP;
+      const gridW = variants * GALLERY_CELL_W + (variants - 1) * GALLERY_COL_GAP;
+      const W = GALLERY_ROW_LABEL_W + gridW;
+      const H = typeCount * rowStride - GALLERY_ROW_GAP;
+
+      galleryCanvas.width = W;
+      galleryCanvas.height = H;
+      galleryCanvas.style.width = `${W}px`;
+      galleryCanvas.style.height = `${H}px`;
+      galleryCtx.imageSmoothingEnabled = true;
+      galleryCtx.fillStyle = '#0a0a12';
+      galleryCtx.fillRect(0, 0, W, H);
+
+      galleryCtx.font = '11px "IBM Plex Mono", monospace';
+      galleryCtx.fillStyle = '#6060a0';
+      galleryCtx.textBaseline = 'middle';
+
+      C.BODY_TYPES.forEach((bodyType, typeIdx) => {
+        const rowY = typeIdx * rowStride;
+        const rowMidY = rowY + GALLERY_CELL_H / 2;
+
+        if (typeIdx > 0) {
+          galleryCtx.strokeStyle = '#1e1e30';
+          galleryCtx.lineWidth = 1;
+          galleryCtx.beginPath();
+          galleryCtx.moveTo(0, rowY - GALLERY_ROW_GAP / 2);
+          galleryCtx.lineTo(W, rowY - GALLERY_ROW_GAP / 2);
+          galleryCtx.stroke();
+        }
+
+        galleryCtx.fillStyle = '#6060a0';
+        galleryCtx.fillText(bodyType, 8, rowMidY);
+
+        for (let v = 0; v < variants; v++) {
+          const cellIndex = galleryCellIndex(typeIdx, v);
+          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex);
+          C.drawShip(
+            galleryCtx,
+            galleryColCenterX(v),
+            rowMidY,
+            cellConfig,
+            getGalleryDrawOptions()
+          );
+        }
+      });
+    }
+
+    function el(tag, attrs, children) {
+      const n = document.createElement(tag);
+      if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'className') n.className = v;
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2).toLowerCase(), v);
+        else n[k] = v;
+      });
+      (children || []).forEach((c) => n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+      return n;
+    }
+
+    function bindParam(obj, key, def, onChange) {
+      const wrap = el('label');
+      wrap.appendChild(document.createTextNode(def.label));
+      const valSpan = el('span', { className: 'val' });
+      valSpan.textContent = String(obj[key] ?? def.min ?? 0);
+      wrap.appendChild(valSpan);
+
+      if (def.type === 'select') {
+        const sel = el('select');
+        def.options.forEach((o) => {
+          const opt = el('option', { value: String(o.v) });
+          opt.textContent = o.l;
+          if (Number(obj[key]) === o.v || obj[key] === o.v) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          const opt = def.options.find((o) => String(o.v) === sel.value);
+          obj[key] = opt ? opt.v : sel.value;
+          valSpan.textContent = String(obj[key]);
+          onChange();
+        });
+        wrap.appendChild(sel);
+      } else {
+        const input = el('input', { type: 'range', min: def.min, max: def.max, step: def.step || 0.01, value: obj[key] });
+        input.addEventListener('input', () => {
+          obj[key] = Number(input.value);
+          valSpan.textContent = Number(input.value).toFixed(def.step < 0.02 ? 2 : 1);
+          onChange();
+        });
+        wrap.insertBefore(input, valSpan);
+      }
+      return wrap;
+    }
+
+    function ensureWingDetail(pair) {
+      if (!pair.detail) pair.detail = {};
+      const defs = WING_DETAIL_DEFS[pair.shape] || [];
+      defs.forEach((d) => {
+        if (pair.detail[d.key] == null) pair.detail[d.key] = (d.min + d.max) / 2;
+      });
+    }
+
+    function buildControls() {
+      controlsEl.innerHTML = '';
+
+      const seedSec = el('div', { className: 'section' });
+      seedSec.appendChild(el('h2', null, ['Seed & type']));
+      const seedRow = el('div', { className: 'row' });
+      const seedInput = el('input', { type: 'number', id: 'seed-input', value: config.seed });
+      seedRow.appendChild(seedInput);
+      seedRow.appendChild(el('button', { type: 'button', textContent: 'Apply seed' }, []));
+      seedRow.lastChild.addEventListener('click', () => {
+        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0);
+        syncControls();
+        redrawEditor();
+      });
+      seedRow.appendChild(el('button', { type: 'button', textContent: 'Random' }, []));
+      seedRow.lastChild.addEventListener('click', () => {
+        seedInput.value = Math.floor(Math.random() * 100000);
+        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0);
+        syncControls();
+        redrawEditor();
+      });
+      seedSec.appendChild(seedRow);
+
+      const typeSel = el('select');
+      C.BODY_TYPES.forEach((t) => {
+        const o = el('option', { value: t });
+        o.textContent = t;
+        if (t === config.bodyType) o.selected = true;
+        typeSel.appendChild(o);
+      });
+      typeSel.addEventListener('change', () => {
+        config.bodyType = typeSel.value;
+        config.body = C.defaultBodyParams(config.bodyType, TIER);
+        config = C.normalizeConfig(config);
+        syncControls();
+        redrawEditor();
+      });
+      seedSec.appendChild(typeSel);
+      controlsEl.appendChild(seedSec);
+
+      const debugSec = el('div', { className: 'section' });
+      debugSec.appendChild(el('h2', null, ['Debug overlays']));
+      const checks = el('div', { className: 'checks' });
+      [
+        ['showBBox', 'Target hitbox'],
+        ['showWidthAt', 'widthAt envelope'],
+        ['showAttach', 'Attach points'],
+        ['showBody', 'Body'],
+        ['showWings', 'Wings'],
+      ].forEach(([k, label]) => {
+        const lb = el('label');
+        const cb = el('input', { type: 'checkbox' });
+        cb.dataset.optKey = k;
+        cb.checked = drawOptions[k];
+        cb.addEventListener('change', () => {
+          drawOptions[k] = cb.checked;
+          if (k === 'showBBox') {
+            const g = document.getElementById('gallery-show-bbox');
+            if (g) g.checked = cb.checked;
+          }
+          redrawEditor();
+          redrawGallery();
+        });
+        lb.appendChild(cb);
+        lb.appendChild(document.createTextNode(label));
+        checks.appendChild(lb);
+      });
+      debugSec.appendChild(checks);
+      controlsEl.appendChild(debugSec);
+
+      const bodySec = el('div', { className: 'section', id: 'body-params' });
+      bodySec.appendChild(el('h2', null, ['Body']));
+      controlsEl.appendChild(bodySec);
+
+      const wingSec = el('div', { className: 'section', id: 'wing-params' });
+      wingSec.appendChild(el('h2', null, ['Wings']));
+      const wingCountLb = el('label');
+      wingCountLb.appendChild(document.createTextNode('Pair count'));
+      const wingCountSel = el('select', { id: 'wing-count-sel' });
+      [1, 2, 3].forEach((n) => {
+        const o = el('option', { value: String(n) });
+        o.textContent = String(n);
+        if (n === config.wings.count) o.selected = true;
+        wingCountSel.appendChild(o);
+      });
+      wingCountLb.appendChild(wingCountSel);
+      wingCountSel.addEventListener('change', () => {
+        config.wings.count = Number(wingCountSel.value);
+        config = C.normalizeConfig(config);
+        syncControls();
+        redrawEditor();
+      });
+      wingSec.appendChild(wingCountLb);
+
+      const primLb = el('label');
+      primLb.appendChild(document.createTextNode('Primary shape'));
+      const primSel = el('select');
+      C.WING_SHAPES.forEach((s) => {
+        const o = el('option', { value: s });
+        o.textContent = s;
+        if (s === config.wings.primaryShape) o.selected = true;
+        primSel.appendChild(o);
+      });
+      primSel.addEventListener('change', () => {
+        config.wings.primaryShape = primSel.value;
+        redrawEditor();
+      });
+      wingSec.appendChild(primLb);
+      primLb.appendChild(primSel);
+
+      const cohLb = bindParam(config.wings, 'coherence', {
+        label: 'Shape coherence',
+        min: 0,
+        max: 1,
+        step: 0.05,
+      }, () => redrawEditor());
+      wingSec.appendChild(cohLb);
+      controlsEl.appendChild(wingSec);
+
+      const jsonSec = el('div', { className: 'section' });
+      jsonSec.appendChild(el('h2', null, ['Config JSON']));
+      const ta = el('textarea', { id: 'config-json' });
+      jsonSec.appendChild(ta);
+      const jsonRow = el('div', { className: 'row' });
+      jsonRow.appendChild(el('button', { type: 'button', textContent: 'Copy' }));
+      jsonRow.lastChild.addEventListener('click', () => {
+        ta.value = JSON.stringify(config, null, 2);
+        navigator.clipboard?.writeText(ta.value);
+      });
+      jsonRow.appendChild(el('button', { type: 'button', textContent: 'Load' }));
+      jsonRow.lastChild.addEventListener('click', () => {
+        try {
+          config = C.normalizeConfig(JSON.parse(ta.value));
+          syncControls();
+          redrawEditor();
+        } catch (e) {
+          alert('Invalid JSON: ' + e.message);
+        }
+      });
+      jsonSec.appendChild(jsonRow);
+      jsonSec.appendChild(el('p', { className: 'hint' }, [
+        'Same seed or identical JSON → same ship. Paste JSON to restore manually.',
+      ]));
+      controlsEl.appendChild(jsonSec);
+
+      syncControls();
+    }
+
+    function syncControls() {
+      const bodySec = document.getElementById('body-params');
+      const wingSec = document.getElementById('wing-params');
+      if (!bodySec || !wingSec) return;
+
+      Array.from(bodySec.querySelectorAll('.param')).forEach((n) => n.remove());
+      (BODY_PARAM_DEFS[config.bodyType] || []).forEach((def) => {
+        const node = bindParam(config.body, def.key, def, redrawEditor);
+        node.className = 'param';
+        bodySec.appendChild(node);
+      });
+
+      Array.from(wingSec.querySelectorAll('.wing-block')).forEach((n) => n.remove());
+      config = C.normalizeConfig(config);
+      config.wings.pairs.forEach((pair, i) => {
+        ensureWingDetail(pair);
+        const block = el('div', { className: 'wing-block' });
+        block.appendChild(el('h3', null, [`Pair ${i + 1}`]));
+
+        const shapeLb = el('label');
+        shapeLb.appendChild(document.createTextNode('Shape'));
+        const shapeSel = el('select');
+        C.WING_SHAPES.forEach((s) => {
+          const o = el('option', { value: s });
+          o.textContent = s;
+          if (s === pair.shape) o.selected = true;
+          shapeSel.appendChild(o);
+        });
+        shapeSel.addEventListener('change', () => {
+          pair.shape = shapeSel.value;
+          ensureWingDetail(pair);
+          syncControls();
+          redrawEditor();
+        });
+        shapeLb.appendChild(shapeSel);
+        block.appendChild(shapeLb);
+
+        const zoneRow = el('div', { className: 'zone-presets' });
+        C.ZONES.forEach((z) => {
+          const btn = el('button', { type: 'button', textContent: z.label });
+          const mid = (z.lo + z.hi) / 2;
+          const active = C.zoneFromAttachFrac(pair.attachFrac ?? 0.5).id === z.id;
+          if (active) btn.className = 'active';
+          btn.title = `Set attach fraction to ${mid.toFixed(2)} (range ${z.lo}–${z.hi})`;
+          btn.addEventListener('click', () => {
+            pair.attachFrac = mid;
+            syncControls();
+            redrawEditor();
+          });
+          zoneRow.appendChild(btn);
+        });
+        block.appendChild(zoneRow);
+
+        const derived = C.zoneFromAttachFrac(pair.attachFrac ?? 0.5);
+        block.appendChild(
+          el('p', { className: 'zone-derived' }, [
+            `Along hull: ${((pair.attachFrac ?? 0) * 100).toFixed(0)}% nose→tail · preset band: ${derived.label} (${derived.lo}–${derived.hi})`,
+          ])
+        );
+
+        [
+          { key: 'attachFrac', label: 'Attach fraction (0=nose, 1=tail)', min: 0.05, max: 0.95, step: 0.01 },
+          { key: 'edgeMult', label: 'Edge mult', min: 0.85, max: 1.08, step: 0.005 },
+          { key: 'spanScale', label: 'Span scale', min: 0.3, max: 3.5, step: 0.05 },
+          { key: 'chordScale', label: 'Chord scale', min: 0.05, max: 0.6, step: 0.01 },
+          { key: 'sweep', label: 'Sweep', min: -0.5, max: 0.9, step: 0.02 },
+        ].forEach((def) => {
+          const onChange = def.key === 'attachFrac' ? () => { syncControls(); redrawEditor(); } : redrawEditor;
+          block.appendChild(bindParam(pair, def.key, def, onChange));
+        });
+
+        const edgeLb = el('label');
+        const edgeCb = el('input', { type: 'checkbox' });
+        edgeCb.checked = pair.atEdge !== false;
+        edgeCb.addEventListener('change', () => {
+          pair.atEdge = edgeCb.checked;
+          redrawEditor();
+        });
+        edgeLb.appendChild(edgeCb);
+        edgeLb.appendChild(document.createTextNode('Attach at hull edge'));
+        block.appendChild(edgeLb);
+
+        (WING_DETAIL_DEFS[pair.shape] || []).forEach((def) =>
+          block.appendChild(bindParam(pair.detail, def.key, def, redrawEditor))
+        );
+
+        wingSec.appendChild(block);
+      });
+
+      const seedIn = document.getElementById('seed-input');
+      if (seedIn) seedIn.value = config.seed;
+      const wingCountSel = document.getElementById('wing-count-sel');
+      if (wingCountSel) wingCountSel.value = String(config.wings.count);
+      const jsonTa = document.getElementById('config-json');
+      if (jsonTa) jsonTa.value = JSON.stringify(config, null, 2);
+    }
+
+    document.querySelectorAll('.tabs button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab + '-view').classList.add('active');
+        if (btn.dataset.tab === 'gallery') redrawGallery();
+        else redrawEditor();
+      });
+    });
+
+    document.getElementById('gallery-random').addEventListener('click', () => {
+      document.getElementById('gallery-seed').value = Math.floor(Math.random() * 100000);
+      redrawGallery();
+    });
+    document.getElementById('gallery-seed').addEventListener('change', redrawGallery);
+    document.getElementById('gallery-variants').addEventListener('change', redrawGallery);
+    document.getElementById('gallery-show-bbox').addEventListener('change', (e) => {
+      drawOptions.showBBox = e.target.checked;
+      const editorCb = document.querySelector('[data-opt-key="showBBox"]');
+      if (editorCb) editorCb.checked = drawOptions.showBBox;
+      redrawGallery();
+    });
+
+    document.querySelectorAll('.editor-zoom').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        editorZoom = Number(btn.dataset.zoom) || 1;
+        document.querySelectorAll('.editor-zoom').forEach((b) => {
+          b.classList.toggle('active', Number(b.dataset.zoom) === editorZoom);
+        });
+        redrawEditor();
+      });
+    });
+    document.getElementById('gallery-open-editor').addEventListener('click', () => {
+      const seed = Number(document.getElementById('gallery-seed').value) || 1;
+      config = C.configFromSeed(seed, config.bodyType, 0);
+      document.querySelector('[data-tab="editor"]').click();
+      syncControls();
+      redrawEditor();
+    });
+
+    buildControls();
+    redrawEditor();
+  </script>
+</body>
+</html>

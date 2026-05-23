@@ -23,6 +23,21 @@ describe('validateWorldFile', () => {
     expect(r.errors.some((e) => e.includes('Duplicate species id'))).toBe(true);
   });
 
+  it('flags invalid hull silhouette', () => {
+    const w = structuredClone(loadWorld());
+    w.hullSpecs[0] = { ...w.hullSpecs[0]!, silhouette: 'yacht' as never };
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('invalid silhouette'))).toBe(true);
+  });
+
+  it('flags hull missing dimensions', () => {
+    const w = structuredClone(loadWorld());
+    const hull = w.hullSpecs[0]!;
+    delete (hull as { dimensions?: unknown }).dimensions;
+    const r = validateWorldFile(w);
+    expect(r.errors.some((e) => e.includes('dimensions.length'))).toBe(true);
+  });
+
   it('flags invalid species archetype and techArchetype', () => {
     const w = structuredClone(loadWorld());
     w.species[0] = { ...w.species[0], archetype: 'symbiotic' as never, techArchetype: 'plasma' as never };

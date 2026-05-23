@@ -274,7 +274,11 @@
       "id": "interceptor_mk1",
       "name": "Interceptor Mk I",
       "description": "Short-range interceptor archetype. High agility strike craft with minimal sustain systems.",
-      "hullClass": "fighter",
+      "silhouette": "interceptor",
+      "dimensions": {
+        "length": 32,
+        "width": 16
+      },
       "hullMass": 20,
       "cargoCapacity": 0,
       "equipmentCapacity": 40,
@@ -416,7 +420,11 @@
       "id": "shuttle_mk1",
       "name": "Shuttle Mk I",
       "description": "Small civilian runabout. Modest thrust and a tight equipment bay, but enough cargo space for local freight and ferry work—think Escape Velocity starter hauler, not a dogfighter.",
-      "hullClass": "fighter",
+      "silhouette": "shuttle",
+      "dimensions": {
+        "length": 32,
+        "width": 16
+      },
       "hullMass": 20,
       "cargoCapacity": 15,
       "equipmentCapacity": 32,

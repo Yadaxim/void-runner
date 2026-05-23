@@ -17,7 +17,7 @@ Work top to bottom; each step assumes the ones above are settled. Sub-bullets ar
 - [ ] **4. Hull speed clamps** — `HullSpec.topSpeed`, `topAngularSpeed` per archetype (world)
 - [ ] **5. Mass, thrust, capacity** — `hullMass`, thruster **`force`**, **`equipmentCapacity`**, **`cargoCapacity`**; verify **`raw` / `basic` / `advanced`** loadouts under capacity (world); iterate per hull class before global nudges — **anchor:** `interceptor_mk1` advanced fit at **`equipmentCapacity`** (see §6.1.1)
 - [ ] **6. Fuel loop** — `FUEL_USE_LINEAR_THRUSTER_PER_SECOND`, `FUEL_USE_ROTATION_THRUSTER_PER_SECOND`, `FUEL_CAPACITY_DEFAULT` (`constants`); fuel tank items and starter fuel (world)
-- [ ] **7. Combat pacing** — bullet specs (damage, mass, speed), `baseHP`, armour/shield items (world); `BULLET_MOMENTUM_TRANSFER_SCALE`, `BULLET_MAX_IMPACT_DELTA_V`, `HULL_DIMENSIONS` if hitbox feel matters (`constants`)
+- [ ] **7. Combat pacing** — bullet specs (damage, mass, speed), `baseHP`, armour/shield items (world); `BULLET_MOMENTUM_TRANSFER_SCALE`, `BULLET_MAX_IMPACT_DELTA_V`; per-hull **`dimensions`** in `hullSpecs` if hitbox feel matters
 - [ ] **8. NPC behaviour** — transit/patrol/combat ranges, loiter timers, `NPC_ARRIVAL_SPEED_MIN` / `MAX`, `NPC_EDGE_INSET`, ally alert range, etc. (`constants`); re-check vs sector size and player `topSpeed`
 - [ ] **9. Radiation** — `RADIATION_INNER_RADIUS`, `RADIATION_OUTER_RADIUS` vs galaxy grid extent; `MAX_RADIATION_DAMAGE_PER_SECOND` (`constants`); align with repair/refuel affordability
 - [ ] **10. Economy** — `MISSION_MIN_DISTANCE`, `MISSION_MAX_DISTANCE`, `MISSION_PAYOFF_MIN`, `MISSION_BOARD_COUNT`, `MISSION_DELIVERY_DISPLAY_TIME` (`constants`); refuel/repair/insurance prices and rates; `EQUIPMENT_STORE_COUNT`, `EQUIPMENT_SELL_FRACTION` (`constants`); prices in world data
@@ -50,8 +50,8 @@ LANDING_SPEED_THRESHOLD
 COLOURS
 └── STAR_COLOURS           (array of star tints)
 
-HULL_DIMENSIONS
-└── hullLengthForHullClass()   (muzzle / rendering; combat uses this for ship hit radius)
+HullSpec.dimensions (world JSON)
+└── hullMuzzleLength() / hullHitRadius()   (muzzle offset, rendering, combat hit radius)
 ```
 
 No other constants in that file reference each other numerically. Everything else is **logical coupling** (same units, same loop, or same space).
@@ -127,7 +127,7 @@ World data: thruster force, hullMass + equipment mass (affects how long you burn
 ### 3.6 Combat and impacts
 
 ```text
-HULL_DIMENSIONS  →  weaponSystem hit radius (half hull length by class)
+HullSpec.dimensions  →  weaponSystem hit radius (half dimensions.length)
 
 BULLET_MOMENTUM_TRANSFER_SCALE
 BULLET_MAX_IMPACT_DELTA_V

@@ -131,7 +131,7 @@ These rules avoid brittle coupling to `testWorld.json`:
 
 - **`npcSpawnRules`** must set **`hullSpecId`** present in **`hullSpecs`** (`validateWorldFile` enforces this). Sector NPC build does not infer hull from `factionId` alone.  
 - Pirate landable/mission UI uses **`FactionDefinition.isPirate`** and the station’s real **`factionId`**.  
-- Bullet muzzle offset uses **`HullSpec.hullClass`** via **`hullLengthForHullClass`** in `constants.ts`, not string hacks on `hullSpecId`.  
+- Bullet muzzle offset and ship hit radius use **`HullSpec.dimensions`**; flight hull path uses **`HullSpec.silhouette`**.  
 - **`bulletSpecs`:** homing uses **`abilities`** with **`{ "type": "seeking", "turnRatio": <rad/s> }`** (optional **`"abilities": []`** when none). Runtime reads homing only from **`abilities`**.  
 - Tests should use ids from a loaded **`WorldFile`** or synthetic **`__fixture_*`** ids.
 

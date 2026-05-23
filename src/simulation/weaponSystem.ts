@@ -2,12 +2,11 @@ import {
   BULLET_MAX_IMPACT_DELTA_V,
   BULLET_MOMENTUM_TRANSFER_SCALE,
   COLOURS,
-  HULL_DIMENSIONS,
-  hullLengthForHullClass,
   NPC_ALLY_ALERT_RANGE,
   REP_PENALTY_HIT,
   REP_PENALTY_KILL
 } from '../constants';
+import { hullHitRadius, hullMuzzleLength } from '../types';
 import { pointInCircle } from '../physics/collision';
 import { Vector2 } from '../physics/vector2';
 import type { WorldState } from '../core/worldState';
@@ -88,7 +87,7 @@ export class WeaponSystem {
         const pairIndex = Math.floor(stackIndex / 2) + 1;
         const offset = slot.stackCount > 1 ? side * pairIndex * STACK_OFFSET_RAD : 0;
         const ownerHull = worldState.getHullSpec(shipState.hullSpecId);
-        const muzzleLen = hullLengthForHullClass(ownerHull?.hullClass);
+        const muzzleLen = hullMuzzleLength(ownerHull?.dimensions);
         this.activeBullets.push(new BulletEntity(bulletSpec, shipState, offset, targetId, muzzleLen));
       }
       slot.cooldownRemaining = item.fireRate > 0 ? 1 / item.fireRate : 0;
@@ -363,10 +362,7 @@ export class WeaponSystem {
 
   private getShipHitRadius(ship: ShipEntity, worldState: WorldState): number {
     const hullSpec = worldState.getHullSpec(ship.state.hullSpecId);
-    if (!hullSpec) {
-      return HULL_DIMENSIONS.fighter.length / 2;
-    }
-    return HULL_DIMENSIONS[hullSpec.hullClass].length / 2;
+    return hullHitRadius(hullSpec?.dimensions);
   }
 
   private applyImpactMomentum(

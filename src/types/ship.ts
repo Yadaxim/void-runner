@@ -48,6 +48,33 @@ export type SlotMap = EquipmentSlot[];
 
 export type HullLoadoutVariantKey = 'raw' | 'basic' | 'advanced';
 
+/** Screen-space / combat hitbox size for this hull (pixels in flight view). */
+export interface HullDimensions {
+  length: number;
+  width: number;
+}
+
+export const DEFAULT_HULL_DIMENSIONS: HullDimensions = { length: 32, width: 16 };
+
+export function hullMuzzleLength(dimensions: HullDimensions | undefined): number {
+  return (dimensions ?? DEFAULT_HULL_DIMENSIONS).length;
+}
+
+export function hullHitRadius(dimensions: HullDimensions | undefined): number {
+  return hullMuzzleLength(dimensions) / 2;
+}
+
+/** Canvas path family for flight rendering (`traceHullPath`). */
+export type HullSilhouette =
+  | 'fighter'
+  | 'interceptor'
+  | 'shuttle'
+  | 'courier'
+  | 'freighter'
+  | 'heavy';
+
+export const DEFAULT_HULL_SILHOUETTE: HullSilhouette = 'fighter';
+
 export interface HullDefaultLoadouts {
   /** Only required slot types filled; cheapest viable items; no optional equipment. */
   raw: SlotMap;
@@ -61,7 +88,8 @@ export interface HullSpec {
   id: string;
   name: string;
   description: string;
-  hullClass: 'fighter' | 'courier' | 'freighter' | 'heavy';
+  silhouette: HullSilhouette;
+  dimensions: HullDimensions;
   hullMass: number;
   cargoCapacity: number;
   equipmentCapacity: number;

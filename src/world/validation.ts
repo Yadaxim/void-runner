@@ -81,6 +81,15 @@ const SPECIES_ARCHETYPES = new Set([
   'hybrid'
 ]);
 
+const HULL_SILHOUETTES = new Set([
+  'fighter',
+  'interceptor',
+  'shuttle',
+  'courier',
+  'freighter',
+  'heavy'
+]);
+
 const TECH_ARCHETYPES = new Set([
   'mechanical',
   'robotic',
@@ -314,6 +323,21 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     }
     if (!(typeof hull.equipmentCapacity === 'number' && Number.isFinite(hull.equipmentCapacity) && hull.equipmentCapacity >= 0)) {
       push(`Hull "${hull.id}" must have finite equipmentCapacity >= 0`);
+    }
+    const dim = hull.dimensions;
+    if (
+      !dim ||
+      typeof dim.length !== 'number' ||
+      !Number.isFinite(dim.length) ||
+      dim.length <= 0 ||
+      typeof dim.width !== 'number' ||
+      !Number.isFinite(dim.width) ||
+      dim.width <= 0
+    ) {
+      push(`Hull "${hull.id}" must define dimensions.length and dimensions.width as finite numbers > 0`);
+    }
+    if (!HULL_SILHOUETTES.has(hull.silhouette)) {
+      push(`Hull "${hull.id}" has invalid silhouette: ${String(hull.silhouette)}`);
     }
   }
 
