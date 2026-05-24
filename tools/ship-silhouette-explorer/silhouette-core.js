@@ -5,11 +5,12 @@
  * Same seed + bodyType + tier → same ShipConfig.
  */
 (function (global) {
-  const BODY_TYPES = ['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon', 'larva'];
+  const BODY_TYPES = ['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon', 'larva', 'orb'];
 
   /** Body style families are not mutually exclusive (hybrid = multiple flags). */
   const BODY_ORGANIC = new Set(['lens', 'polygon', 'larva']);
   const BODY_INORGANIC = new Set(['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon']);
+  const BODY_ENERGY = new Set(['orb']);
 
   function isBodyOrganic(bodyType) {
     return BODY_ORGANIC.has(bodyType);
@@ -19,28 +20,38 @@
     return BODY_INORGANIC.has(bodyType);
   }
 
+  function isBodyEnergy(bodyType) {
+    return BODY_ENERGY.has(bodyType);
+  }
+
   function defaultStyleFilters() {
-    return { organic: true, inorganic: true };
+    return { organic: true, inorganic: true, energy: false };
   }
 
   function normalizeStyleFilters(filters) {
     const f = { ...defaultStyleFilters(), ...(filters || {}) };
-    return { organic: !!f.organic, inorganic: !!f.inorganic };
+    return { organic: !!f.organic, inorganic: !!f.inorganic, energy: !!f.energy };
   }
 
   function styleModeFromFilters(filters) {
     const f = normalizeStyleFilters(filters);
-    if (f.organic && f.inorganic) return 'hybrid';
-    if (f.organic) return 'organic';
-    if (f.inorganic) return 'inorganic';
-    return 'none';
+    const on = [];
+    if (f.organic) on.push('organic');
+    if (f.inorganic) on.push('inorganic');
+    if (f.energy) on.push('energy');
+    if (!on.length) return 'none';
+    if (on.length > 1) return on.join('+');
+    return on[0];
   }
 
   function bodyTypesForFilters(filters) {
     const f = normalizeStyleFilters(filters);
-    if (!f.organic && !f.inorganic) return [];
+    if (!f.organic && !f.inorganic && !f.energy) return [];
     return BODY_TYPES.filter(
-      (t) => (f.organic && isBodyOrganic(t)) || (f.inorganic && isBodyInorganic(t))
+      (t) =>
+        (f.organic && isBodyOrganic(t)) ||
+        (f.inorganic && isBodyInorganic(t)) ||
+        (f.energy && isBodyEnergy(t))
     );
   }
 
@@ -158,6 +169,12 @@
     return { len, w, lobes, lobeDepth, taper, phase, noseY, tailY };
   }
 
+  function orbHalfWidth(y, noseY, tailY, w, rad, stretch) {
+    const ry = rad * stretch;
+    if (y < noseY || y > tailY) return 0;
+    return w * Math.sqrt(Math.max(0, 1 - ((y / ry) * (y / ry))));
+  }
+
   /** Closed path from a widthAt(y) profile (port side then starboard). */
   function traceWidthEnvelopePath(ctx, noseY, tailY, halfWidthFn, steps = 48) {
     const dy = (tailY - noseY) / steps;
@@ -172,11 +189,13 @@
     }
     ctx.closePath();
   }
-  const WING_SHAPES = ['swept', 'delta', 'rect', 'blade', 'fin', 'insect', 'tentacle', 'lobe'];
+  const WING_SHAPES = ['swept', 'delta', 'rect', 'blade', 'fin', 'insect', 'tentacle', 'lobe', 'node', 'halo'];
   const WING_ORGANIC = new Set(['fin', 'insect', 'tentacle', 'lobe']);
   const WING_INORGANIC = new Set(['swept', 'delta', 'rect', 'blade']);
+  const WING_ENERGY = new Set(['node', 'halo']);
   const WING_SHAPES_INORGANIC = ['swept', 'swept', 'delta', 'rect', 'blade'];
   const WING_SHAPES_ORGANIC = ['fin', 'insect', 'tentacle', 'lobe'];
+  const WING_SHAPES_ENERGY = ['node', 'halo'];
 
   function isWingOrganic(shape) {
     return WING_ORGANIC.has(shape);
@@ -186,25 +205,35 @@
     return WING_INORGANIC.has(shape);
   }
 
+  function isWingEnergy(shape) {
+    return WING_ENERGY.has(shape);
+  }
+
   function wingShapePoolForFilters(filters) {
     const f = normalizeStyleFilters(filters);
     const pool = [];
     if (f.inorganic) pool.push(...WING_SHAPES_INORGANIC);
     if (f.organic) pool.push(...WING_SHAPES_ORGANIC);
+    if (f.energy) pool.push(...WING_SHAPES_ENERGY);
     return pool.length ? pool : ['swept'];
   }
 
   function wingShapesForFilters(filters) {
     const f = normalizeStyleFilters(filters);
-    if (!f.organic && !f.inorganic) return [];
+    if (!f.organic && !f.inorganic && !f.energy) return [];
     return WING_SHAPES.filter(
-      (s) => (f.organic && isWingOrganic(s)) || (f.inorganic && isWingInorganic(s))
+      (s) =>
+        (f.organic && isWingOrganic(s)) ||
+        (f.inorganic && isWingInorganic(s)) ||
+        (f.energy && isWingEnergy(s))
     );
   }
 
   function defaultWingShapeForFilters(filters) {
     const allowed = wingShapesForFilters(filters);
     if (!allowed.length) return 'swept';
+    if (allowed.includes('node')) return 'node';
+    if (allowed.includes('halo')) return 'halo';
     if (allowed.includes('swept')) return 'swept';
     return allowed[0];
   }
@@ -349,6 +378,22 @@
           bulgeTop: r.range(0.7, 1.3),
           bulgeBot: r.range(0.4, 0.8),
         };
+      case 'node':
+        return {
+          count: r.chance(0.38) ? 1 : Math.round(r.range(2, 5)),
+          nodeRad: r.range(0.22, 0.52),
+          arcRadius: r.range(1.02, 1.55),
+          arcSpread: r.range(0.5, 0.98),
+        };
+      case 'halo':
+        return {
+          count: r.chance(0.32) ? 1 : Math.round(r.range(2, 5)),
+          baseRadius: r.range(1, 2),
+          radiusStep: r.range(0.07, 0.17),
+          lineThick: r.range(0.022, 0.065),
+          arcSpan: r.range(0.5, 1.0),
+          centerYOffset: r.range(-0.06, 0.06),
+        };
       default:
         return {};
     }
@@ -363,6 +408,7 @@
     const attachY = size.noseY + bodyLen * attachFrac;
     let atEdge = r.chance(0.65);
     if (shape === 'tentacle') atEdge = true;
+    if (isWingEnergy(shape)) atEdge = true;
     const minSpan = atEdge ? 0.5 : 1.1;
     const maxSpan = size.isRect ? (atEdge ? 2.8 : 3.2) : atEdge ? 1.8 : 2.4;
     const minChord = atEdge ? 0.1 : 0.18;
@@ -378,6 +424,10 @@
       chordScale = r.range(Math.max(minChord, 0.16), Math.max(maxChord, 0.38));
     } else if (shape === 'insect') {
       chordScale = r.range(Math.max(minChord, 0.18), Math.max(maxChord, 0.58));
+    } else if (isWingEnergy(shape)) {
+      spanScale = r.range(0.75, 2.4);
+      chordScale = r.range(0.08, 0.38);
+      sweep = r.range(-0.15, 0.45);
     }
     return {
       shape,
@@ -425,6 +475,8 @@
         return { sides: 6, rad: mid(14, 22), stretch: 1.1 };
       case 'larva':
         return { len: mid(34, 48), w: mid(7, 11), lobes: 3, lobeDepth: 0.38, taper: 0.75, phase: 0 };
+      case 'orb':
+        return { rad: mid(14, 20), w: mid(10, 16), stretch: 1.05 };
       default:
         return {};
     }
@@ -517,6 +569,15 @@
           lobeDepth: r.range(0.2, 0.55),
           taper: r.range(0.55, 1.05),
           phase: r.range(0, 1),
+        };
+      }
+      case 'orb': {
+        const [ra, rb] = scaled([12, 22], tier);
+        const [wa, wb] = scaled([8, 17], tier);
+        return {
+          rad: r.range(ra, rb),
+          w: r.range(wa, wb),
+          stretch: r.range(0.85, 1.25),
         };
       }
       default:
@@ -678,6 +739,22 @@
           },
         };
       }
+      case 'orb': {
+        const { rad, w, stretch } = body;
+        const ry = rad * stretch;
+        const noseY = -ry;
+        const tailY = ry;
+        return {
+          noseY,
+          tailY,
+          midY: 0,
+          w,
+          isRect: false,
+          halfWidth(y) {
+            return orbHalfWidth(y, noseY, tailY, w, rad, stretch);
+          },
+        };
+      }
       default: {
         const noseY = -20;
         const tailY = 20;
@@ -722,7 +799,7 @@
   }
 
   function useHullWingAlign(pair, alignWingsToHull) {
-    return alignWingsToHull && pair.atEdge;
+    return alignWingsToHull && pair.atEdge && pair.shape !== 'halo' && pair.shape !== 'node';
   }
 
   function wingAlignAngle(pair, side) {
@@ -802,6 +879,47 @@
     const chord = pair.chord;
     const span = pair.span;
     const sweep = pair.sweep ?? 0;
+
+    if (pair.shape === 'node') {
+      const orbs = nodeOrbCentersHull(pair);
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (const o of orbs) {
+        const x = side * o.x;
+        const y = o.y;
+        minX = Math.min(minX, x - o.r);
+        maxX = Math.max(maxX, x + o.r);
+        minY = Math.min(minY, y - o.r);
+        maxY = Math.max(maxY, y + o.r);
+      }
+      return { minX, maxX, minY, maxY };
+    }
+
+    if (pair.shape === 'halo') {
+      const { cx, cy, a0, a1, bands } = haloArcSpec(pair);
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      const steps = 12;
+      for (const b of bands) {
+        for (let ri = 0; ri <= 1; ri++) {
+          const r = ri === 0 ? b.rInner : b.rOuter;
+          for (let i = 0; i <= steps; i++) {
+            const a = a0 + ((a1 - a0) * i) / steps;
+            const x = side * (cx + Math.cos(a) * r);
+            const y = cy + Math.sin(a) * r;
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+      return { minX, maxX, minY, maxY };
+    }
 
     if (!alignToHull || !pair.atEdge) {
       const tip = wingTipWorld(pair, side, false);
@@ -903,6 +1021,79 @@
     ctx.closePath();
   }
 
+  /** Hull-space orb centers on a circular arc (body-centered, equal angles). */
+  function nodeOrbCentersHull(pair) {
+    const d = pair.detail || {};
+    const count = Math.max(1, Math.min(6, Math.round(d.count ?? 1)));
+    const bodyRefR = pair.bodyRefR ?? 16;
+    const bodyMidY = pair.bodyMidY ?? 0;
+    const chord = pair.chord ?? bodyRefR * 0.22;
+    const orbR = chord * (d.nodeRad ?? 0.38);
+    const arcR = bodyRefR * (d.arcRadius ?? 1.2);
+    const halfArc = Math.PI * 0.5 * Math.max(0.28, Math.min(1.05, d.arcSpread ?? 0.72));
+    const sizeScale = count === 1 ? 1 : 0.88;
+
+    const orbs = [];
+    for (let i = 0; i < count; i++) {
+      const u = count === 1 ? 0.5 : i / (count - 1);
+      const a = -halfArc + (2 * halfArc) * u;
+      orbs.push({
+        x: Math.cos(a) * arcR,
+        y: bodyMidY + Math.sin(a) * arcR,
+        r: orbR * sizeScale,
+      });
+    }
+    return orbs;
+  }
+
+  function traceNodeClusterHull(ctx, pair) {
+    const orbs = nodeOrbCentersHull(pair);
+    for (const { x, y, r } of orbs) {
+      ctx.moveTo(x + r, y);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+    }
+  }
+
+  /** Concentric arc bands centered on the hull (body centerline). */
+  function haloArcSpec(pair) {
+    const d = pair.detail || {};
+    const bodyRefR = pair.bodyRefR ?? 16;
+    const count = Math.max(1, Math.min(6, Math.round(d.count ?? 2)));
+    const baseR = bodyRefR * (d.baseRadius ?? 1.25);
+    const step = bodyRefR * (d.radiusStep ?? 0.12);
+    const thick = bodyRefR * (d.lineThick ?? 0.04);
+    const halfArc = Math.PI * 0.5 * Math.max(0.25, Math.min(1.05, d.arcSpan ?? 0.8));
+    const cx = 0;
+    const cy = (pair.bodyMidY ?? 0) + bodyRefR * (d.centerYOffset ?? 0);
+    const bands = [];
+    for (let i = 0; i < count; i++) {
+      const rInner = baseR + i * step;
+      bands.push({ rInner, rOuter: rInner + thick });
+    }
+    return { cx, cy, a0: -halfArc, a1: halfArc, bands };
+  }
+
+  function traceHaloArcBand(ctx, cx, cy, rInner, rOuter, a0, a1, steps = 18) {
+    const da = a1 - a0;
+    ctx.moveTo(cx + Math.cos(a0) * rOuter, cy + Math.sin(a0) * rOuter);
+    for (let i = 1; i <= steps; i++) {
+      const a = a0 + (da * i) / steps;
+      ctx.lineTo(cx + Math.cos(a) * rOuter, cy + Math.sin(a) * rOuter);
+    }
+    for (let i = steps; i >= 0; i--) {
+      const a = a0 + (da * i) / steps;
+      ctx.lineTo(cx + Math.cos(a) * rInner, cy + Math.sin(a) * rInner);
+    }
+    ctx.closePath();
+  }
+
+  function traceHaloWingPath(ctx, pair) {
+    const { cx, cy, a0, a1, bands } = haloArcSpec(pair);
+    for (const b of bands) {
+      traceHaloArcBand(ctx, cx, cy, b.rInner, b.rOuter, a0, a1);
+    }
+  }
+
   function traceWingPath(ctx, pair) {
     const { shape, attachX: ax, attachY: ay, span, chord, sweep, detail } = pair;
     const tipX = ax + span;
@@ -970,11 +1161,14 @@
       ctx.bezierCurveTo(bulgeX, bulgeTop, tipX, tipY - chord * 0.15, tipX, tipY);
       ctx.bezierCurveTo(tipX, tipY + chord * 0.1, bulgeX, bulgeBot, ax, ay + chord * 0.3);
       ctx.closePath();
+    } else if (shape === 'node') {
+      traceNodeClusterHull(ctx, pair);
     }
   }
 
   function resolveWingPairs(config, size, tier) {
     const bodyLen = size.tailY - size.noseY;
+    const bodyRefR = Math.max(size.w, bodyLen * 0.42);
     return config.wings.pairs.map((raw) => {
       const attachFrac =
         raw.attachFrac ??
@@ -1012,6 +1206,8 @@
         hullNormalX: normal.hullNormalX,
         hullNormalY: normal.hullNormalY,
         spineAngle: raw.shape === 'tentacle' ? spineAngle : undefined,
+        bodyMidY: size.midY,
+        bodyRefR,
         tipX,
         tipY,
       };
@@ -1152,6 +1348,7 @@
     c.wings.pairs.forEach((pair) => {
       if (!allowed.includes(pair.shape)) pair.shape = c.wings.primaryShape;
       if (pair.shape === 'tentacle') pair.atEdge = true;
+      if (isWingEnergy(pair.shape)) pair.atEdge = true;
     });
     return c;
   }
@@ -1244,14 +1441,22 @@
       for (const pair of wingPairs) {
         for (const side of [1, -1]) {
           ctx.save();
-          if (useHullWingAlign(pair, alignWingsToHull)) {
+          if (pair.shape === 'halo') {
+            ctx.scale(side, 1);
+            ctx.beginPath();
+            traceHaloWingPath(ctx, pair);
+          } else if (pair.shape === 'node') {
+            ctx.scale(side, 1);
+            ctx.beginPath();
+            traceNodeClusterHull(ctx, pair);
+          } else if (useHullWingAlign(pair, alignWingsToHull)) {
             applyAlignedWingTransform(ctx, pair, side);
             ctx.beginPath();
             traceWingPath(ctx, wingLocalPair(pair));
           } else {
             ctx.scale(side, 1);
             ctx.beginPath();
-            traceWingPath(ctx, pair);
+            traceWingPath(ctx, wingLocalPair(pair));
           }
           ctx.fill();
           ctx.stroke();
@@ -1344,6 +1549,8 @@
     BODY_INORGANIC_TYPES: [...BODY_INORGANIC],
     isBodyOrganic,
     isBodyInorganic,
+    BODY_ENERGY_TYPES: [...BODY_ENERGY],
+    isBodyEnergy,
     defaultStyleFilters,
     normalizeStyleFilters,
     styleModeFromFilters,
@@ -1356,6 +1563,9 @@
     isWingInorganic,
     WING_SHAPES_ORGANIC,
     WING_SHAPES_INORGANIC,
+    WING_ENERGY_TYPES: [...WING_ENERGY],
+    isWingEnergy,
+    WING_SHAPES_ENERGY,
     wingShapePoolForFilters,
     wingShapesForFilters,
     defaultWingShapeForFilters,

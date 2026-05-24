@@ -336,6 +336,11 @@
         { key: 'taper', label: 'End taper', min: 0.4, max: 1.2, step: 0.02 },
         { key: 'phase', label: 'Phase', min: 0, max: 1, step: 0.01 },
       ],
+      orb: [
+        { key: 'rad', label: 'Radius', min: 10, max: 28, step: 0.5 },
+        { key: 'w', label: 'Half-width', min: 6, max: 20, step: 0.5 },
+        { key: 'stretch', label: 'Y stretch', min: 0.75, max: 1.35, step: 0.01 },
+      ],
     };
 
     const WING_DETAIL_DEFS = {
@@ -366,6 +371,20 @@
         { key: 'bulgeX', label: 'Bulge X frac', min: 0.15, max: 0.85, step: 0.01 },
         { key: 'bulgeTop', label: 'Bulge top', min: 0.4, max: 1.6, step: 0.01 },
         { key: 'bulgeBot', label: 'Bulge bottom', min: 0.2, max: 1.1, step: 0.01 },
+      ],
+      node: [
+        { key: 'count', label: 'Orb count', min: 1, max: 6, step: 1 },
+        { key: 'nodeRad', label: 'Orb radius', min: 0.15, max: 0.8, step: 0.01 },
+        { key: 'arcRadius', label: 'Arc radius scale', min: 1, max: 2, step: 0.01 },
+        { key: 'arcSpread', label: 'Arc spread', min: 0.25, max: 1.05, step: 0.01 },
+      ],
+      halo: [
+        { key: 'count', label: 'Arc count', min: 1, max: 6, step: 1 },
+        { key: 'baseRadius', label: 'Inner radius scale', min: 1, max: 2, step: 0.01 },
+        { key: 'radiusStep', label: 'Ring spacing', min: 0.04, max: 0.22, step: 0.01 },
+        { key: 'lineThick', label: 'Arc thickness', min: 0.015, max: 0.09, step: 0.005 },
+        { key: 'arcSpan', label: 'Arc span (semicircle)', min: 0.35, max: 1.05, step: 0.01 },
+        { key: 'centerYOffset', label: 'Center Y offset', min: -0.12, max: 0.12, step: 0.01 },
       ],
     };
 
@@ -411,14 +430,14 @@
     function mountStyleFilterCheckboxes(container, onChange) {
       container.innerHTML = '';
       container.appendChild(document.createTextNode('Style '));
-      ['organic', 'inorganic'].forEach((key) => {
+      ['organic', 'inorganic', 'energy'].forEach((key) => {
         const lb = el('label');
         const cb = el('input', { type: 'checkbox', className: 'style-filter-cb' });
         cb.dataset.filter = key;
         cb.checked = styleFilters[key];
         cb.addEventListener('change', () => {
           const next = { ...getStyleFilters(), [key]: cb.checked };
-          if (!next.organic && !next.inorganic) {
+          if (!next.organic && !next.inorganic && !next.energy) {
             cb.checked = true;
             return;
           }
@@ -559,7 +578,7 @@
 
       if (typeCount === 0) {
         galleryCtx.fillStyle = '#6060a0';
-        galleryCtx.fillText('Select at least one style (organic / inorganic).', 12, 24);
+        galleryCtx.fillText('Select at least one style (organic / inorganic / energy).', 12, 24);
         return;
       }
 
@@ -696,7 +715,7 @@
       });
       seedSec.appendChild(styleFilterWrap);
       seedSec.appendChild(el('p', { className: 'hint' }, [
-        'Organic / inorganic filters apply to hull types and wing shapes. Both on = hybrid.',
+        'Organic / inorganic / energy filters apply to hull types and wing shapes. Combine freely.',
       ]));
 
       const typeSel = el('select', { id: 'body-type-sel' });
@@ -903,6 +922,7 @@
         shapeSel.addEventListener('change', () => {
           pair.shape = shapeSel.value;
           if (pair.shape === 'tentacle') pair.atEdge = true;
+          if (C.isWingEnergy(pair.shape)) pair.atEdge = true;
           ensureWingDetail(pair);
           syncControls();
           redrawEditor();
@@ -940,7 +960,7 @@
             key: 'chordScale',
             label: 'Chord scale',
             min: 0.05,
-            max: pair.shape === 'insect' ? 0.75 : 0.6,
+            max: pair.shape === 'insect' ? 0.75 : C.isWingEnergy(pair.shape) ? 0.45 : 0.6,
             step: 0.01,
           },
           { key: 'sweep', label: 'Sweep', min: -0.5, max: 0.9, step: 0.02 },
@@ -952,10 +972,11 @@
         const edgeLb = el('label');
         const edgeCb = el('input', { type: 'checkbox' });
         if (pair.shape === 'tentacle') pair.atEdge = true;
+        if (C.isWingEnergy(pair.shape)) pair.atEdge = true;
         edgeCb.checked = pair.atEdge !== false;
-        edgeCb.disabled = pair.shape === 'tentacle';
+        edgeCb.disabled = pair.shape === 'tentacle' || C.isWingEnergy(pair.shape);
         edgeCb.addEventListener('change', () => {
-          if (pair.shape === 'tentacle') return;
+          if (pair.shape === 'tentacle' || C.isWingEnergy(pair.shape)) return;
           pair.atEdge = edgeCb.checked;
           redrawEditor();
         });
