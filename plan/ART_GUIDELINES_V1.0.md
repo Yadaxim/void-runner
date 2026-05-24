@@ -121,8 +121,8 @@ Five size classes exist for spacing, camera, and hitboxes. Only **Small** is def
 
 | Tier | Hitbox (length × width) | Status |
 |------|-------------------------|--------|
-| Tiny | TBD | — |
-| **Small** | **40 × 24** | **Defined** — silhouette explorer + current Courier-class reference |
+| **Tiny** | **30 × 18** | **Defined** — silhouette explorer; 1–2 wing pairs |
+| **Small** | **40 × 24** | **Defined** — silhouette explorer; 2–3 wing pairs (Courier-class reference) |
 | Medium | TBD | — |
 | Large | TBD | — |
 | Capital | TBD | — |

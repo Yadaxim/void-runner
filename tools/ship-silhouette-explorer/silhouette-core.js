@@ -297,7 +297,18 @@
     return (z.lo + z.hi) / 2;
   }
 
-  /** Game-facing hitbox for Small (above Tiny ~32×16). Aligns with art-guidelines Courier class. */
+  /** Game-facing hitbox for Tiny. Same body/wing families as Small, fewer wing pairs. */
+  const SIZE_TIER_TINY = {
+    id: 'tiny',
+    label: 'Tiny',
+    targetLength: 30,
+    targetWidth: 18,
+    geomScale: 0.885,
+    wingCountWeights: [1, 2],
+    primaryShapePool: ['swept', 'swept', 'delta', 'rect', 'blade', 'fin', 'insect', 'tentacle', 'lobe'],
+  };
+
+  /** Game-facing hitbox for Small. Aligns with art-guidelines Courier class. */
   const SIZE_TIER_SMALL = {
     id: 'small',
     label: 'Small',
@@ -305,9 +316,28 @@
     targetWidth: 24,
     /** Scales handout nominal coords (~34 length) to Small hitbox. */
     geomScale: 1.18,
-    wingCountWeights: [1, 2, 2, 2, 3],
+    wingCountWeights: [2, 3],
     primaryShapePool: ['swept', 'swept', 'delta', 'rect', 'blade', 'fin', 'insect', 'tentacle', 'lobe'],
   };
+
+  const SIZE_TIERS = [SIZE_TIER_TINY, SIZE_TIER_SMALL];
+
+  function getSizeTier(id) {
+    return id === 'tiny' ? SIZE_TIER_TINY : SIZE_TIER_SMALL;
+  }
+
+  /** Allowed wing pair counts for a tier (from sampling weights). */
+  function wingCountOptionsForTier(tier) {
+    return [...new Set(tier.wingCountWeights)].sort((a, b) => a - b);
+  }
+
+  function clampWingCount(count, tier) {
+    const opts = wingCountOptionsForTier(tier);
+    const n = Math.round(Number(count) || opts[0]);
+    if (n <= opts[0]) return opts[0];
+    if (n >= opts[opts.length - 1]) return opts[opts.length - 1];
+    return opts.includes(n) ? n : opts[opts.length - 1];
+  }
 
   function rng(s) {
     const x = Math.sin(s) * 99999;
@@ -1289,6 +1319,7 @@
     const body = defaultBodyParams(bodyType, tier);
     const filters = normalizeStyleFilters(styleFilters);
     const primaryShape = defaultWingShapeForFilters(filters);
+    const defaultWingCount = tier.id === 'tiny' ? 1 : 2;
     const pair = {
       shape: primaryShape,
       attachFrac: attachFracForZone('mid'),
@@ -1306,13 +1337,19 @@
       cellIndex: 0,
       styleFilters: filters,
       body,
-      wings: { count: 1, primaryShape, coherence: 0.75, pairs: [pair] },
+      wings: { count: defaultWingCount, primaryShape, coherence: 0.75, pairs: [pair] },
     };
   }
 
-  function normalizeConfig(input, tier = SIZE_TIER_SMALL) {
+  function normalizeConfig(input, tierOverride) {
     const c = typeof input === 'string' ? JSON.parse(input) : { ...input };
-    c.tier = c.tier || tier.id;
+    const tier =
+      tierOverride != null
+        ? typeof tierOverride === 'string'
+          ? getSizeTier(tierOverride)
+          : tierOverride
+        : getSizeTier(c.tier || 'small');
+    c.tier = tier.id;
     c.body = c.body || defaultBodyParams(c.bodyType, tier);
     c.styleFilters = normalizeStyleFilters(c.styleFilters || c.bodyFilters);
     delete c.bodyFilters;
@@ -1322,12 +1359,14 @@
       c.body = defaultBodyParams(c.bodyType, tier);
     }
     const filters = c.styleFilters;
+    const defaultWingCount = tier.id === 'tiny' ? 1 : 2;
     c.wings = c.wings || {
-      count: 1,
+      count: defaultWingCount,
       primaryShape: defaultWingShapeForFilters(filters),
       coherence: 0.75,
       pairs: [],
     };
+    c.wings.count = clampWingCount(c.wings.count, tier);
     if (c.wings.wingMode != null) delete c.wings.wingMode;
     const allowed = wingShapesForFilters(filters);
     if (allowed.length && !allowed.includes(c.wings.primaryShape)) {
@@ -1358,8 +1397,8 @@
   }
 
   function drawShip(ctx, cx, cy, config, options = {}) {
-    const tier = SIZE_TIER_SMALL;
-    const cfg = normalizeConfig(config, tier);
+    const cfg = normalizeConfig(config);
+    const tier = getSizeTier(cfg.tier);
     const {
       showBody = true,
       showWings = true,
@@ -1574,7 +1613,12 @@
     ZONES,
     zoneFromAttachFrac,
     attachFracForZone,
+    SIZE_TIER_TINY,
     SIZE_TIER_SMALL,
+    SIZE_TIERS,
+    getSizeTier,
+    wingCountOptionsForTier,
+    clampWingCount,
     RNG,
     makeRng,
     sampleShipConfig,

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ship Silhouette Explorer — Small</title>
+  <title>Ship Silhouette Explorer</title>
   <style>
     :root {
       --bg: #080810;
@@ -36,6 +36,24 @@
       font-size: 1rem;
       font-weight: 600;
       letter-spacing: 0.02em;
+    }
+    .size-tier-toggle {
+      display: flex;
+      gap: 4px;
+      margin-right: 8px;
+    }
+    .size-tier-toggle button {
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .size-tier-toggle button.active {
+      color: var(--accent);
+      border-color: var(--accent);
     }
     .tier-badge {
       font-size: 0.7rem;
@@ -242,7 +260,11 @@
 <body>
   <header>
     <h1>Ship Silhouette Explorer</h1>
-    <span class="tier-badge">Small — 40×24 px hitbox (Courier class)</span>
+    <span class="size-tier-toggle" id="size-tier-toggle">
+      <button type="button" data-tier="tiny">Tiny</button>
+      <button type="button" data-tier="small" class="active">Small</button>
+    </span>
+    <span class="tier-badge" id="tier-badge">Small — 40×24 px hitbox</span>
     <div class="tabs">
       <button type="button" class="active" data-tab="editor">Editor</button>
       <button type="button" data-tab="gallery">Gallery</button>
@@ -273,7 +295,7 @@
         <button type="button" id="gallery-open-editor">Open in editor</button>
         <label class="gallery-hitbox-toggle"><input type="checkbox" id="gallery-show-bbox" checked> Hitbox</label>
         <span class="style-filter-group" id="gallery-style-filters"></span>
-        <span class="hint">One row per body type · click a ship to edit it · 40×24 px hitbox</span>
+        <span class="hint" id="gallery-hint">One row per body type · click a ship to edit it</span>
       </div>
       <canvas id="gallery-canvas"></canvas>
     </div>
@@ -282,7 +304,62 @@
   <script src="silhouette-core.js"></script>
   <script>
     const C = SilhouetteCore;
-    const TIER = C.SIZE_TIER_SMALL;
+    let currentTier = C.SIZE_TIER_SMALL;
+
+    function getTier() {
+      return currentTier;
+    }
+
+    function updateTierBadge() {
+      const t = getTier();
+      const badge = document.getElementById('tier-badge');
+      if (badge) {
+        badge.textContent = `${t.label} — ${t.targetLength}×${t.targetWidth} px hitbox`;
+      }
+      const hint = document.getElementById('gallery-hint');
+      if (hint) {
+        hint.textContent = `One row per body type · click a ship to edit it · ${t.targetLength}×${t.targetWidth} px · ${t.id === 'tiny' ? '1–2' : '2–3'} wing pairs`;
+      }
+    }
+
+    function syncWingCountSelect() {
+      const wingCountSel = document.getElementById('wing-count-sel');
+      if (!wingCountSel) return;
+      const opts = C.wingCountOptionsForTier(getTier());
+      wingCountSel.innerHTML = '';
+      opts.forEach((n) => {
+        const o = el('option', { value: String(n) });
+        o.textContent = String(n);
+        wingCountSel.appendChild(o);
+      });
+      wingCountSel.value = String(C.clampWingCount(config.wings.count, getTier()));
+    }
+
+    function setSizeTier(tierId) {
+      currentTier = C.getSizeTier(tierId);
+      document.querySelectorAll('#size-tier-toggle button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.tier === tierId);
+      });
+      const coh = config.wings?.coherence ?? 0.75;
+      config = C.configFromSeed(
+        config.seed,
+        config.bodyType,
+        config.cellIndex ?? 0,
+        currentTier,
+        getStyleFilters(),
+        coh
+      );
+      config.styleFilters = { ...getStyleFilters() };
+      updateTierBadge();
+      syncWingCountSelect();
+      syncControls();
+      redrawEditor();
+      redrawGallery();
+    }
+
+    document.querySelectorAll('#size-tier-toggle button').forEach((btn) => {
+      btn.addEventListener('click', () => setSizeTier(btn.dataset.tier));
+    });
 
     const BODY_PARAM_DEFS = {
       lens: [
@@ -522,7 +599,7 @@
       config = C.sampleShipConfig(
         seed,
         hit.bodyType,
-        TIER,
+        getTier(),
         galleryCellIndex(hit.bodyType, hit.variantIdx),
         getStyleFilters()
       );
@@ -600,7 +677,7 @@
 
         for (let v = 0; v < variants; v++) {
           const cellIndex = galleryCellIndex(bodyType, v);
-          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex, getStyleFilters());
+          const cellConfig = C.sampleShipConfig(seed, bodyType, getTier(), cellIndex, getStyleFilters());
           C.drawShip(
             galleryCtx,
             galleryColCenterX(v),
@@ -691,7 +768,7 @@
       const applySeedBtn = el('button', { type: 'button', textContent: 'Apply seed' });
       applySeedBtn.addEventListener('click', () => {
         const coh = config.wings?.coherence ?? 0.75;
-        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0, TIER, getStyleFilters(), coh);
+        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0, getTier(), getStyleFilters(), coh);
         syncControls();
         redrawEditor();
       });
@@ -700,7 +777,7 @@
       randomSeedBtn.addEventListener('click', () => {
         seedInput.value = Math.floor(Math.random() * 100000);
         const coh = config.wings?.coherence ?? 0.75;
-        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0, TIER, getStyleFilters(), coh);
+        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0, getTier(), getStyleFilters(), coh);
         syncControls();
         redrawEditor();
       });
@@ -731,14 +808,14 @@
         });
         if (allowed.length && !allowed.includes(cur)) {
           config.bodyType = allowed[0];
-          config.body = C.defaultBodyParams(config.bodyType, TIER);
+          config.body = C.defaultBodyParams(config.bodyType, getTier());
         }
       }
       fillBodyTypeSelect();
       typeSel.addEventListener('change', () => {
         config.bodyType = typeSel.value;
-        config.body = C.defaultBodyParams(config.bodyType, TIER);
-        config = C.normalizeConfig(config);
+        config.body = C.defaultBodyParams(config.bodyType, getTier());
+        config = C.normalizeConfig(config, getTier());
         syncControls();
         redrawEditor();
       });
@@ -785,7 +862,7 @@
       const wingCountLb = el('label');
       wingCountLb.appendChild(document.createTextNode('Pair count'));
       const wingCountSel = el('select', { id: 'wing-count-sel' });
-      [1, 2, 3].forEach((n) => {
+      C.wingCountOptionsForTier(getTier()).forEach((n) => {
         const o = el('option', { value: String(n) });
         o.textContent = String(n);
         if (n === config.wings.count) o.selected = true;
@@ -793,8 +870,8 @@
       });
       wingCountLb.appendChild(wingCountSel);
       wingCountSel.addEventListener('change', () => {
-        config.wings.count = Number(wingCountSel.value);
-        config = C.normalizeConfig(config);
+        config.wings.count = C.clampWingCount(Number(wingCountSel.value), getTier());
+        config = C.normalizeConfig(config, getTier());
         syncControls();
         redrawEditor();
       });
@@ -877,7 +954,7 @@
       if (config.styleFilters || config.bodyFilters) {
         setStyleFilters(config.styleFilters || config.bodyFilters);
       } else config.styleFilters = { ...getStyleFilters() };
-      config = C.normalizeConfig(config);
+      config = C.normalizeConfig(config, getTier());
 
       const typeSel = document.getElementById('body-type-sel');
       if (typeSel) {
@@ -892,7 +969,7 @@
         });
         if (allowed.length && !allowed.includes(cur)) {
           config.bodyType = allowed[0];
-          config.body = C.defaultBodyParams(config.bodyType, TIER);
+          config.body = C.defaultBodyParams(config.bodyType, getTier());
         }
         typeSel.value = config.bodyType;
       }
@@ -994,7 +1071,7 @@
       const seedIn = document.getElementById('seed-input');
       if (seedIn) seedIn.value = config.seed;
       const wingCountSel = document.getElementById('wing-count-sel');
-      if (wingCountSel) wingCountSel.value = String(config.wings.count);
+      syncWingCountSelect();
       const primSel = document.getElementById('primary-shape-sel');
       if (primSel) {
         const allowed = shapesForCurrentStyleFilters();
@@ -1057,7 +1134,7 @@
     });
     document.getElementById('gallery-open-editor').addEventListener('click', () => {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
-      config = C.sampleShipConfig(seed, config.bodyType, TIER, 0, getStyleFilters());
+      config = C.sampleShipConfig(seed, config.bodyType, getTier(), 0, getStyleFilters());
       config.styleFilters = { ...getStyleFilters() };
       document.querySelector('[data-tab="editor"]').click();
       syncControls();
@@ -1065,6 +1142,11 @@
     });
 
     buildControls();
+    currentTier = C.getSizeTier(config.tier || 'small');
+    document.querySelectorAll('#size-tier-toggle button').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tier === currentTier.id);
+    });
+    updateTierBadge();
     mountStyleFilterCheckboxes(document.getElementById('gallery-style-filters'), () => {
       syncControls();
       redrawGallery();
