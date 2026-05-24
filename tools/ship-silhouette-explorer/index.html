@@ -207,6 +207,18 @@
       margin: 0;
     }
     .gallery-hitbox-toggle input { margin-right: 4px; }
+    .style-filter-group {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #b0b0d0;
+    }
+    .body-filter-group label { margin: 0; }
+    .style-filter-hint {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
     .hint { font-size: 0.7rem; color: var(--muted); line-height: 1.4; margin-top: 4px; }
     .zone-presets { display: flex; gap: 4px; margin-bottom: 8px; }
     .zone-presets button {
@@ -260,13 +272,7 @@
         <button type="button" id="gallery-random">Random seed</button>
         <button type="button" id="gallery-open-editor">Open in editor</button>
         <label class="gallery-hitbox-toggle"><input type="checkbox" id="gallery-show-bbox" checked> Hitbox</label>
-        <label>Wings
-          <select class="wing-mode-select" id="gallery-wing-mode">
-            <option value="hybrid" selected>Hybrid</option>
-            <option value="organic">Organic</option>
-            <option value="inorganic">Inorganic</option>
-          </select>
-        </label>
+        <span class="style-filter-group" id="gallery-style-filters"></span>
         <span class="hint">One row per body type · click a ship to edit it · 40×24 px hitbox</span>
       </div>
       <canvas id="gallery-canvas"></canvas>
@@ -284,16 +290,27 @@
         { key: 'w', label: 'Half-width', min: 6, max: 22, step: 0.5 },
         { key: 'bulge', label: 'Bulge peak', min: 0.15, max: 0.85, step: 0.01 },
       ],
+      spade: [
+        { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
+        { key: 'w', label: 'Stern half-width', min: 6, max: 22, step: 0.5 },
+        { key: 'bulge', label: 'Curve peak (nose→stern)', min: 0.15, max: 0.9, step: 0.01 },
+        { key: 'bowl', label: 'Bowl (+ out, − in)', min: -1.1, max: 0.6, step: 0.02 },
+        { key: 'flatFrac', label: 'Flat stern fraction (0 = arrowhead)', min: 0, max: 0.28, step: 0.01 },
+      ],
+      facet: [
+        { key: 'len', label: 'Length', min: 20, max: 50, step: 0.5 },
+        { key: 'w', label: 'Stern half-width', min: 6, max: 22, step: 0.5 },
+        { key: 'bulge', label: 'Corner 1 along hull', min: 0.1, max: 0.75, step: 0.01 },
+        { key: 'bowl', label: 'Corner 1 (+ out, − in)', min: -1.1, max: 0.6, step: 0.02 },
+        { key: 'bulge2', label: 'Corner 2 along hull', min: 0.2, max: 0.95, step: 0.01 },
+        { key: 'bowl2', label: 'Corner 2 (+ out, − in)', min: -1.1, max: 0.6, step: 0.02 },
+        { key: 'flatFrac', label: 'Flat stern fraction (0 = arrowhead)', min: 0, max: 0.28, step: 0.01 },
+      ],
       dart: [
         { key: 'len', label: 'Length', min: 24, max: 58, step: 0.5 },
         { key: 'w', label: 'Max half-width', min: 4, max: 14, step: 0.5 },
         { key: 'waistFrac', label: 'Waist position', min: 0.2, max: 0.65, step: 0.01 },
         { key: 'waistRatio', label: 'Waist width ratio', min: 0.4, max: 0.95, step: 0.01 },
-      ],
-      delta: [
-        { key: 'len', label: 'Length', min: 22, max: 52, step: 0.5 },
-        { key: 'spreadRatio', label: 'Spread ratio', min: 0.2, max: 0.65, step: 0.01 },
-        { key: 'sweep', label: 'Sweep', min: 0.25, max: 0.85, step: 0.01 },
       ],
       rect: [
         { key: 'w', label: 'Width', min: 10, max: 30, step: 0.5 },
@@ -311,6 +328,14 @@
         { key: 'rad', label: 'Radius', min: 10, max: 30, step: 0.5 },
         { key: 'stretch', label: 'Y stretch', min: 0.7, max: 1.6, step: 0.01 },
       ],
+      larva: [
+        { key: 'len', label: 'Length', min: 24, max: 58, step: 0.5 },
+        { key: 'w', label: 'Lobe half-width', min: 4, max: 16, step: 0.5 },
+        { key: 'lobes', label: 'Lobe count', min: 1.5, max: 6, step: 0.1 },
+        { key: 'lobeDepth', label: 'Segment pinch', min: 0.05, max: 0.65, step: 0.01 },
+        { key: 'taper', label: 'End taper', min: 0.4, max: 1.2, step: 0.02 },
+        { key: 'phase', label: 'Phase', min: 0, max: 1, step: 0.01 },
+      ],
     };
 
     const WING_DETAIL_DEFS = {
@@ -319,13 +344,13 @@
         { key: 'tipTrail', label: 'Tip trail chord', min: 0.02, max: 0.35, step: 0.01 },
       ],
       rect: [{ key: 'tipChord', label: 'Tip chord scale', min: 0.4, max: 1.1, step: 0.01 }],
-      blade: [{ key: 'bladeWidth', label: 'Blade width', min: 0.04, max: 0.3, step: 0.01 }],
+      blade: [{ key: 'bladeWidth', label: 'Blade width (× chord)', min: 0.08, max: 0.45, step: 0.01 }],
       insect: [
         { key: 'fSpan', label: 'Forward span', min: 0.55, max: 1.05, step: 0.01 },
         { key: 'sizeRatio', label: 'Rear / forward span', min: 0.3, max: 0.85, step: 0.01 },
         { key: 'pitchF', label: 'Forward pitch (nose)', min: 0.05, max: 0.45, step: 0.01 },
         { key: 'pitchR', label: 'Rear pitch (tail)', min: 0.05, max: 0.5, step: 0.01 },
-        { key: 'bulge', label: 'Outer bulge', min: 0.05, max: 0.45, step: 0.01 },
+        { key: 'bulge', label: 'Outer bulge', min: 0.05, max: 0.6, step: 0.01 },
         { key: 'bulgeX', label: 'Bulge along span', min: 0.2, max: 0.75, step: 0.01 },
       ],
       tentacle: [
@@ -345,7 +370,7 @@
     };
 
     let config = C.defaultShipConfig('lens');
-    let wingMode = 'hybrid';
+    let styleFilters = C.defaultStyleFilters();
     let editorZoom = 2;
     let drawOptions = {
       showBody: true,
@@ -353,7 +378,7 @@
       showWidthAt: true,
       showAttach: true,
       showBBox: true,
-      alignWingsToHull: false,
+      alignWingsToHull: true,
     };
 
     const editorCanvas = document.getElementById('editor-canvas');
@@ -362,39 +387,61 @@
     const galleryCtx = galleryCanvas.getContext('2d');
     const controlsEl = document.getElementById('controls');
 
-    function getWingMode() {
-      return wingMode;
+    function getStyleFilters() {
+      return styleFilters;
     }
 
-    function setWingMode(mode) {
-      wingMode = mode;
-      document.querySelectorAll('.wing-mode-select').forEach((el) => {
-        el.value = mode;
+    function setStyleFilters(next) {
+      styleFilters = C.normalizeStyleFilters(next);
+      config.styleFilters = { ...styleFilters };
+      document.querySelectorAll('.style-filter-cb').forEach((cb) => {
+        const key = cb.dataset.filter;
+        if (key) cb.checked = styleFilters[key];
+      });
+      document.querySelectorAll('.style-filter-hint').forEach((node) => {
+        const mode = C.styleModeFromFilters(styleFilters);
+        node.textContent = mode === 'none' ? 'none' : mode.charAt(0).toUpperCase() + mode.slice(1);
       });
     }
 
-    function wingModeSelect(onChange) {
-      const sel = el('select', { className: 'wing-mode-select' });
-      [
-        ['hybrid', 'Hybrid'],
-        ['organic', 'Organic'],
-        ['inorganic', 'Inorganic'],
-      ].forEach(([value, label]) => {
-        const o = el('option', { value });
-        o.textContent = label;
-        if (value === wingMode) o.selected = true;
-        sel.appendChild(o);
-      });
-      sel.addEventListener('change', () => {
-        setWingMode(sel.value);
-        config.wings.wingMode = wingMode;
-        if (onChange) onChange();
-      });
-      return sel;
+    function bodyTypesForCurrentFilters() {
+      return C.bodyTypesForFilters(getStyleFilters());
     }
 
-    function shapesForCurrentWingMode() {
-      return C.wingShapesForMode(getWingMode());
+    function mountStyleFilterCheckboxes(container, onChange) {
+      container.innerHTML = '';
+      container.appendChild(document.createTextNode('Style '));
+      ['organic', 'inorganic'].forEach((key) => {
+        const lb = el('label');
+        const cb = el('input', { type: 'checkbox', className: 'style-filter-cb' });
+        cb.dataset.filter = key;
+        cb.checked = styleFilters[key];
+        cb.addEventListener('change', () => {
+          const next = { ...getStyleFilters(), [key]: cb.checked };
+          if (!next.organic && !next.inorganic) {
+            cb.checked = true;
+            return;
+          }
+          setStyleFilters(next);
+          config = C.normalizeConfig(config);
+          if (onChange) onChange();
+        });
+        lb.appendChild(cb);
+        lb.appendChild(document.createTextNode(` ${key.charAt(0).toUpperCase()}${key.slice(1)}`));
+        container.appendChild(lb);
+      });
+      const hint = el('span', { className: 'style-filter-hint' });
+      hint.textContent = C.styleModeFromFilters(styleFilters);
+      container.appendChild(hint);
+    }
+
+    function shapesForCurrentStyleFilters() {
+      return C.wingShapesForFilters(getStyleFilters());
+    }
+
+    function galleryCellIndex(bodyType, variantIdx) {
+      const typeIdx = C.BODY_TYPES.indexOf(bodyType);
+      return typeIdx * 100 + variantIdx;
     }
     const GALLERY_CELL_W = 100;
     const GALLERY_CELL_H = 96;
@@ -435,7 +482,9 @@
 
     function galleryHitTest(canvasX, canvasY) {
       const variants = galleryVariantCount();
-      const typeCount = C.BODY_TYPES.length;
+      const bodyTypes = bodyTypesForCurrentFilters();
+      const typeCount = bodyTypes.length;
+      if (typeCount === 0) return null;
       const rowStride = GALLERY_CELL_H + GALLERY_ROW_GAP;
       if (canvasX < GALLERY_ROW_LABEL_W) return null;
       const col = Math.floor((canvasX - GALLERY_ROW_LABEL_W) / (GALLERY_CELL_W + GALLERY_COL_GAP));
@@ -446,7 +495,7 @@
       if (row < 0 || row >= typeCount) return null;
       const rowY = row * rowStride;
       if (canvasY >= rowY + GALLERY_CELL_H) return null;
-      return { typeIdx: row, variantIdx: col, bodyType: C.BODY_TYPES[row] };
+      return { typeIdx: row, variantIdx: col, bodyType: bodyTypes[row] };
     }
 
     function openGalleryCell(hit) {
@@ -455,9 +504,10 @@
         seed,
         hit.bodyType,
         TIER,
-        galleryCellIndex(hit.typeIdx, hit.variantIdx),
-        getWingMode()
+        galleryCellIndex(hit.bodyType, hit.variantIdx),
+        getStyleFilters()
       );
+      config.styleFilters = { ...getStyleFilters() };
       const seedIn = document.getElementById('seed-input');
       if (seedIn) seedIn.value = config.seed;
       document.querySelector('[data-tab="editor"]').click();
@@ -483,16 +533,13 @@
       }
     }
 
-    function galleryCellIndex(typeIdx, variantIdx) {
-      return typeIdx * 100 + variantIdx;
-    }
-
     function redrawGallery() {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
       const variants = galleryVariantCount();
       document.getElementById('gallery-variants').value = String(variants);
 
-      const typeCount = C.BODY_TYPES.length;
+      const bodyTypes = bodyTypesForCurrentFilters();
+      const typeCount = bodyTypes.length;
       const rowStride = GALLERY_CELL_H + GALLERY_ROW_GAP;
       const gridW = variants * GALLERY_CELL_W + (variants - 1) * GALLERY_COL_GAP;
       const W = GALLERY_ROW_LABEL_W + gridW;
@@ -510,7 +557,13 @@
       galleryCtx.fillStyle = '#6060a0';
       galleryCtx.textBaseline = 'middle';
 
-      C.BODY_TYPES.forEach((bodyType, typeIdx) => {
+      if (typeCount === 0) {
+        galleryCtx.fillStyle = '#6060a0';
+        galleryCtx.fillText('Select at least one style (organic / inorganic).', 12, 24);
+        return;
+      }
+
+      bodyTypes.forEach((bodyType, typeIdx) => {
         const rowY = typeIdx * rowStride;
         const rowMidY = rowY + GALLERY_CELL_H / 2;
 
@@ -527,8 +580,8 @@
         galleryCtx.fillText(bodyType, 8, rowMidY);
 
         for (let v = 0; v < variants; v++) {
-          const cellIndex = galleryCellIndex(typeIdx, v);
-          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex, getWingMode());
+          const cellIndex = galleryCellIndex(bodyType, v);
+          const cellConfig = C.sampleShipConfig(seed, bodyType, TIER, cellIndex, getStyleFilters());
           C.drawShip(
             galleryCtx,
             galleryColCenterX(v),
@@ -551,11 +604,25 @@
       return n;
     }
 
+    function sliderDecimals(step) {
+      const s = step ?? 0.01;
+      if (s >= 1) return 0;
+      if (s >= 0.1) return 1;
+      return 2;
+    }
+
+    function formatSliderValue(val, step) {
+      const n = Number(val);
+      if (!Number.isFinite(n)) return '—';
+      return n.toFixed(sliderDecimals(step));
+    }
+
     function bindParam(obj, key, def, onChange) {
       const wrap = el('label');
       wrap.appendChild(document.createTextNode(def.label));
       const valSpan = el('span', { className: 'val' });
-      valSpan.textContent = String(obj[key] ?? def.min ?? 0);
+      const step = def.step ?? 0.01;
+      valSpan.textContent = formatSliderValue(obj[key] ?? def.min ?? 0, step);
       wrap.appendChild(valSpan);
 
       if (def.type === 'select') {
@@ -574,10 +641,11 @@
         });
         wrap.appendChild(sel);
       } else {
-        const input = el('input', { type: 'range', min: def.min, max: def.max, step: def.step || 0.01, value: obj[key] });
+        const input = el('input', { type: 'range', min: def.min, max: def.max, step, value: obj[key] });
         input.addEventListener('input', () => {
-          obj[key] = Number(input.value);
-          valSpan.textContent = Number(input.value).toFixed(def.step < 0.02 ? 2 : 1);
+          const decimals = sliderDecimals(step);
+          obj[key] = Number(Number(input.value).toFixed(decimals));
+          valSpan.textContent = formatSliderValue(obj[key], step);
           onChange();
         });
         wrap.insertBefore(input, valSpan);
@@ -604,7 +672,7 @@
       const applySeedBtn = el('button', { type: 'button', textContent: 'Apply seed' });
       applySeedBtn.addEventListener('click', () => {
         const coh = config.wings?.coherence ?? 0.75;
-        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0, TIER, getWingMode(), coh);
+        config = C.configFromSeed(Number(seedInput.value) || 1, config.bodyType, 0, TIER, getStyleFilters(), coh);
         syncControls();
         redrawEditor();
       });
@@ -613,20 +681,41 @@
       randomSeedBtn.addEventListener('click', () => {
         seedInput.value = Math.floor(Math.random() * 100000);
         const coh = config.wings?.coherence ?? 0.75;
-        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0, TIER, getWingMode(), coh);
+        config = C.configFromSeed(Number(seedInput.value), config.bodyType, 0, TIER, getStyleFilters(), coh);
         syncControls();
         redrawEditor();
       });
       seedRow.appendChild(randomSeedBtn);
       seedSec.appendChild(seedRow);
+      const styleFilterWrap = el('div', { className: 'checks style-filter-group', id: 'editor-style-filters' });
+      mountStyleFilterCheckboxes(styleFilterWrap, () => {
+        fillBodyTypeSelect();
+        syncControls();
+        redrawEditor();
+        redrawGallery();
+      });
+      seedSec.appendChild(styleFilterWrap);
+      seedSec.appendChild(el('p', { className: 'hint' }, [
+        'Organic / inorganic filters apply to hull types and wing shapes. Both on = hybrid.',
+      ]));
 
       const typeSel = el('select', { id: 'body-type-sel' });
-      C.BODY_TYPES.forEach((t) => {
-        const o = el('option', { value: t });
-        o.textContent = t;
-        if (t === config.bodyType) o.selected = true;
-        typeSel.appendChild(o);
-      });
+      function fillBodyTypeSelect() {
+        const allowed = bodyTypesForCurrentFilters();
+        const cur = config.bodyType;
+        typeSel.innerHTML = '';
+        allowed.forEach((t) => {
+          const o = el('option', { value: t });
+          o.textContent = t;
+          if (t === cur) o.selected = true;
+          typeSel.appendChild(o);
+        });
+        if (allowed.length && !allowed.includes(cur)) {
+          config.bodyType = allowed[0];
+          config.body = C.defaultBodyParams(config.bodyType, TIER);
+        }
+      }
+      fillBodyTypeSelect();
       typeSel.addEventListener('change', () => {
         config.bodyType = typeSel.value;
         config.body = C.defaultBodyParams(config.bodyType, TIER);
@@ -674,17 +763,6 @@
 
       const wingSec = el('div', { className: 'section', id: 'wing-params' });
       wingSec.appendChild(el('h2', null, ['Wings']));
-      const wingModeLb = el('label');
-      wingModeLb.appendChild(document.createTextNode('Wing style'));
-      const onWingModeChange = () => {
-        config.wings.wingMode = getWingMode();
-        config = C.normalizeConfig(config);
-        syncControls();
-        redrawEditor();
-        redrawGallery();
-      };
-      wingModeLb.appendChild(wingModeSelect(onWingModeChange));
-      wingSec.appendChild(wingModeLb);
       const wingCountLb = el('label');
       wingCountLb.appendChild(document.createTextNode('Pair count'));
       const wingCountSel = el('select', { id: 'wing-count-sel' });
@@ -706,7 +784,7 @@
       const primLb = el('label');
       primLb.appendChild(document.createTextNode('Primary shape'));
       const primSel = el('select', { id: 'primary-shape-sel' });
-      shapesForCurrentWingMode().forEach((s) => {
+      shapesForCurrentStyleFilters().forEach((s) => {
         const o = el('option', { value: s });
         o.textContent = s;
         if (s === config.wings.primaryShape) o.selected = true;
@@ -714,7 +792,11 @@
       });
       primSel.addEventListener('change', () => {
         config.wings.primaryShape = primSel.value;
-        C.applyPrimaryWingShape(config.wings, { allPairs: true, seed: config.seed });
+        C.applyPrimaryWingShape(config.wings, {
+          allPairs: true,
+          seed: config.seed,
+          styleFilters: getStyleFilters(),
+        });
         syncControls();
         redrawEditor();
       });
@@ -727,7 +809,7 @@
         max: 1,
         step: 0.05,
       }, () => {
-        C.applyWingCoherence(config.wings, config.seed);
+        C.applyWingCoherence(config.wings, config.seed, getStyleFilters());
         syncControls();
         redrawEditor();
       });
@@ -773,12 +855,28 @@
       const wingSec = document.getElementById('wing-params');
       if (!bodySec || !wingSec) return;
 
-      if (config.wings?.wingMode) setWingMode(config.wings.wingMode);
-      config.wings.wingMode = getWingMode();
+      if (config.styleFilters || config.bodyFilters) {
+        setStyleFilters(config.styleFilters || config.bodyFilters);
+      } else config.styleFilters = { ...getStyleFilters() };
       config = C.normalizeConfig(config);
 
       const typeSel = document.getElementById('body-type-sel');
-      if (typeSel) typeSel.value = config.bodyType;
+      if (typeSel) {
+        const allowed = bodyTypesForCurrentFilters();
+        const cur = config.bodyType;
+        typeSel.innerHTML = '';
+        allowed.forEach((t) => {
+          const o = el('option', { value: t });
+          o.textContent = t;
+          if (t === cur) o.selected = true;
+          typeSel.appendChild(o);
+        });
+        if (allowed.length && !allowed.includes(cur)) {
+          config.bodyType = allowed[0];
+          config.body = C.defaultBodyParams(config.bodyType, TIER);
+        }
+        typeSel.value = config.bodyType;
+      }
 
       Array.from(bodySec.querySelectorAll('.param')).forEach((n) => n.remove());
       (BODY_PARAM_DEFS[config.bodyType] || []).forEach((def) => {
@@ -796,7 +894,7 @@
         const shapeLb = el('label');
         shapeLb.appendChild(document.createTextNode('Shape'));
         const shapeSel = el('select');
-        shapesForCurrentWingMode().forEach((s) => {
+        shapesForCurrentStyleFilters().forEach((s) => {
           const o = el('option', { value: s });
           o.textContent = s;
           if (s === pair.shape) o.selected = true;
@@ -837,9 +935,14 @@
 
         [
           { key: 'attachFrac', label: 'Attach fraction (0=nose, 1=tail)', min: 0.05, max: 0.95, step: 0.01 },
-          { key: 'edgeMult', label: 'Edge mult', min: 0.85, max: 1.08, step: 0.005 },
           { key: 'spanScale', label: 'Span scale', min: 0.3, max: 3.5, step: 0.05 },
-          { key: 'chordScale', label: 'Chord scale', min: 0.05, max: 0.6, step: 0.01 },
+          {
+            key: 'chordScale',
+            label: 'Chord scale',
+            min: 0.05,
+            max: pair.shape === 'insect' ? 0.75 : 0.6,
+            step: 0.01,
+          },
           { key: 'sweep', label: 'Sweep', min: -0.5, max: 0.9, step: 0.02 },
         ].forEach((def) => {
           const onChange = def.key === 'attachFrac' ? () => { syncControls(); redrawEditor(); } : redrawEditor;
@@ -873,7 +976,7 @@
       if (wingCountSel) wingCountSel.value = String(config.wings.count);
       const primSel = document.getElementById('primary-shape-sel');
       if (primSel) {
-        const allowed = shapesForCurrentWingMode();
+        const allowed = shapesForCurrentStyleFilters();
         const cur = config.wings.primaryShape;
         primSel.innerHTML = '';
         allowed.forEach((s) => {
@@ -905,11 +1008,6 @@
     });
     document.getElementById('gallery-seed').addEventListener('change', redrawGallery);
     document.getElementById('gallery-variants').addEventListener('change', redrawGallery);
-    document.getElementById('gallery-wing-mode').addEventListener('change', () => {
-      setWingMode(document.getElementById('gallery-wing-mode').value);
-      config.wings.wingMode = wingMode;
-      redrawGallery();
-    });
     document.getElementById('gallery-show-bbox').addEventListener('change', (e) => {
       drawOptions.showBBox = e.target.checked;
       const editorCb = document.querySelector('[data-opt-key="showBBox"]');
@@ -938,13 +1036,18 @@
     });
     document.getElementById('gallery-open-editor').addEventListener('click', () => {
       const seed = Number(document.getElementById('gallery-seed').value) || 1;
-      config = C.sampleShipConfig(seed, config.bodyType, TIER, 0, getWingMode());
+      config = C.sampleShipConfig(seed, config.bodyType, TIER, 0, getStyleFilters());
+      config.styleFilters = { ...getStyleFilters() };
       document.querySelector('[data-tab="editor"]').click();
       syncControls();
       redrawEditor();
     });
 
     buildControls();
+    mountStyleFilterCheckboxes(document.getElementById('gallery-style-filters'), () => {
+      syncControls();
+      redrawGallery();
+    });
     redrawEditor();
   </script>
 </body>

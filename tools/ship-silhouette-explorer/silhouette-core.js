@@ -5,7 +5,48 @@
  * Same seed + bodyType + tier → same ShipConfig.
  */
 (function (global) {
-  const BODY_TYPES = ['lens', 'dart', 'delta', 'rect', 'trapezoid', 'polygon'];
+  const BODY_TYPES = ['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon', 'larva'];
+
+  /** Body style families are not mutually exclusive (hybrid = multiple flags). */
+  const BODY_ORGANIC = new Set(['lens', 'polygon', 'larva']);
+  const BODY_INORGANIC = new Set(['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon']);
+
+  function isBodyOrganic(bodyType) {
+    return BODY_ORGANIC.has(bodyType);
+  }
+
+  function isBodyInorganic(bodyType) {
+    return BODY_INORGANIC.has(bodyType);
+  }
+
+  function defaultStyleFilters() {
+    return { organic: true, inorganic: true };
+  }
+
+  function normalizeStyleFilters(filters) {
+    const f = { ...defaultStyleFilters(), ...(filters || {}) };
+    return { organic: !!f.organic, inorganic: !!f.inorganic };
+  }
+
+  function styleModeFromFilters(filters) {
+    const f = normalizeStyleFilters(filters);
+    if (f.organic && f.inorganic) return 'hybrid';
+    if (f.organic) return 'organic';
+    if (f.inorganic) return 'inorganic';
+    return 'none';
+  }
+
+  function bodyTypesForFilters(filters) {
+    const f = normalizeStyleFilters(filters);
+    if (!f.organic && !f.inorganic) return [];
+    return BODY_TYPES.filter(
+      (t) => (f.organic && isBodyOrganic(t)) || (f.inorganic && isBodyInorganic(t))
+    );
+  }
+
+  function isBodyTypeAllowed(bodyType, filters) {
+    return bodyTypesForFilters(filters).includes(bodyType);
+  }
 
   /** Ray-cast horizontal line against starboard edge polyline. */
   function halfWidthRayCast(y, noseY, tailY, edgePts) {
@@ -58,6 +99,65 @@
     return { len, w, bulge, noseY, tailY, bulgePeakY };
   }
 
+  /** Flat-stern lens: quadratic sides + constant-width stern deck. bowl < 0 = concave waist. */
+  function spadeProfileFromBody(body) {
+    const { len, w, bulge, bowl, flatFrac } = body;
+    const noseY = -len * 0.52;
+    const tailY = len * 0.48;
+    const yFlat = tailY - len * flatFrac;
+    const cpy = noseY + bulge * (yFlat - noseY);
+    const cpx = w * (1 + bowl);
+    const curveEdge = sampleQuadraticEdge(0, noseY, cpx, cpy, w, yFlat, 28);
+    const edge = curveEdge.slice();
+    if (yFlat < tailY - 1e-6) edge.push([w, tailY]);
+    return { len, w, bulge, bowl, flatFrac, noseY, tailY, yFlat, edge, midY: cpy };
+  }
+
+  /** Angular spade: straight facet edges, flat stern, tip nose. Two kinks → irregular polyhedron side. */
+  function facetProfileFromBody(body) {
+    const { len, w, bulge, bowl, bulge2, bowl2, flatFrac } = body;
+    const noseY = -len * 0.52;
+    const tailY = len * 0.48;
+    const yFlat = tailY - len * flatFrac;
+    const span = yFlat - noseY;
+    const corners = [
+      { b: bulge, bowl },
+      { b: bulge2, bowl: bowl2 },
+    ].sort((a, c) => a.b - c.b);
+    const y1 = noseY + corners[0].b * span;
+    const y2 = noseY + corners[1].b * span;
+    const x1 = Math.max(0, w * (1 + corners[0].bowl));
+    const x2 = Math.max(0, w * (1 + corners[1].bowl));
+    const edge = [
+      [0, noseY],
+      [x1, y1],
+      [x2, y2],
+      [w, yFlat],
+    ];
+    if (yFlat < tailY - 1e-6) edge.push([w, tailY]);
+    const maxW = Math.max(w, x1, x2);
+    return { len, w, bulge, bowl, bulge2, bowl2, flatFrac, noseY, tailY, yFlat, edge, midY: y2, maxW };
+  }
+
+  /** Segmented tube: cosine lobes along length, rounded nose/tail caps. */
+  function larvaHalfWidth(y, noseY, tailY, w, lobes, lobeDepth, taper, phase) {
+    const totalLen = tailY - noseY;
+    if (totalLen <= 0) return 0;
+    const t = (y - noseY) / totalLen;
+    if (t <= 0 || t >= 1) return 0;
+    const ends = Math.pow(Math.sin(Math.PI * t), Math.max(0.35, taper));
+    const ripple =
+      1 - lobeDepth + lobeDepth * (0.5 + 0.5 * Math.cos(lobes * Math.PI * 2 * t + phase * Math.PI * 2));
+    return w * ends * ripple;
+  }
+
+  function larvaProfileFromBody(body) {
+    const { len, w, lobes, lobeDepth, taper, phase } = body;
+    const noseY = -len * 0.5;
+    const tailY = len * 0.5;
+    return { len, w, lobes, lobeDepth, taper, phase, noseY, tailY };
+  }
+
   /** Closed path from a widthAt(y) profile (port side then starboard). */
   function traceWidthEnvelopePath(ctx, noseY, tailY, halfWidthFn, steps = 48) {
     const dy = (tailY - noseY) / steps;
@@ -73,27 +173,47 @@
     ctx.closePath();
   }
   const WING_SHAPES = ['swept', 'delta', 'rect', 'blade', 'fin', 'insect', 'tentacle', 'lobe'];
+  const WING_ORGANIC = new Set(['fin', 'insect', 'tentacle', 'lobe']);
+  const WING_INORGANIC = new Set(['swept', 'delta', 'rect', 'blade']);
   const WING_SHAPES_INORGANIC = ['swept', 'swept', 'delta', 'rect', 'blade'];
   const WING_SHAPES_ORGANIC = ['fin', 'insect', 'tentacle', 'lobe'];
-  const WING_MODES = ['hybrid', 'organic', 'inorganic'];
 
-  function wingShapePoolForMode(mode) {
-    if (mode === 'organic') return WING_SHAPES_ORGANIC;
-    if (mode === 'inorganic') return WING_SHAPES_INORGANIC;
-    return SIZE_TIER_SMALL.primaryShapePool;
+  function isWingOrganic(shape) {
+    return WING_ORGANIC.has(shape);
   }
 
-  function wingShapesForMode(mode) {
-    if (mode === 'organic') return WING_SHAPES_ORGANIC.filter((s, i, a) => a.indexOf(s) === i);
-    if (mode === 'inorganic') return ['swept', 'delta', 'rect', 'blade'];
-    return WING_SHAPES.slice();
+  function isWingInorganic(shape) {
+    return WING_INORGANIC.has(shape);
   }
 
-  function applyPrimaryWingShape(wings, options = { allPairs: true, seed: 1 }) {
-    const mode = wings.wingMode || 'hybrid';
-    const allowed = wingShapesForMode(mode);
+  function wingShapePoolForFilters(filters) {
+    const f = normalizeStyleFilters(filters);
+    const pool = [];
+    if (f.inorganic) pool.push(...WING_SHAPES_INORGANIC);
+    if (f.organic) pool.push(...WING_SHAPES_ORGANIC);
+    return pool.length ? pool : ['swept'];
+  }
+
+  function wingShapesForFilters(filters) {
+    const f = normalizeStyleFilters(filters);
+    if (!f.organic && !f.inorganic) return [];
+    return WING_SHAPES.filter(
+      (s) => (f.organic && isWingOrganic(s)) || (f.inorganic && isWingInorganic(s))
+    );
+  }
+
+  function defaultWingShapeForFilters(filters) {
+    const allowed = wingShapesForFilters(filters);
+    if (!allowed.length) return 'swept';
+    if (allowed.includes('swept')) return 'swept';
+    return allowed[0];
+  }
+
+  function applyPrimaryWingShape(wings, options = { allPairs: true, seed: 1, styleFilters: null }) {
+    const filters = normalizeStyleFilters(options.styleFilters || defaultStyleFilters());
+    const allowed = wingShapesForFilters(filters);
     if (!allowed.includes(wings.primaryShape)) {
-      wings.primaryShape = allowed[0];
+      wings.primaryShape = allowed[0] || 'swept';
     }
     const r = new RNG((options.seed ?? 1) + 17);
     wings.pairs.forEach((pair, i) => {
@@ -102,12 +222,12 @@
         pair.detail = sampleWingDetail(wings.primaryShape, r);
       }
     });
-    if (!options.allPairs) applyWingCoherence(wings);
+    if (!options.allPairs) applyWingCoherence(wings, options.seed ?? 1, filters);
   }
 
-  function applyWingCoherence(wings, seed = 1) {
-    const mode = wings.wingMode || 'hybrid';
-    const pool = wingShapePoolForMode(mode);
+  function applyWingCoherence(wings, seed = 1, styleFilters) {
+    const filters = normalizeStyleFilters(styleFilters || defaultStyleFilters());
+    const pool = wingShapePoolForFilters(filters);
     const primary = wings.primaryShape;
     const coherence = wings.coherence ?? 0.75;
     const r = new RNG(seed + 991);
@@ -119,12 +239,6 @@
       }
       pair.detail = sampleWingDetail(pair.shape, r);
     });
-  }
-
-  function defaultWingShapeForMode(mode) {
-    if (mode === 'organic') return 'fin';
-    if (mode === 'inorganic') return 'swept';
-    return 'swept';
   }
   const ZONES = [
     { id: 'front', label: 'Front', lo: 0.1, hi: 0.35 },
@@ -209,14 +323,14 @@
       case 'rect':
         return { tipChord: r.range(0.6, 1) };
       case 'blade':
-        return { bladeWidth: r.range(0.08, 0.2) };
+        return { bladeWidth: r.range(0.16, 0.32) };
       case 'insect':
         return {
           fSpan: r.range(0.72, 0.98),
           sizeRatio: r.range(0.42, 0.68),
           pitchF: r.range(0.12, 0.32),
           pitchR: r.range(0.14, 0.38),
-          bulge: r.range(0.12, 0.32),
+          bulge: r.range(0.12, 0.55),
           bulgeX: r.range(0.35, 0.55),
         };
       case 'tentacle':
@@ -249,7 +363,6 @@
     const attachY = size.noseY + bodyLen * attachFrac;
     let atEdge = r.chance(0.65);
     if (shape === 'tentacle') atEdge = true;
-    const edgeMult = atEdge ? r.range(0.95, 1.02) : 1;
     const minSpan = atEdge ? 0.5 : 1.1;
     const maxSpan = size.isRect ? (atEdge ? 2.8 : 3.2) : atEdge ? 1.8 : 2.4;
     const minChord = atEdge ? 0.1 : 0.18;
@@ -261,6 +374,10 @@
       spanScale = r.range(1.5, 3.0);
       chordScale = r.range(0.06, 0.16);
       sweep = r.range(0.05, 0.55);
+    } else if (shape === 'blade') {
+      chordScale = r.range(Math.max(minChord, 0.16), Math.max(maxChord, 0.38));
+    } else if (shape === 'insect') {
+      chordScale = r.range(Math.max(minChord, 0.18), Math.max(maxChord, 0.58));
     }
     return {
       shape,
@@ -268,7 +385,6 @@
       attachFrac,
       attachY,
       atEdge,
-      edgeMult,
       spanScale,
       chordScale,
       sweep,
@@ -282,6 +398,18 @@
     switch (bodyType) {
       case 'lens':
         return { len: mid(26, 38), w: mid(10, 16), bulge: 0.42 };
+      case 'spade':
+        return { len: mid(26, 38), w: mid(10, 16), bulge: 0.55, bowl: 0.22, flatFrac: 0.14 };
+      case 'facet':
+        return {
+          len: mid(26, 38),
+          w: mid(10, 16),
+          bulge: 0.32,
+          bowl: 0.18,
+          bulge2: 0.68,
+          bowl2: -0.28,
+          flatFrac: 0.14,
+        };
       case 'dart':
         return {
           len: mid(30, 46),
@@ -289,14 +417,14 @@
           waistFrac: 0.42,
           waistRatio: 0.68,
         };
-      case 'delta':
-        return { len: mid(28, 40), spreadRatio: 0.42, sweep: 0.55, notch: 0.06 };
       case 'rect':
         return { w: mid(12, 22), h: mid(26, 42), rad: 4 * s, taper: 0.15 };
       case 'trapezoid':
         return { h: mid(20, 36), noseW: mid(6, 14), tailW: mid(20, 36) };
       case 'polygon':
         return { sides: 6, rad: mid(14, 22), stretch: 1.1 };
+      case 'larva':
+        return { len: mid(34, 48), w: mid(7, 11), lobes: 3, lobeDepth: 0.38, taper: 0.75, phase: 0 };
       default:
         return {};
     }
@@ -314,6 +442,32 @@
           bulge: r.range(0.2, 0.75),
         };
       }
+      case 'spade': {
+        const [la, lb] = scaled([26, 38], tier);
+        const [wa, wb] = scaled([10, 16], tier);
+        return {
+          len: r.range(la, lb),
+          w: r.range(wa, wb),
+          bulge: r.range(0.25, 0.85),
+          bowl: r.range(-0.9, 0.55),
+          flatFrac: r.range(0, 0.22),
+        };
+      }
+      case 'facet': {
+        const [la, lb] = scaled([26, 38], tier);
+        const [wa, wb] = scaled([10, 16], tier);
+        const bulge = r.range(0.18, 0.52);
+        const bulge2 = r.range(Math.min(0.88, bulge + 0.18), 0.92);
+        return {
+          len: r.range(la, lb),
+          w: r.range(wa, wb),
+          bulge,
+          bowl: r.range(-0.9, 0.55),
+          bulge2,
+          bowl2: r.range(-0.9, 0.55),
+          flatFrac: r.range(0, 0.22),
+        };
+      }
       case 'dart': {
         const [la, lb] = scaled([30, 46], tier);
         const [wa, wb] = scaled([5, 10], tier);
@@ -323,15 +477,6 @@
           w,
           waistFrac: r.range(0.3, 0.55),
           waistRatio: r.range(0.55, 0.8),
-        };
-      }
-      case 'delta': {
-        const [la, lb] = scaled([28, 40], tier);
-        const len = r.range(la, lb);
-        return {
-          len,
-          spreadRatio: r.range(0.32, 0.52),
-          sweep: r.range(0.38, 0.72),
         };
       }
       case 'rect': {
@@ -362,6 +507,18 @@
           stretch: r.range(0.85, 1.4),
         };
       }
+      case 'larva': {
+        const [la, lb] = scaled([32, 50], tier);
+        const [wa, wb] = scaled([6, 13], tier);
+        return {
+          len: r.range(la, lb),
+          w: r.range(wa, wb),
+          lobes: r.range(2, 5.5),
+          lobeDepth: r.range(0.2, 0.55),
+          taper: r.range(0.55, 1.05),
+          phase: r.range(0, 1),
+        };
+      }
       default:
         return {};
     }
@@ -384,6 +541,38 @@
           },
         };
       }
+      case 'spade': {
+        const sp = spadeProfileFromBody(body);
+        const { w, noseY, tailY, yFlat, edge, midY } = sp;
+        return {
+          noseY,
+          tailY,
+          midY,
+          w,
+          isRect: false,
+          halfWidth(y) {
+            if (y < noseY || y > tailY) return 0;
+            if (y >= yFlat) return w;
+            return halfWidthRayCast(y, noseY, tailY, edge);
+          },
+        };
+      }
+      case 'facet': {
+        const fc = facetProfileFromBody(body);
+        const { w, maxW, noseY, tailY, yFlat, edge, midY } = fc;
+        return {
+          noseY,
+          tailY,
+          midY,
+          w: maxW,
+          isRect: false,
+          halfWidth(y) {
+            if (y < noseY || y > tailY) return 0;
+            if (y >= yFlat) return w;
+            return halfWidthRayCast(y, noseY, tailY, edge);
+          },
+        };
+      }
       case 'dart': {
         const { len, w, waistFrac, waistRatio } = body;
         const noseY = -len * 0.54;
@@ -401,24 +590,6 @@
             if (t <= 0 || t >= 1) return 0;
             if (t < waistFrac) return w * (t / waistFrac);
             return waistW + (w - waistW) * ((t - waistFrac) / (1 - waistFrac));
-          },
-        };
-      }
-      case 'delta': {
-        const { len, spreadRatio, sweep } = body;
-        const spread = len * spreadRatio;
-        const noseY = -len * 0.5;
-        const tailY = len * 0.5;
-        const wideY = noseY + len * sweep;
-        const edge = sampleQuadraticEdge(0, noseY, spread * 0.6, wideY, spread, tailY);
-        return {
-          noseY,
-          tailY,
-          midY: wideY,
-          w: spread,
-          isRect: false,
-          halfWidth(y) {
-            return halfWidthRayCast(y, noseY, tailY, edge);
           },
         };
       }
@@ -490,6 +661,20 @@
               }
             }
             return maxX;
+          },
+        };
+      }
+      case 'larva': {
+        const lv = larvaProfileFromBody(body);
+        const { w, noseY, tailY, lobes, lobeDepth, taper, phase } = lv;
+        return {
+          noseY,
+          tailY,
+          midY: (noseY + tailY) * 0.5,
+          w,
+          isRect: false,
+          halfWidth(y) {
+            return larvaHalfWidth(y, noseY, tailY, w, lobes, lobeDepth, taper, phase);
           },
         };
       }
@@ -743,7 +928,7 @@
       ctx.lineTo(ax, ay + chord * 0.5);
       ctx.closePath();
     } else if (shape === 'blade') {
-      const bw = chord * (d.bladeWidth ?? 0.14);
+      const bw = chord * (d.bladeWidth ?? 0.22);
       ctx.moveTo(ax, ay - bw);
       ctx.lineTo(tipX, tipY - bw * 0.5);
       ctx.lineTo(tipX, tipY + bw * 0.5);
@@ -798,7 +983,7 @@
       const attachY = size.noseY + bodyLen * attachFrac;
       const bodyW = size.widthAt(attachY);
       const atEdge = raw.atEdge !== false;
-      const attachX = atEdge ? bodyW * (raw.edgeMult ?? 1) : 0;
+      const attachX = atEdge ? bodyW : 0;
       const span = size.w * (raw.spanScale ?? 1.2);
       const chord = bodyLen * (raw.chordScale ?? 0.22);
       const sweep = raw.sweep ?? 0;
@@ -880,11 +1065,12 @@
     return Math.min(sx, sy) * fill;
   }
 
-  function sampleShipConfig(seed, bodyType, tier = SIZE_TIER_SMALL, cellIndex = 0, wingMode = 'hybrid', coherence = 0.75) {
+  function sampleShipConfig(seed, bodyType, tier = SIZE_TIER_SMALL, cellIndex = 0, styleFilters = defaultStyleFilters(), coherence = 0.75) {
     const r = makeRng(seed, bodyType, cellIndex);
     const body = sampleBodyParams(bodyType, r, tier);
     const size = buildBodySize(bodyType, body);
-    const shapePool = wingShapePoolForMode(wingMode);
+    const filters = normalizeStyleFilters(styleFilters);
+    const shapePool = wingShapePoolForFilters(filters);
     const wingCount = r.pick(tier.wingCountWeights);
     const primaryShape = r.pick(shapePool);
     const pairs = [];
@@ -897,19 +1083,20 @@
       seed,
       bodyType,
       cellIndex,
+      styleFilters: filters,
       body,
-      wings: { wingMode, count: wingCount, primaryShape, coherence, pairs },
+      wings: { count: wingCount, primaryShape, coherence, pairs },
     };
   }
 
-  function defaultShipConfig(bodyType = 'lens', tier = SIZE_TIER_SMALL, wingMode = 'hybrid') {
+  function defaultShipConfig(bodyType = 'lens', tier = SIZE_TIER_SMALL, styleFilters = defaultStyleFilters()) {
     const body = defaultBodyParams(bodyType, tier);
-    const primaryShape = defaultWingShapeForMode(wingMode);
+    const filters = normalizeStyleFilters(styleFilters);
+    const primaryShape = defaultWingShapeForFilters(filters);
     const pair = {
       shape: primaryShape,
       attachFrac: attachFracForZone('mid'),
       atEdge: true,
-      edgeMult: 1,
       spanScale: 1.2,
       chordScale: 0.22,
       sweep: 0.2,
@@ -921,8 +1108,9 @@
       seed: 1,
       bodyType,
       cellIndex: 0,
+      styleFilters: filters,
       body,
-      wings: { wingMode, count: 1, primaryShape, coherence: 0.75, pairs: [pair] },
+      wings: { count: 1, primaryShape, coherence: 0.75, pairs: [pair] },
     };
   }
 
@@ -930,17 +1118,23 @@
     const c = typeof input === 'string' ? JSON.parse(input) : { ...input };
     c.tier = c.tier || tier.id;
     c.body = c.body || defaultBodyParams(c.bodyType, tier);
-    const wingMode = c.wings?.wingMode || 'hybrid';
+    c.styleFilters = normalizeStyleFilters(c.styleFilters || c.bodyFilters);
+    delete c.bodyFilters;
+    const allowedBodies = bodyTypesForFilters(c.styleFilters);
+    if (allowedBodies.length && !allowedBodies.includes(c.bodyType)) {
+      c.bodyType = allowedBodies[0];
+      c.body = defaultBodyParams(c.bodyType, tier);
+    }
+    const filters = c.styleFilters;
     c.wings = c.wings || {
-      wingMode,
       count: 1,
-      primaryShape: defaultWingShapeForMode(wingMode),
+      primaryShape: defaultWingShapeForFilters(filters),
       coherence: 0.75,
       pairs: [],
     };
-    c.wings.wingMode = c.wings.wingMode || wingMode;
-    const allowed = wingShapesForMode(c.wings.wingMode);
-    if (!allowed.includes(c.wings.primaryShape)) {
+    if (c.wings.wingMode != null) delete c.wings.wingMode;
+    const allowed = wingShapesForFilters(filters);
+    if (allowed.length && !allowed.includes(c.wings.primaryShape)) {
       c.wings.primaryShape = allowed[0];
     }
     while (c.wings.pairs.length < c.wings.count) {
@@ -948,7 +1142,6 @@
         shape: c.wings.primaryShape,
         attachFrac: attachFracForZone('mid'),
         atEdge: true,
-        edgeMult: 1,
         spanScale: 1.2,
         chordScale: 0.22,
         sweep: 0.2,
@@ -963,8 +1156,8 @@
     return c;
   }
 
-  function configFromSeed(seed, bodyType, cellIndex = 0, tier = SIZE_TIER_SMALL, wingMode = 'hybrid', coherence = 0.75) {
-    return sampleShipConfig(seed, bodyType, tier, cellIndex, wingMode, coherence);
+  function configFromSeed(seed, bodyType, cellIndex = 0, tier = SIZE_TIER_SMALL, styleFilters = defaultStyleFilters(), coherence = 0.75) {
+    return sampleShipConfig(seed, bodyType, tier, cellIndex, styleFilters, coherence);
   }
 
   function drawShip(ctx, cx, cy, config, options = {}) {
@@ -977,7 +1170,7 @@
       showAttach = true,
       showBBox = true,
       /** Rotate edge-attached wings to follow hull outward normal. */
-      alignWingsToHull = false,
+      alignWingsToHull = true,
       /** Scale hull to tier targetLength × targetWidth (game hitbox). */
       fitToHitbox = true,
       /** Round placement to whole pixels (gallery 1:1 preview). */
@@ -1147,13 +1340,25 @@
 
   const SilhouetteCore = {
     BODY_TYPES,
+    BODY_ORGANIC_TYPES: [...BODY_ORGANIC],
+    BODY_INORGANIC_TYPES: [...BODY_INORGANIC],
+    isBodyOrganic,
+    isBodyInorganic,
+    defaultStyleFilters,
+    normalizeStyleFilters,
+    styleModeFromFilters,
+    bodyTypesForFilters,
+    isBodyTypeAllowed,
     WING_SHAPES,
+    WING_ORGANIC_TYPES: [...WING_ORGANIC],
+    WING_INORGANIC_TYPES: [...WING_INORGANIC],
+    isWingOrganic,
+    isWingInorganic,
     WING_SHAPES_ORGANIC,
     WING_SHAPES_INORGANIC,
-    WING_MODES,
-    wingShapePoolForMode,
-    wingShapesForMode,
-    defaultWingShapeForMode,
+    wingShapePoolForFilters,
+    wingShapesForFilters,
+    defaultWingShapeForFilters,
     applyPrimaryWingShape,
     applyWingCoherence,
     ZONES,
