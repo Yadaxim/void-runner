@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Void Runner — Worldgen Explorer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="toolbar">
+        <h1>WORLDGEN EXPLORER</h1>
+        <span class="badge">standalone · debug</span>
+        <button type="button" id="btnPreview" class="primary" title="Run step 1 (galaxy structure)">
+          Run step 1
+        </button>
+        <button type="button" id="btnGenerate">Generate pipeline</button>
+        <label class="file-btn">
+          Load world JSON
+          <input type="file" id="fileWorld" accept=".json,application/json" />
+        </label>
+        <label class="file-btn">
+          Load checkpoint
+          <input type="file" id="fileCheckpoint" accept=".json,application/json" />
+        </label>
+        <button type="button" id="btnExportCheckpoint">Export checkpoint</button>
+        <button type="button" id="btnReset">Reset</button>
+      </header>
+
+      <aside class="panel left" id="configPanel">
+        <div class="panel-header">Galaxy config</div>
+        <div class="panel-scroll" id="configForm"></div>
+      </aside>
+
+      <main class="map-wrap">
+        <canvas id="galaxyCanvas"></canvas>
+        <div class="map-hint">Arrows · click sector · toggle layers (left panel)</div>
+      </main>
+
+      <aside class="panel right">
+        <div class="panel-header">Pipeline</div>
+        <div class="panel-scroll" style="max-height: 42%; flex: none">
+          <ul class="step-list" id="stepList"></ul>
+        </div>
+        <div class="panel-header">Selected sector</div>
+        <div class="panel-scroll" id="sectorInspect"></div>
+        <div class="panel-header">Step output</div>
+        <div class="panel-scroll">
+          <pre class="json-preview" id="stepJson">Select a pipeline step</pre>
+        </div>
+      </aside>
+
+      <footer class="log-panel">
+        <div class="panel-header">Log</div>
+        <div class="log-scroll" id="logView"></div>
+      </footer>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

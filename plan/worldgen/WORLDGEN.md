@@ -46,37 +46,37 @@ Step 8a and 8b can run in parallel.
 {
   sizeX: number              // 30..50 typical
   sizeY: number
+  sectorSize: number         // world units per sector; default SECTOR_SIZE (10000)
   shape: 'disc' | 'ring' | 'spiral' | 'heterogeneous'
-  planetDensity: number      // 0..1, fraction of sectors with a planet
+  planetDensity: number      // 0..1, fraction of in-mask sectors with a planet
   moonProbability: number    // 0..1, chance a planet has any moons
   moonsPerPlanetRange: [number, number]  // e.g. [1, 3]
   seed: number               // RNG seed for reproducibility
 }
 ```
 
-**Output:**
+**Output:** WorldFile fragment — one `SectorMetadata` entry per grid cell (full torus), landables embedded per sector.
+
 ```typescript
 {
-  sectorCoords: [number, number][]
-  landables: {
-    id: string
-    type: 'planet' | 'moon'
-    sectorCoord: [number, number]
-    parentId?: string         // moons reference their parent planet
-    position: [number, number]  // local coords within sector
-  }[]
+  galaxy: { gridWidth: number, gridHeight: number, sectorSize: number }
+  sectors: SectorMetadata[]   // length = gridWidth × gridHeight; empty landables[] where no body placed
 }
 ```
 
+Landable stubs use sector-local world-unit positions (origin at sector centre, ±sectorSize/2). Names, factions, and services are filled by later steps.
+
 **Algorithm:**
-- Build a 2D grid of sectorCoords
-- Apply shape mask (disc, ring, spiral arms, heterogeneous noise) to determine planet placement probability per sector
-- Roll planet placement against `planetDensity`
+- Build the full sizeX×sizeY sector grid (`SectorMetadata` per cell)
+- Apply shape mask to scale planet placement probability per sector (mask does not remove sectors)
+- Roll planet placement against `planetDensity × shapeWeight`
 - For each placed planet, roll moons against `moonProbability` and `moonsPerPlanetRange`
 - Place moons within the same sector as their parent, near the parent's position
 - Stations are NOT placed here — see step 8b
 
-**Validation:** Every moon has a valid `parentId` resolving to a planet in the same sector.
+**Validation:** Every sector with moons has at least one planet in the same sector. Landable positions within ±sectorSize/2.
+
+**Removed:** `sectorCoords` flat list (redundant with `sectors[]`). `SectorMetadata.landableDensity` (unused — landables are explicit).
 
 ---
 

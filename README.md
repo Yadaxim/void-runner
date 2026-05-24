@@ -8,7 +8,8 @@
 
 ```bash
 npm install
-npm run dev      # dev server
+npm run dev              # game dev server
+npm run dev:worldgen     # worldgen explorer (standalone debug UI)
 npm run typecheck
 npm test         # Vitest
 npm run build

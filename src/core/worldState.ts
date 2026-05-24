@@ -357,7 +357,6 @@ function createRuntimeVoidSector(worldFile: WorldFile, coord: GridCoord): Sector
     coord: { ...coord },
     regionType: 'void',
     factionId: null,
-    landableDensity: 0,
     npcSpawnRules: [],
     inRadiationZone: false,
     radiationFringeIntensity: 0,

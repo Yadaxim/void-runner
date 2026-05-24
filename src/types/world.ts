@@ -37,7 +37,6 @@ export interface SectorMetadata {
   coord: GridCoord;
   regionType: RegionType;
   factionId: string | null;
-  landableDensity: number;
   npcSpawnRules: NPCSpawnRule[];
   inRadiationZone: boolean;
   radiationFringeIntensity: number;
@@ -84,6 +83,8 @@ export interface WorldFile {
   galaxy: {
     gridWidth: number;
     gridHeight: number;
+    /** World-unit width/height of each sector; defaults to {@link SECTOR_SIZE} when omitted. */
+    sectorSize?: number;
     sectors?: SectorMetadata[][];
   };
   sectors: SectorMetadata[];
