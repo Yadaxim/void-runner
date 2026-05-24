@@ -6,13 +6,13 @@
 
 ## 1. Core Aesthetic Principles
 
-**Geometric clarity.** Shapes are clean, intentional, and readable at small sizes. No texture noise, no painterly blur. Hard edges with occasional soft glows for light sources and engine exhaust.
+**Readable silhouettes (mixed media).** Flight **ships** are flat Canvas paths — meant to read clearly at Small-tier size. **Inorganic** and **energy** families lean geometric (facets, arcs, orb clusters); **organic** families deliberately use curves, lobes, and wave wings. **Planets and moons** are shaded spheres built from procedural **noise** (not flat vector fills — see §5). **Bullets** and some UI previews use soft radial glows where the spec calls for it. This is not a single “everything is hard-edged vector” rule; it is “right technique per layer, no muddy painterly hull texture.”
 
-**Data-driven appearance.** A ship looks like what it is. Heavy ships are wide and dense. Fast ships are narrow and tapered. Equipment installed on a ship is visible on its silhouette. Faction identity flows through colour, not iconography.
+**Data-driven appearance.** A ship looks like what it is — size tier, species silhouette vocabulary, and tech tradition read at a glance. Faction identity accents **procedurally chosen** hull colours; species define **shape** families. Equipment-on-hull drawing is planned but not yet part of the flight renderer.
 
 **Lonely vastness.** The background is dark. Ships and landables are high-contrast against it. Empty space dominates the screen — this is intentional. The universe should feel large and sparse.
 
-**Consistent perspective.** Everything is viewed **top-down**, looking straight down into the plane of travel. Ships are flat silhouettes. Planets are circles. Stations are geometric constructions viewed from above. No pseudo-3D.
+**Consistent perspective.** Everything is viewed **top-down**, looking straight down into the plane of travel. Ships are flat silhouettes. Planets and moons read as shaded spheres (procedural texture). Stations use a separate legacy top-down module draw until redesigned. No pseudo-3D.
 
 ---
 
@@ -43,17 +43,25 @@ Each faction is assigned at world-gen time:
 - A **primary colour** (hull fill, station accent)
 - A **secondary colour** (engine glow, detail lines)
 
-These cascade into all faction-owned ships and stations. A player can identify a faction's ships at a glance after encountering them once. Hull/station silhouette variety may later use species **`techArchetype`** (see GDD §10), not separate faction geometry/density fields.
+These tint faction-owned ships and stations. **Hull silhouette variety** comes from species (generator-chosen body/wing subsets and **`techArchetype`**), not from separate faction geometry fields.
+
+**Ship colour (target model):** each ship gets a **procedural base colour** from world-gen / species seeds. Faction **`primaryColour`** / **`secondaryColour`** add **detail and accents** on top of that base (fill, stroke, engine glow). Until procedural hull colour fully ships, some flight code still paints hulls directly from faction primary.
 
 **Pirates** always use desaturated, mixed colours — deliberately mismatched, as if their ships are salvaged from multiple factions. No coherent palette.
 
-### 2.3 Colour Usage Rules
+### 2.3 Colour usage rules *(placeholder — not law)*
 
-- Ship hulls use faction primary at 70% opacity fill, with a 1px primary-colour stroke
-- Engine glows use faction secondary as a soft radial gradient
-- All UI chrome uses the base palette only — never faction colours
-- Radiation zone uses a deep red-violet gradient, distinct from all faction palettes
-- Nebulae use colours that do not appear in any faction palette in that sector (generated to avoid clash)
+*Target rules when procedural hull colour and VFX land. Today only part of this is true in code.*
+
+| Area | Today (runtime) | Target |
+|------|-----------------|--------|
+| Ship hull fill/stroke | Faction `primaryColour` on cached silhouette | Procedural base + faction accent |
+| Engine glow | **Not implemented** (`engineGlow.ts` stub) | Faction secondary radial gradient, thrust-scaled |
+| UI chrome | Base palette (`COLOURS`) | Same |
+| Radiation fringe | Red-violet vignette / tint (flight screen) | Same intent |
+| Nebulae | Sector `hsla` blobs from world ambient config | Avoid faction palette clash |
+
+Do not treat the bullets below as enforced art law until re-verified against `src/renderer/`.
 
 ---
 
@@ -92,160 +100,129 @@ When the player is within the radiation fringe:
 
 ## 4. Ship Rendering
 
-### 4.1 Construction System
+### 4.1 Overview
 
-Ships are drawn procedurally from their **hull spec parameters** and **installed equipment**. No sprite sheets. Each ship is a Canvas path constructed at initialisation and cached as an offscreen canvas for performance.
+Ships are drawn procedurally in **top-down flight view**. No sprite sheets. The ship points **upward** at angle 0; rotation uses a canvas transform. Silhouettes are built from paths and cached to offscreen canvases where practical.
 
-The ship is always drawn pointing **upward** (angle 0 = nose up). Rotation is applied via canvas transform.
+**World-gen / the species ship generator** (in development) chooses, per species line:
 
-### 4.2 Hull Silhouette
+| Choice | Purpose |
+|--------|---------|
+| **Size tier** | One of five classes (see §4.2) |
+| **`techArchetype`** | From the species record — biases organic / inorganic / energy hull families (see GDD § Species) |
+| **Body + wing subset** | Which procedural primitives that species may roll — gives **visual identity** without unique art per hull JSON row |
+| **Base colour** | Seed-driven procedural palette entry per ship or hull line |
 
-Each hull has a **`silhouette`** on **`HullSpec`** — a parametric path generator that takes **`dimensions`** and outputs a closed polygon. Allowed silhouettes:
+Individual **`HullSpec`** entries in `WorldFile` will carry generated silhouette parameters plus **`dimensions`** for hitbox and muzzle math. Design and tuning use the standalone **ship silhouette explorer** (`tools/ship-silhouette-explorer/`) at the **Small** tier.
 
-**`fighter`** — generic narrow, forward-tapered wings.
+### 4.2 Size tiers
 
-**`interceptor`** — long dart nose, slim body, swept tail fins.
+Five size classes exist for spacing, camera, and hitboxes. Only **Small** is defined today; the rest will be assigned as the project proceeds.
 
-**`shuttle`** — blunt commuter pod, wide mid-body.
+| Tier | Hitbox (length × width) | Status |
+|------|-------------------------|--------|
+| Tiny | TBD | — |
+| **Small** | **40 × 24** | **Defined** — silhouette explorer + current Courier-class reference |
+| Medium | TBD | — |
+| Large | TBD | — |
+| Capital | TBD | — |
 
-**`courier`** — balanced, slightly wider:
-- Moderate fuselage width
-- Two moderate wings, straight
-- Two engine nodes at rear
+`HullSpec.dimensions` stores the tier box used for **muzzle offset**, **hit radius**, and scaling the drawn hull to that target.
 
-**`freighter`** — wide, flat, boxy:
-- Wide rectangular body with flat nose
-- Short stubby wings or none
-- Two to four engine nodes, spread
+### 4.3 Procedural silhouette generator
 
-**`heavy`** — large rectangle fallback (armoured capitals):
-- Thick fuselage, blunt nose
-- Short angular wings with notches
-- Four engine nodes
+Hull art is composed from **body** primitives (e.g. lens, spade, facet, dart, rect, trapezoid, polygon, larva, orb) and optional **wing** shapes, filtered by three **style families** (combinable for hybrids):
 
-**`dimensions`** are set per hull in world JSON.
+| Family | Typical content |
+|--------|-----------------|
+| **Organic** | Soft hulls; fins, insect, tentacle, lobe wings |
+| **Inorganic** | Mechanical hulls; swept, delta, rect, blade wings |
+| **Energy** | Field bodies (e.g. orb); geometric wings (e.g. **node** orb clusters, **halo** body-centered arc bands) |
 
-### 4.3 Equipment Visibility
+The generator picks body type, wing count/shape, attach zones along the hull, and numeric params from seeded ranges. Species identity = **allowed pools** + coherence, scoped by **`techArchetype`** (`mechanical` · `robotic` · `synthetic` · `biological` · `energetic` · `void`).
 
-Installed equipment modifies the drawn silhouette:
+Energy wings **attach on the hull edge**. Node and halo layouts use **body-centered circular geometry** (equal-angle orb placement, concentric arc lines) — intentional contrast with organic swept-wing forms.
 
-| Equipment | Visual change |
-|---|---|
-| Forward thruster (heavy) | Larger/wider engine node at rear |
-| Rotate thrusters (rear-mount) | Small nozzles added at rear corners |
-| Rotate thrusters (forward-mount) | Small nozzles added at wing tips |
-| Armour (heavy) | Hull outline gains an outer offset stroke, slightly thicker |
-| Weapon (each slot) | Small hardpoint protrusion on hull edge, positioned by slot index |
-| Sensor array | Small dish or antenna at nose |
-| Hyperspace drive | Faint H-field ring drawn around the hull at 1.5× hull radius |
+### 4.4 Colour
 
-These are subtle — not elaborate — but a veteran player can read a ship's loadout at a glance.
+1. **Base** — procedural per ship/hull from seeds (species + hull id).
+2. **Faction layer** — `primaryColour` / `secondaryColour` (HSL at world-gen) add accents on hull stroke and related UI; **secondary** reserved for future engine glow. Not a full replacement palette per faction.
 
-### 4.4 Engine Glow
+Pirates: desaturated, incoherent mixes (unchanged).
 
-Each engine node renders a soft radial gradient in the faction's secondary colour when the forward thruster is active. Glow radius and opacity scale with thruster force. Reverse thrust renders a smaller forward-facing glow. Rotation thrusters render tiny side-facing glows on their respective nozzles.
+### 4.5 Equipment on hull (not defined yet)
 
-All engine glows are additive blend mode — they bloom correctly against dark space.
+Drawing installed gear on the silhouette (thruster nozzles, armour rim, weapon hardpoints, sensor dish, hyperspace ring, etc.) is **future work**. It is **not** specified here and **not** implemented for procedural hulls.
 
-### 4.5 Hull Damage
+Combat weapons today fire from muzzle offsets derived from **`HullSpec.dimensions`** only. When equipment visuals ship, rules will live under `plan/procedural/` (`HULLS_FLIGHT.md`, `EQUIPMENT_IMAGERY.md` — see README there and Phase 6 backlog).
 
-As HP decreases:
-- Below 75%: faint crack lines appear on the hull (thin, irregular strokes in a dark colour)
-- Below 40%: crack lines darken and multiply; small flicker-particles emit from the hull
-- Below 15%: hull strobes between normal and a dim red tint; larger particle emission
+### 4.6 Legacy silhouettes (interim runtime)
 
-### 4.6 Ship Scale Reference
+Until generator output is wired into every hull, the game still supports fixed canvas paths on **`HullSpec.silhouette`**: `fighter`, `interceptor`, `shuttle`, `courier`, `freighter`, `heavy`, each scaled by **`dimensions`**. These named classes are **interim** — not the long-term art direction.
 
-All sizes in canvas units (1 unit ≈ 1px at base zoom):
+### 4.7 Engine glow *(placeholder — not implemented)*
 
-| Class | Hull length | Hull width |
-|---|---|---|
-| Fighter | 32 | 16 |
-| Courier | 40 | 24 |
-| Freighter | 48 | 36 |
-| Heavy | 56 | 42 |
+*For now only.* `src/renderer/ships/engineGlow.ts` is a stub. Ships draw hull fill/stroke only; no thrust-linked exhaust in flight.
 
-The player's ship is always rendered at these sizes regardless of zoom. Other ships scale correctly relative to distance (no zoom currently planned, but the system should support it).
+*Sketch for when implemented:* soft radial gradient in faction **secondary**; radius/opacity scale with forward/reverse/rotate thrust; additive blend against space.
+
+### 4.8 Hull damage visuals *(placeholder — not implemented)*
+
+*For now only.* Damage is communicated by a **world HP bar** above damaged ships and **DoT burn** overlay (green tint re-draw of hull) — not cracks, strobing hull, or debris on the silhouette.
+
+*Sketch for when implemented:* tiered crack lines / flicker / red strobe by HP band — exact thresholds and art TBD.
+
+### 4.9 Scale note
+
+At base zoom, 1 canvas unit ≈ 1 px. The **Small** tier (40 × 24) is the reference for the silhouette explorer and current player-facing Courier-scale hulls. Other tiers will scale proportionally once defined.
 
 ---
 
-## 5. Landable Rendering
+## 5. Landables (planets, moons, stations)
 
-### 5.1 Planets
+### 5.1 Planets and moons
 
-Planets are circles. Radius defined by their mass parameter (range: 40–120px). Rendered as:
-1. Base fill: a radial gradient from a slightly lighter centre to a darker edge (simulates curvature)
-2. Surface layer: 2–4 overlapping ellipses at low opacity in a secondary colour (continent/cloud suggestion)
-3. Atmosphere ring: a soft outer glow in a desaturated version of the base colour, 8–16px wide
-4. Terminator: a subtle dark crescent on one edge (consistent direction per sector, as if lit by the sector's star)
+**Do not use** the old “filled circle + a few ellipses” description from early drafts. Planets and moons use a **dedicated procedural sphere renderer**:
 
-Colour palette driven by: faction primary colour tinted toward the planet's region type.
-- Core regions: blue-white, high-tech feel
-- Mid-ring: varied, earthlike hues
-- Outer rim: grey-brown, desolate
-- Near radiation zone: sickly yellow-green
+- **Spec:** `plan/procedural/void_runner_planets.md`
+- **Runtime:** `src/renderer/planets/` — noise-based `ImageData` pass, atmosphere/rings composited in Canvas 2D, textures cached per landable
+- **PRNG:** `SplitMix64` (`src/core/prng.ts`), not the mulberry32 examples in the reference doc
+- **Colour:** driven by landable procedural params (`rocky`, `chaos`, `cloudDensity`, etc.) — **not** faction primary tint on the body (minimap still uses faction dots)
 
-### 5.2 Moons
+### 5.2 Stations
 
-Same system as planets, smaller (radius 16–32px), no atmosphere ring, greyscale-shifted palette with subtle crater circles (3–5 small dark circles offset from centre).
+Stations in **flight view** still use the **legacy station renderer** until Phase 6 station documentation and a new module system land (`STATIONS_FLIGHT.md` in `plan/procedural/README.md` backlog). Tiered “core + ring + spokes” tables in older versions of this file were **aspirational** — not current implementation law.
 
-### 5.3 Space Stations
-
-Stations are geometric assemblies viewed top-down. Built from a small library of **modules**:
-
-| Module | Shape | Use |
-|---|---|---|
-| Core | Octagon or hexagon | Always present, station centre |
-| Ring | Thin annulus around core | Large stations |
-| Spoke | Thin rectangle, radial | Connects core to ring or docks |
-| Dock arm | Short rectangle, tangential | Landing pads |
-| Module pod | Small square or circle | Additional facilities |
-| Antenna | Thin line + dot | Communications, sensors |
-
-Station complexity scales with service tier:
-- Basic (moon outpost): core + 2 dock arms
-- Standard (station): core + ring + 4 spokes + dock arms
-- Full (shipyard/military): core + ring + 8 spokes + module pods + antennas
-
-Station shape tier is procedural (Phase 6); no faction geometry field in schema yet.
-
-Stations rotate very slowly (0.5–2 RPM depending on type) — always in the same direction for a given station, seeded per world-gen.
-
-### 5.4 Landing Radius Indicator
+### 5.3 Landing radius indicator
 
 When the player is within approach range of a landable, a dashed circle appears at the landing radius boundary. Colour: UI_ACCENT. Opacity scales with proximity (faint at edge, solid when close). Disappears once inside the radius.
 
 ---
 
-## 6. Bullet and Weapon Effects
+## 6. Weapons and combat visuals
 
-### 6.1 Bullet Visuals
+### 6.1 Current model (runtime)
 
-Each bullet spec defines its visual type. A small set of visual templates covers all cases:
+Weapons are **`WeaponItem`** equipment rows referencing a **`BulletSpec`**. Firing: `WeaponSystem`. Drawing: `BulletLayer` (flight) and small previews in the weapon strip HUD.
 
-| Visual type | Appearance | Typical use |
-|---|---|---|
-| `bolt` | Short elongated oval, bright core, short trail | Standard kinetic rounds |
-| `beam_pulse` | Thin rectangle, no trail, short lifespan | Energy weapons |
-| `orb` | Circle with soft glow, slow-moving | Plasma, energy orbs |
-| `missile` | Small triangle with engine glow trail | Seeking missiles |
-| `mine` | Small hexagon, no velocity, pulsing outline | Deployed mines |
+**`BulletSpec`** (see `src/types/bullet.ts`) — fields that affect look and behaviour:
 
-Colour is defined per bullet spec (set at world-gen time by Claude alongside the weapon's name and description).
+| Field | Role |
+|-------|------|
+| `visualType` | Canvas template: `bolt`, `beam_pulse`, `orb`, `missile` (`mine` on enum — reserved / may be incomplete) |
+| `colour` | Hex string for fill/glow |
+| `speed`, `mass`, `lifespan`, `damage`, `matterType` | Simulation |
+| `abilities` | Optional: `seeking`, `dot`, `knockback`, `ballistic`, `explosive` — affect logic, not a separate art table |
 
-### 6.2 Impact Effects
+Do **not** treat old world-gen “bullet flavour paragraphs” or fixed template tables in this doc as authoritative. **Re-align this section with code** when a dedicated weapon VFX pass is scheduled (`plan/BACKLOG.md` Phase 6+).
 
-On bullet collision with a ship or landable:
-- Small burst of 6–10 particles in the bullet's colour
-- Particles expand outward and fade over 0.3s
-- A brief flash on the hit ship's hull (white, 2 frames)
+### 6.2 Impact effects *(placeholder — not law)*
 
-### 6.3 Explosion (Ship Destruction)
+*For now only.* On hit: brief particle burst and/or hull flash — counts, timing, and colours **TBD** when combat VFX are designed.
 
-Ship destruction plays a 1-second particle explosion:
-- Phase 1 (0–0.3s): rapid outward burst of bright particles in faction secondary colour
-- Phase 2 (0.3–0.8s): slower debris fragments (irregular polygons, hull colour)
-- Phase 3 (0.8–1.0s): fade out, leave a brief dark smoke cloud (low-opacity dark circle, fades over 2s)
+### 6.3 Ship destruction *(placeholder — not law)*
+
+*For now only.* Older multi-phase explosion / debris notes here were a **sketch**; implementation may differ entirely.
 
 ---
 
@@ -282,9 +259,9 @@ The mini-map is a square panel, 160×160px, with a subtle border. It renders:
 - Mission targets as pulsing UI_ACCENT dots
 - Current ship and landable targets outlined with a selection ring
 
-### 7.4 Equipment Icons
+### 7.4 Equipment icons *(interim — not law)*
 
-Equipment items in the UI are represented by small 24×24px geometric glyphs drawn on Canvas:
+Until `EQUIPMENT_IMAGERY.md` lands, the UI uses simple 24×24px geometric glyphs on Canvas as a **stand-in**:
 - Thruster: chevron/arrow shape
 - Weapon: small diamond or crosshair
 - Armour: shield outline (hexagon)
@@ -299,7 +276,7 @@ All glyphs use UI_PRIMARY stroke, no fill. Equipped items gain a UI_ACCENT backg
 ### 7.5 Landable Screen
 
 The landable screen is a full-panel overlay. Layout:
-- Left column (30%): landable name, rendered landable visual (same procedural renderer, larger), faction name in faction primary colour, lore text in UI_SECONDARY
+- Left column (30%): landable name, landable portrait (cached planet/moon texture at larger radius, or legacy station draw), faction name in faction primary colour, lore text in UI_SECONDARY
 - Right column (70%): tab content area
 
 Tabs use a simple horizontal tab bar. Active tab: UI_ACCENT underline. Inactive: UI_SECONDARY text.
@@ -312,30 +289,34 @@ All animations are time-based (delta time), not frame-based. This ensures consis
 
 | Element | Animation |
 |---|---|
-| Engine glow | Scales with thruster input, instant on/off, slight pulse at idle |
-| Station rotation | Constant angular velocity, seeded per station |
+| Engine glow | Placeholder — not in flight renderer yet |
+| Station rotation | Legacy station renderer only; constant angular velocity where implemented |
 | Landing radius ring | Opacity lerps with proximity |
 | Star twinkle | Sine wave brightness, 0.5–1.5s period, per-star random phase |
-| Hull damage flicker | Random interval strobe below 15% HP |
+| Hull damage flicker | Placeholder — no on-hull damage art yet (HP bar + DoT overlay only) |
 | Bullet trails | Previous position retained for 3 frames, faded |
 | Seeking missile | Smooth turn toward target, turn rate from spec |
-| Explosion particles | Physics-based (velocity + drag + fade) |
+| Explosion particles | Placeholder — physics TBD when destruction VFX ship |
 | HUD bar changes | Lerp over 0.1s to new value (no jarring snaps) |
 | Hyperspace jump | 0.5s radial white flash, sector transition, 0.5s fade in |
 | Radiation vignette | Smooth opacity lerp as player approaches core |
 
 ---
 
-## 9. Renderer Architecture Notes
+## 9. Renderer architecture notes
 
-These are guidelines for the engineering implementation of the art system.
+Engineering guidelines for the art stack:
 
-- **Offscreen canvas caching**: Ship silhouettes are drawn once to an offscreen canvas on initialisation and when equipment changes. The cached canvas is used for all subsequent renders. This avoids re-computing paths every frame.
-- **Layer order** (back to front): nebulae → deep stars → mid stars → near stars → landable atmosphere glows → landables → bullet trails → bullets → ship engine glows → ship hulls → ship damage particles → explosion effects → HUD → UI panels
-- **World-to-screen transform**: a single transform function converts world coordinates to screen coordinates given the player's world position. All rendering goes through this function — no object knows its own screen position.
-- **Faction visual objects**: at world-gen load time, a `FactionVisual` object is constructed per faction containing its primary and secondary colours. This is passed to all renderers for faction-owned entities.
-- **Seed-based randomness**: all procedural visual decisions (star positions, planet surface ellipses, station spoke counts) use a seeded PRNG keyed on the sector or entity ID. This guarantees visual consistency across sessions without storing visual state.
+- **Ship hulls:** offscreen cache per hull silhouette + faction colours where implemented; procedural generator params on `HullSpec` are backlog (`plan/BACKLOG.md` §6.3). Explorer tool is authoritative for **Small**-tier body/wing grammar until wired in.
+- **Planets / moons:** texture cache per landable (`src/renderer/planets/`); flight draws via `drawImage`. See `void_runner_planets.md`.
+- **Stations (flight):** legacy renderer — separate from planet pipeline.
+- **Layer order** (back to front): nebulae → star layers → landables (cached planet textures / legacy stations) → bullet trails → bullets → ship hulls → (future: engine glow, hull damage, explosion VFX) → HUD → UI panels
+- **World-to-screen:** one transform from world position; renderers receive camera, not screen coords.
+- **`FactionVisual`:** built at load from faction HSL — used for ships, stations, minimap dots, accents.
+- **Seeded PRNG:** sector stars, planet noise, and future hull generation use deterministic seeds (entity/sector id) for session-stable visuals.
+
+**Related docs:** `plan/procedural/README.md` · `plan/GDD.md` (Species, `techArchetype`) · `tools/ship-silhouette-explorer/`
 
 ---
 
-*Art & Visual Design Guidelines v1.0 — Procedural vector, top-down, geometric modern indie. No external image assets. All visuals derived from game data.*
+*Art & Visual Design Guidelines v1.0 — Procedural vector, top-down, geometric modern indie. No external image assets. Visuals derived from game data; several sections marked placeholder pending Phase 6+ implementation.*
