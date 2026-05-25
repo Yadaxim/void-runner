@@ -3,3 +3,9 @@ dist/
 .DS_Store
 claudePrompts/
 plan/RandomToughts.md
+
+# Local secrets — use .env.example and .secrets/anthropic-api-key.example as templates
+.env
+.env.local
+.env.*.local
+.secrets/anthropic-api-key

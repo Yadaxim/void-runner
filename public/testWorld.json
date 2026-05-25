@@ -17,7 +17,10 @@
       "archetype": "biotic",
       "physiology": "Oxygen-breathing mammalian bipeds adapted to dense orbital cities and mixed-gravity shipboard life.",
       "ethos": "They prize civic continuity, negotiated law, and practical engineering over heroic individual action.",
+      "codex": "The Kaelen are core-world humans who built their reputation on orbital infrastructure: dense stations, mixed-gravity shipboard schools, and engineering guilds that treat a cracked bulkhead like a personal insult. Captains from this line speak softly about law and loudly about maintenance schedules.",
+      "worldgenBrief": "Human-line major polity; inorganic yards and civic bureaucracy; core habitat. Diplomacy: treaty-heavy. Ships: machined plates, escort discipline. Use for federation-style missions and lawful trade hubs. Taboos: unlicensed militia, breach of registered escort contracts.",
       "techArchetype": "inorganic",
+      "speciesRole": "human",
       "preferredHabitat": "core"
     },
     {
@@ -26,7 +29,10 @@
       "archetype": "biotic",
       "physiology": "Broad-framed mineral-adapted humanoids whose dense bones and redundant organs tolerate harsh frontier gravity.",
       "ethos": "They value clan obligation, salvage rights, and earned independence from distant central authorities.",
+      "codex": "Tharkan clans claim the rim as workshop and courtroom: broad-framed bodies tuned for harsh gravity, salvage rights passed like heirlooms, and captains who treat central edicts as suggestions. Their docks smell like hot metal and ozone from stripped wrecks.",
+      "worldgenBrief": "Playable frontier biotic; rim habitat; salvage economy. Factions: clan holds, independent yards. Diplomacy: obligation-first. Ships: rugged inorganic haulers. Missions: recovery, clan disputes, smuggling pushback. Avoid portraying them as hive or gestalt entities.",
       "techArchetype": "inorganic",
+      "speciesRole": "playable",
       "preferredHabitat": "rim"
     },
     {
@@ -35,7 +41,10 @@
       "archetype": "biotic",
       "physiology": "Long-lived arboreal symbiotes whose paired nervous systems support exceptional memory and trade calculation.",
       "ethos": "They treat obligation as a ledger, preserving peace when it improves prosperity and leverage.",
+      "codex": "Veth traders are long-lived symbiotes with paired nervous systems that remember every tariff shift. They grow contracts like gardens — peace is profitable, war is bad accounting — and their organic ships feel alive under the fingertips of dock inspectors.",
+      "worldgenBrief": "Playable merchant biotic; organic fleets; mid-ring trade. Diplomacy: ledger-polite. Ships: grown hulls, memory cults. Missions: brokerage, arbitration, luxury cargo. Emphasize individual negotiators and contract law, not swarm behavior.",
       "techArchetype": "organic",
+      "speciesRole": "playable",
       "preferredHabitat": "mid"
     },
     {
@@ -44,7 +53,10 @@
       "archetype": "amalgam",
       "physiology": "Mixed-lineage spacer enclaves shaped by sealed habitats, cybernetic medicine, and generations away from planets.",
       "ethos": "They prize survival, anonymity, and flexible loyalty in the shadow economies between formal powers.",
+      "codex": "Driftborn enclaves are mixed-lineage spacers who vanished from planetary ledgers generations ago. Cybernetic medicine and sealed habitats made them something new — still one crew per passport, but fluent in nebula routes and hybrid ships that official registries never list.",
+      "worldgenBrief": "Playable amalgam spacers; nebula habitat; hybrid tech; shadow markets. Diplomacy: deniable. Ships: patched bio-synth. Missions: anonymity jobs, patent runs, grey contracts between majors. Keep one passport per captain; no distributed mind.",
       "techArchetype": "hybrid",
+      "speciesRole": "playable",
       "preferredHabitat": "nebula"
     }
   ],

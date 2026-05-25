@@ -11,10 +11,12 @@
       <header class="toolbar">
         <h1>WORLDGEN EXPLORER</h1>
         <span class="badge">standalone · debug</span>
-        <button type="button" id="btnPreview" class="primary" title="Run step 1 (galaxy structure)">
-          Run step 1
+        <button type="button" id="btnRunStep" class="primary" title="Run selected pipeline step, or the next runnable step">
+          Run step
         </button>
-        <button type="button" id="btnGenerate">Generate pipeline</button>
+        <button type="button" id="btnGenerate" title="Continue from the first pending or failed step">
+          Continue pipeline
+        </button>
         <label class="file-btn">
           Load world JSON
           <input type="file" id="fileWorld" accept=".json,application/json" />
@@ -28,13 +30,13 @@
       </header>
 
       <aside class="panel left" id="configPanel">
-        <div class="panel-header">Galaxy config</div>
+        <div class="panel-header" id="configPanelTitle">Step 1 — Galaxy structure</div>
         <div class="panel-scroll" id="configForm"></div>
       </aside>
 
       <main class="map-wrap">
         <canvas id="galaxyCanvas"></canvas>
-        <div class="map-hint">Arrows · click sector · toggle layers (left panel)</div>
+        <div class="map-hint">Arrows · click sector · double-click pipeline step to run it</div>
       </main>
 
       <aside class="panel inspect">
@@ -47,9 +49,16 @@
         <div class="panel-scroll pipeline-scroll">
           <ul class="step-list" id="stepList"></ul>
         </div>
-        <div class="panel-header">Step output</div>
-        <div class="panel-scroll panel-scroll-grow">
-          <pre class="json-preview" id="stepJson">Select a pipeline step</pre>
+        <div class="panel-header step-output-header">
+          <span>Step output</span>
+          <span class="output-tabs">
+            <button type="button" class="output-tab active" data-output-mode="preview">Preview</button>
+            <button type="button" class="output-tab" data-output-mode="json">Raw JSON</button>
+          </span>
+        </div>
+        <div class="panel-scroll panel-scroll-grow step-output-body">
+          <div id="stepOutputPreview" class="step-output-preview"></div>
+          <pre class="json-preview" id="stepJson" hidden>Select a pipeline step</pre>
         </div>
       </aside>
 

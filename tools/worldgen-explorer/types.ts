@@ -7,18 +7,11 @@ export interface GridCoord {
 
 export type GalaxyShape = 'disc' | 'ring' | 'spiral' | 'heterogeneous';
 
-export interface WorldGenConfig {
-  sizeX: number;
-  sizeY: number;
-  sectorSize: number;
-  shape: GalaxyShape;
-  planetDensity: number;
-  moonProbability: number;
-  moonsPerPlanetRange: [number, number];
-  seed: number;
-  speciesCount: number;
-  worldName: string;
-}
+export type { ExplorerConfig, Step1Params, Step2Params, Step3Params } from './stepConfigs';
+export { DEFAULT_EXPLORER_CONFIG } from './stepConfigs';
+
+/** @deprecated Use ExplorerConfig — kept for mapData call sites during migration. */
+export type WorldGenConfig = import('./stepConfigs').ExplorerConfig;
 
 export type StepStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
 
@@ -158,18 +151,7 @@ export function hslToCss(colour: HSLColour): string {
   return `hsl(${colour.h}, ${colour.s}%, ${colour.l}%)`;
 }
 
-export const DEFAULT_CONFIG: WorldGenConfig = {
-  sizeX: 40,
-  sizeY: 40,
-  sectorSize: 10000,
-  shape: 'spiral',
-  planetDensity: 0.5,
-  moonProbability: 0.3,
-  moonsPerPlanetRange: [1, 3],
-  seed: 424242,
-  speciesCount: 5,
-  worldName: 'Generated World'
-};
+export { DEFAULT_EXPLORER_CONFIG as DEFAULT_CONFIG } from './stepConfigs';
 
 export const DEFAULT_LAYERS: MapLayerFlags = {
   grid: true,

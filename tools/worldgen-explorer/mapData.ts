@@ -1,22 +1,23 @@
 import { galaxyShapeWeight } from '../../src/worldgen/galaxyShapeMask';
 import type { GalaxyStructureOutput } from '../../src/worldgen/types/galaxyStructure';
+import type { ExplorerConfig } from './stepConfigs';
 import type {
   GridCoord,
   MapSectorView,
   MapViewData,
   SectorOverride,
   Step2Output,
-  WorldFileSlice,
-  WorldGenConfig
+  WorldFileSlice
 } from './types';
 import { coordKey, hslToCss } from './types';
 
-function sectorShapeWeight(config: WorldGenConfig, coord: GridCoord): number {
-  const hw = Math.floor(config.sizeX / 2);
-  const hh = Math.floor(config.sizeY / 2);
+function sectorShapeWeight(config: ExplorerConfig, coord: GridCoord): number {
+  const p = config.steps['01_galaxy_structure'];
+  const hw = Math.floor(p.sizeX / 2);
+  const hh = Math.floor(p.sizeY / 2);
   const col = coord.x + hw;
   const row = hh - 1 - coord.y;
-  return galaxyShapeWeight(config.shape, col, row, config.sizeX, config.sizeY, config.seed);
+  return galaxyShapeWeight(p.shape, col, row, p.sizeX, p.sizeY, config.global.seed);
 }
 
 function mapSectorFromWorld(
@@ -46,7 +47,7 @@ function mapSectorFromWorld(
   };
 }
 
-function buildMapFromStep1(output: GalaxyStructureOutput, config: WorldGenConfig): MapViewData {
+function buildMapFromStep1(output: GalaxyStructureOutput, config: ExplorerConfig): MapViewData {
   const sectors = new Map<string, MapSectorView>();
   for (const sector of output.sectors) {
     const weight = sectorShapeWeight(config, sector.coord);
@@ -81,12 +82,13 @@ function buildMapFromStep1(output: GalaxyStructureOutput, config: WorldGenConfig
   };
 }
 
-function emptyMap(config: WorldGenConfig): MapViewData {
+function emptyMap(config: ExplorerConfig): MapViewData {
+  const p = config.steps['01_galaxy_structure'];
   const sectors = new Map<string, MapSectorView>();
-  const hw = Math.floor(config.sizeX / 2);
-  const hh = Math.floor(config.sizeY / 2);
-  for (let row = 0; row < config.sizeY; row += 1) {
-    for (let col = 0; col < config.sizeX; col += 1) {
+  const hw = Math.floor(p.sizeX / 2);
+  const hh = Math.floor(p.sizeY / 2);
+  for (let row = 0; row < p.sizeY; row += 1) {
+    for (let col = 0; col < p.sizeX; col += 1) {
       const coord: GridCoord = { x: col - hw, y: hh - 1 - row };
       sectors.set(coordKey(coord), {
         coord,
@@ -104,8 +106,8 @@ function emptyMap(config: WorldGenConfig): MapViewData {
     }
   }
   return {
-    gridWidth: config.sizeX,
-    gridHeight: config.sizeY,
+    gridWidth: p.sizeX,
+    gridHeight: p.sizeY,
     sectors,
     factions: [],
     source: 'empty',
@@ -184,7 +186,7 @@ export function buildMapFromWorld(world: WorldFileSlice): MapViewData {
 }
 
 export function buildMapView(
-  config: WorldGenConfig,
+  config: ExplorerConfig,
   stepOutputs: Record<string, unknown>,
   loadedWorld: WorldFileSlice | null
 ): MapViewData {

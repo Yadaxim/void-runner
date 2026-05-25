@@ -1,0 +1,5 @@
+# Copy to `anthropic-api-key` (no extension) in this folder.
+# That file is gitignored. One line: your Anthropic API key.
+#
+# Example (replace with your real key):
+# sk-ant-api03-xxxxxxxx

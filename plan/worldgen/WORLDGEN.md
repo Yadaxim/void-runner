@@ -1,6 +1,6 @@
 # VOID RUNNER — World generation pipeline
 
-Full procedural + LLM pipeline for generating a playable **`WorldFile`**: step input/output schemas, JSON-schema validation, progressive save between steps, procedural-vs-LLM split per step, generation UI flow, and final assembly. Supersedes earlier short-form generator notes.
+Full procedural + LLM pipeline for generating a playable `**WorldFile**`: step input/output schemas, JSON-schema validation, progressive save between steps, procedural-vs-LLM split per step, generation UI flow, and final assembly. Supersedes earlier short-form generator notes.
 
 ---
 
@@ -16,22 +16,24 @@ Full procedural + LLM pipeline for generating a playable **`WorldFile`**: step i
 
 ## Pipeline overview
 
-| Step | Name | Type | Depends on |
-|---|---|---|---|
-| 1 | Galaxy structure | Procedural | User input |
-| 2 | Special sector seeds | Procedural | 1 |
-| 3 | Species | LLM | User input (count) |
-| 4 | Faction skeleton | Procedural | 3 |
-| 5 | Faction identity | LLM | 4 |
-| 6 | Faction homes | Procedural | 1, 5 |
-| 7 | Territorial growth | Procedural + LLM (anomalies) | 6 |
-| 8a | Faction relationship matrix | Procedural + LLM (deviations) | 5 |
-| 8b | Station placement | Procedural | 7 |
-| 9 | Equipment catalog | LLM | 3 |
-| 10 | Mission templates | LLM | 5, 9 |
-| 11 | Mission tree templates | LLM | 5, 9, 10 |
-| 12 | Faction projects | LLM | 5, 7 |
-| 13 | Final assembly + validation | Procedural | All |
+
+| Step | Name                        | Type                          | Depends on         |
+| ---- | --------------------------- | ----------------------------- | ------------------ |
+| 1    | Galaxy structure            | Procedural                    | User input         |
+| 2    | Special sector seeds        | Procedural                    | 1                  |
+| 3    | Species                     | LLM                           | User input (count) |
+| 4    | Faction skeleton            | Procedural                    | 3                  |
+| 5    | Faction identity            | LLM                           | 4                  |
+| 6    | Faction homes               | Procedural                    | 1, 5               |
+| 7    | Territorial growth          | Procedural + LLM (anomalies)  | 6                  |
+| 8a   | Faction relationship matrix | Procedural + LLM (deviations) | 5                  |
+| 8b   | Station placement           | Procedural                    | 7                  |
+| 9    | Equipment catalog           | LLM                           | 3                  |
+| 10   | Mission templates           | LLM                           | 5, 9               |
+| 11   | Mission tree templates      | LLM                           | 5, 9, 10           |
+| 12   | Faction projects            | LLM                           | 5, 7               |
+| 13   | Final assembly + validation | Procedural                    | All                |
+
 
 Step 8a and 8b can run in parallel.
 
@@ -42,6 +44,7 @@ Step 8a and 8b can run in parallel.
 ### 1. Galaxy structure (procedural)
 
 **Input:**
+
 ```typescript
 {
   sizeX: number              // 30..50 typical
@@ -67,6 +70,7 @@ Step 8a and 8b can run in parallel.
 Landable stubs use sector-local world-unit positions (origin at sector centre, ±sectorSize/2). Names, factions, and services are filled by later steps.
 
 **Algorithm:**
+
 - Build the full sizeX×sizeY sector grid (`SectorMetadata` per cell)
 - Apply shape mask to scale planet placement probability per sector (mask does not remove sectors)
 - Roll planet placement against `planetDensity × shapeWeight`
@@ -85,6 +89,7 @@ Landable stubs use sector-local world-unit positions (origin at sector centre, �
 **Input:** Galaxy structure from step 1.
 
 **Output:**
+
 ```typescript
 {
   sectorOverrides: {
@@ -100,6 +105,7 @@ Landable stubs use sector-local world-unit positions (origin at sector centre, �
 ```
 
 **Algorithm:**
+
 - Radiation zones: distance-from-center scaling (already implemented). Apply intensity.
 - Nebulae: random clusters, 2-5 per galaxy, each spanning 3-8 contiguous sectors.
 - Ruins: 5-10% of sectors, weighted toward unclaimed/border regions (decided after step 7).
@@ -115,28 +121,85 @@ For v1, seed shimmer and nebulae here. Defer ruin placement to step 7 (after ter
 ### 3. Species (LLM, constrained)
 
 **Input:**
+
 ```typescript
 {
-  count: number              // typically 5
+  count: number              // typically 5–9; minimum 3
   archetypeMenu: SpeciesArchetype[]  // pre-defined menu, see GDD
   bubbleLore: string         // canonical lore passed to LLM for context
 }
 ```
 
 **LLM prompt structure:**
+
 - System: explain the bubble lore and the design constraints
-- User: "Generate {count} species. Pick {count} archetypes from this menu that maximize contrast: {menu}. For each, provide [name, archetype, physiology, ethos, techArchetype]. Return JSON only."
+- User: "Generate {count} species. Pick {count} archetypes from this menu that maximize contrast: {menu}. For each, provide [name, archetype, physiology, ethos, codex, worldgenBrief, techArchetype, speciesRole]. Return JSON only."
 
 **Output:**
+
 ```typescript
-Species[]   // schema as defined in GDD section 3
+{
+  species: Species[]    // nation roster (count entries) — faction skeleton uses this only
+  wildlife: Species[]   // always 11 biotic fauna — ids wildlife_0 … wildlife_10
+}
 ```
 
+#### Species roster rules (fixed — enforced in code + prompt)
+
+The player must be a **singular character** (not a hive, gestalt, or disembodied phenomenon). Every generated galaxy obeys:
+
+
+| Rule                                           | Detail                                                                                                                                                                                                                                                      |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Always Human**                               | Exactly one `speciesRole: human`. `**name` must be `Human`** (not "Baseline Human", "Terran", etc.). Archetype `**biotic**` only. `techArchetype` must **not** be `void`.                                                                                   |
+| **Always void anchor**                         | Exactly one mandatory **Void Runner** species: archetype `**shimmerborn`** + tech `**void**` + `speciesRole: npc`. Non-playable; cult/insurer/relic tone.                                                                                                   |
+| **Playable aliens**                            | `speciesRole: playable` — solo captain only (`biotic`, `amalgam`, or solo `construct`). **Never** `shimmerborn`, **never** `void` tech.                                                                                                                     |
+| **NPC nations**                                | `speciesRole: npc` — includes the void anchor plus hives, gestalts, fieldborn chorus, etc. Not selectable at character creation.                                                                                                                            |
+| **Wildlife catalog** | **11 species always appended** — separate `wildlife[]` output, **not** part of nation `count`. All **`biotic`**. **No factions** (step 4 ignores them). All use `techArchetype: organic` (creature-hull art). Ship silhouettes assigned in a later step. Step 7 spawns populations / hazards from this list. |
+
+**Nation role counts** (`count` = nation roster size only):
+
+- `playable` = `floor((count − 2) / 2)` where `count − 2` reserves Human + void anchor
+- `npc` = 1 void anchor + remaining NPC slots
+- Examples: **N=5** → 1 Human + 1 void npc + 1 playable + 2 other npc **+ 11 wildlife**. **N=6** → same nation split + 11 wildlife.
+
+**Wildlife output** (always 11 entries):
+
+```typescript
+{
+  species: Species[]    // nations — faction skeleton uses this only
+  wildlife: Species[]     // fauna — ids wildlife_0 … wildlife_10
+}
+```
+
+Each wildlife row: `speciesRole: wildlife`, `archetype: biotic`, `techArchetype: organic`.
+
+**Text fields per species:**
+
+
+| Field                 | Length  | Audience                                              |
+| --------------------- | ------- | ----------------------------------------------------- |
+| `physiology`, `ethos` | 20–200  | Short hooks (compact UI, contrast)                    |
+| `codex`               | 200–800 | Player-facing species screen                          |
+| `worldgenBrief`       | 200–600 | Downstream LLM (step 5 factions, equipment, missions) |
+
+
+Prompt draft: `plan/worldgen/prompts/03_species.md`. Implementation: `src/worldgen/speciesPlayability.ts`, `src/worldgen/steps/03_species.ts`.
+
 **Validation:**
+
+- `count` ≥ 3
 - All species have unique IDs and names
-- All archetype values are from the menu
-- All `techArchetype` values are from the `TechArchetype` enum (see GDD)
-- All physiology and ethos strings are 20-200 characters
+- Human row: `name === "Human"`, `speciesRole === human`, `archetype === biotic`
+- Exactly one void anchor (`shimmerborn` + `void` + `npc`); no duplicate `shimmerborn` / `void` on other rows
+- Role counts match `speciesRoleTargets(count)` for **nation roster only** (human, playable, npc)
+- Nation roster must not include `speciesRole: wildlife`
+- Wildlife array: exactly 11 entries; all `biotic`
+- Playable/human: no `shimmerborn`, no `void` tech
+- All archetype / `techArchetype` enum values valid; distinct archetypes where count allows (see validator)
+- All physiology and ethos strings are 20-200 characters (short hooks)
+- All codex strings are 200-800 characters (player-facing)
+- All worldgenBrief strings are 200-600 characters (downstream LLM steps 5+)
 
 **Retry logic:** On validation failure, re-prompt with the specific error appended.
 
@@ -145,6 +208,7 @@ Species[]   // schema as defined in GDD section 3
 ### 4. Faction skeleton (procedural)
 
 **Input:**
+
 ```typescript
 {
   species: Species[]
@@ -158,6 +222,7 @@ Species[]   // schema as defined in GDD section 3
 ```
 
 **Output:**
+
 ```typescript
 {
   factionSkeletons: {
@@ -170,10 +235,12 @@ Species[]   // schema as defined in GDD section 3
 ```
 
 **Algorithm:**
+
 - Compute majorCount = round(galaxyLandableCount × majorPerLandables), clamped to [2, 5]
 - Compute minorCount = sum of per-major rolls in `minorPerMajor`
 - Compute independentCount = uniform random in `independentCount` range
-- Assign species composition per faction:
+- **Human major (required):** `faction_major_0` is always mono-species **100%** the `speciesRole: human` entry from step 3.
+- Assign species composition for other factions:
   - 70% chance: single-species (one species at 100%)
   - 25% chance: two-species (60/40 or 70/30 split)
   - 5% chance: three-species (40/30/30 or similar)
@@ -181,6 +248,7 @@ Species[]   // schema as defined in GDD section 3
   - Wildlife factions (added separately in step 7 anomaly pass) use a single species typically
 
 **Validation:**
+
 - All percentages sum to 100 per faction
 - All speciesId values exist in input species
 
@@ -189,6 +257,7 @@ Species[]   // schema as defined in GDD section 3
 ### 5. Faction identity (LLM)
 
 **Input:**
+
 ```typescript
 {
   factionSkeletons: FactionSkeleton[]
@@ -197,14 +266,16 @@ Species[]   // schema as defined in GDD section 3
 }
 ```
 
-**LLM prompt structure:** For each skeleton, ask for `name`, `description`, `shipStyle`, `missionFlavour`, `bubbleStance`, `primaryColour`, `secondaryColour`. Pass **`speciesComposition`** and the referenced **`Species`** rows so tone aligns with dominant species **`techArchetype`** (species-level only).
+**LLM prompt structure:** For each skeleton, ask for `name`, `description`, `shipStyle`, `missionFlavour`, `bubbleStance`, `primaryColour`, `secondaryColour`. Pass `**speciesComposition`** and the referenced `**Species**` rows so tone aligns with dominant species `**techArchetype**` (species-level only).
 
 **Output:**
+
 ```typescript
 Faction[]   // fully populated except home and faction-control data
 ```
 
 **Validation:**
+
 - All names unique across factions
 - `bubbleStance` from enum
 - `flagColor` is a valid hex string
@@ -216,6 +287,7 @@ Faction[]   // fully populated except home and faction-control data
 ### 6. Faction homes (procedural)
 
 **Input:**
+
 ```typescript
 {
   homedFactions: Faction[]   // majors + minors only
@@ -226,6 +298,7 @@ Faction[]   // fully populated except home and faction-control data
 ```
 
 **Algorithm:**
+
 - For each homed faction, score each candidate planet by:
   - Habitat preference match (species' `preferredHabitat` vs sector's overrides) — strong weight
   - Distance from other already-assigned homes — moderate weight (avoid clustering)
@@ -234,6 +307,7 @@ Faction[]   // fully populated except home and faction-control data
 - Process majors first, then minors
 
 **Output:**
+
 ```typescript
 {
   homeAssignments: { factionId: string, landableId: string }[]
@@ -247,6 +321,7 @@ Faction[]   // fully populated except home and faction-control data
 ### 7. Territorial growth (procedural with LLM anomaly injection)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -264,12 +339,14 @@ Faction[]   // fully populated except home and faction-control data
 ```
 
 **Algorithm (procedural pass):**
+
 - Each faction starts owning only its home landable
 - Iterative spread: each tick, each faction can claim adjacent unclaimed landables based on its aggression and biases
 - Two factions claiming the same landable in the same tick → start as `dispute`
 - Stop when no faction wants to expand further (or after N iterations)
 
 **LLM anomaly pass:**
+
 - Show the LLM the resulting territorial map and ask for 2-3 narrative anomalies, e.g.:
   - "Faction A has a lone outpost deep in Faction B's territory — what's the story?"
   - "These two majors share a key border landable — what's the relationship?"
@@ -278,6 +355,7 @@ Faction[]   // fully populated except home and faction-control data
 - Apply approved anomalies to the territorial map
 
 **Output:**
+
 ```typescript
 {
   landableControl: {
@@ -297,6 +375,7 @@ Faction[]   // fully populated except home and faction-control data
 **Ruin placement:** Now that territory is settled, place the seeded ruin candidates from step 2. Bias placement toward border regions and unclaimed sectors.
 
 **Validation:**
+
 - Every landable has at least one controller (or is wildlife territory)
 - All shares sum to 100 per landable
 - `controlState` matches faction count rules
@@ -306,6 +385,7 @@ Faction[]   // fully populated except home and faction-control data
 ### 8a. Faction relationship matrix (procedural + LLM deviations)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -314,6 +394,7 @@ Faction[]   // fully populated except home and faction-control data
 ```
 
 **Procedural baseline:**
+
 - For each faction pair, compute baseline disposition from:
   - Ideology similarity (text-based heuristic or LLM-precomputed similarity score)
   - Bubble stance compatibility (reunifier-isolationist = hostile, etc.)
@@ -321,12 +402,14 @@ Faction[]   // fully populated except home and faction-control data
 - Result: baseline matrix in [-100, 100]
 
 **LLM deviation pass:**
+
 - Show the LLM the baseline matrix + faction descriptions
 - Ask for 2-3 narrative deviations: "These two should hate each other despite ideology because of historical event X." "These two should ally despite differences because of trade dependency Y."
 - LLM produces deviation entries with flavor text
 - Apply deviations to the matrix
 
 **Output:**
+
 ```typescript
 {
   dispositionMatrix: { [factionA: string]: { [factionB: string]: number } }
@@ -345,6 +428,7 @@ Faction[]   // fully populated except home and faction-control data
 ### 8b. Station placement (procedural)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -355,6 +439,7 @@ Faction[]   // fully populated except home and faction-control data
 ```
 
 **Algorithm:**
+
 - For each homed faction, place stations based on behavior profile:
   - **Militaristic:** stations on territorial borders (sectors adjacent to other factions)
   - **Trader:** stations at high-traffic intersections (compute trade route topology between homes)
@@ -364,6 +449,7 @@ Faction[]   // fully populated except home and faction-control data
 - Each station gets a type: military, trade, refuel, research
 
 **Output:**
+
 ```typescript
 {
   stations: {
@@ -383,6 +469,7 @@ Faction[]   // fully populated except home and faction-control data
 ### 9. Equipment catalog (LLM)
 
 **Input:**
+
 ```typescript
 {
   species: Species[]
@@ -405,6 +492,7 @@ Templates carry stats; LLM provides naming and flavor only.
 **LLM prompt structure:** For each species' tech profile, generate names, descriptions, and faction-affiliations for items derived from templates. Stats come from templates with light parametric variation per tier.
 
 **Output:**
+
 ```typescript
 {
   hullSpecs: HullSpec[]
@@ -415,9 +503,10 @@ Templates carry stats; LLM provides naming and flavor only.
 
 Each item may reference a `manufacturerFactionId` and have flavor matching that faction's species.
 
-**Weapon/bullet semantics (required reading for step 9):** **`plan/worldgen/WEAPONS_WORLDGEN.md`** — two-layer model (`bulletSpecs` + `type: "weapon"` launchers), per-field runtime meaning, variation axes, T1 numeric bands, validation, and generator recipes.
+**Weapon/bullet semantics (required reading for step 9):** `**plan/worldgen/WEAPONS_WORLDGEN.md`** — two-layer model (`bulletSpecs` + `type: "weapon"` launchers), per-field runtime meaning, variation axes, T1 numeric bands, validation, and generator recipes.
 
 **Validation:**
+
 - Reference to existing validateWorldFile equipment rules
 - Every weapon's `bulletSpecId` exists
 - Every hull's `defaultLoadouts` (raw, basic, advanced) reference real items
@@ -428,6 +517,7 @@ Each item may reference a `manufacturerFactionId` and have flavor matching that 
 ### 10. Mission templates (LLM)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -440,6 +530,7 @@ Each item may reference a `manufacturerFactionId` and have flavor matching that 
 **LLM prompt structure:** For each faction, generate ~5-10 mission templates. Each template references real landables, real factions (for delivery destinations, escort targets, combat targets), and real items (for cargo).
 
 **Output:**
+
 ```typescript
 MissionTemplate[]
 ```
@@ -447,6 +538,7 @@ MissionTemplate[]
 Standard fields: title, description, prerequisites, payout, rep changes, faction restrictions.
 
 **Validation:**
+
 - All faction/landable/item references resolve
 - Payouts non-negative
 - Rep changes within bounds
@@ -456,6 +548,7 @@ Standard fields: title, description, prerequisites, payout, rep changes, faction
 ### 11. Mission tree templates (LLM, with code-defined consequence schemas)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -468,11 +561,13 @@ Standard fields: title, description, prerequisites, payout, rep changes, faction
 **LLM prompt structure:** Generate 1-3 mission trees per major faction. Each tree has a story arc and concrete final consequences chosen from the consequence schema menu. LLM picks consequences and fills in their parameters.
 
 **Output:**
+
 ```typescript
 MissionTreeTemplate[]
 ```
 
 **Validation:**
+
 - All node references and prerequisites resolve
 - All `finalConsequences` use valid schema entries with valid parameter values
 - No tree references missions that don't exist
@@ -483,6 +578,7 @@ MissionTreeTemplate[]
 ### 12. Faction projects (LLM)
 
 **Input:**
+
 ```typescript
 {
   factions: Faction[]
@@ -494,6 +590,7 @@ MissionTreeTemplate[]
 **LLM prompt structure:** Generate 0-2 projects per major faction. Reference real landables and other factions. Pick effect from consequence schema.
 
 **Output:**
+
 ```typescript
 FactionProject[]
 ```
@@ -507,6 +604,7 @@ FactionProject[]
 **Input:** All step outputs.
 
 **Algorithm:**
+
 - Merge all fragments into a single `WorldFile` object
 - Inject default starting conditions (player ship, starting credits, starting sector — pick a moderate-rep landable)
 - Run `validateWorldFile` against the assembled file
@@ -523,14 +621,15 @@ FactionProject[]
 2. Configures parameters (galaxy size, shape, density, species count, seed)
 3. Clicks "Generate"
 4. UI shows step-by-step progress:
-   - Each step's name and status (pending, running, succeeded, failed)
-   - Live log of LLM calls (token counts, retry attempts)
-   - Per-step output preview (collapsible)
+  - Each step's name and status (pending, running, succeeded, failed)
+  - Live log of LLM calls (token counts, retry attempts)
+  - Per-step output preview (collapsible)
 5. On completion, shows summary: faction count, landable count, mission template count, etc.
 6. User can preview the world (galaxy map) before saving
 7. User saves with a name; WorldFile is written to localStorage and added to the world list
 
 If a step fails, user can:
+
 - Retry the failed step (reuses earlier outputs)
 - Edit the input for the failed step manually
 - Abandon and start over
@@ -540,6 +639,7 @@ If a step fails, user can:
 ## LLM call accounting
 
 Approximate LLM calls per generation, for a 50×50 galaxy:
+
 - Step 3: 1 call (5 species)
 - Step 5: 1-2 calls (~10 factions)
 - Step 7: 1 call (anomalies)
@@ -570,3 +670,4 @@ Total: ~15-25 LLM calls per generation. At Sonnet rates and ~2k tokens per call,
 - Should generation cache LLM responses for re-use across worlds with the same seed? (Probably yes — saves API spend during testing)
 - How much of the generation should happen client-side vs in a build step? (Lean client-side: lets users with their own API keys generate)
 - Should faction projects already be in-progress at world start, or all start at 0%? (Lean: half-progress for some, 0% for others — feels lived-in)
+

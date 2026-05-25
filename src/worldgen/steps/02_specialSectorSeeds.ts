@@ -143,10 +143,17 @@ export function validateSpecialSectorSeedsOutput(output: SpecialSectorSeedsOutpu
 }
 
 export function generateSpecialSectorSeeds(input: SpecialSectorSeedsInput): SpecialSectorSeedsOutput {
-  const { galaxyStructure, seed } = input;
+  const { galaxyStructure, seed, tuning } = input;
   const { gridWidth: sizeX, gridHeight: sizeY } = galaxyStructure.galaxy;
   const rng = childPRNG(seed, 'special_sector_seeds');
   const overrides = new Map<string, SectorOverride>();
+
+  const nebulaCountMin = tuning?.nebulaClusterCountMin ?? 3;
+  const nebulaCountMax = tuning?.nebulaClusterCountMax ?? 6;
+  const nebulaSizeMin = tuning?.nebulaClusterSizeMin ?? 10;
+  const nebulaSizeMax = tuning?.nebulaClusterSizeMax ?? 24;
+  const shimmerMin = tuning?.shimmerFractionMin ?? SHIMMER_FRACTION_MIN;
+  const shimmerMax = tuning?.shimmerFractionMax ?? SHIMMER_FRACTION_MAX;
 
   for (const sector of galaxyStructure.sectors) {
     const intensity = radiationIntensityAtCoord(sector.coord, sizeX, sizeY);
@@ -156,7 +163,8 @@ export function generateSpecialSectorSeeds(input: SpecialSectorSeedsInput): Spec
   }
 
   const nebulaOccupied = new Set<string>();
-  const clusterCount = 3 + rng.nextInt(0, 3);
+  const clusterCount =
+    nebulaCountMin + rng.nextInt(0, Math.max(0, nebulaCountMax - nebulaCountMin));
   for (let c = 0; c < clusterCount; c += 1) {
     const startCol = rng.nextInt(0, sizeX - 1);
     const startRow = rng.nextInt(0, sizeY - 1);
@@ -165,7 +173,7 @@ export function generateSpecialSectorSeeds(input: SpecialSectorSeedsInput): Spec
       continue;
     }
 
-    const clusterSize = 10 + rng.nextInt(0, 14);
+    const clusterSize = nebulaSizeMin + rng.nextInt(0, Math.max(0, nebulaSizeMax - nebulaSizeMin));
     const hue = rng.nextInt(240, 320);
     const density = 0.55 + rng.next() * 0.35;
     const color = `hsla(${hue}, 82%, 58%, 1)`;
@@ -183,7 +191,7 @@ export function generateSpecialSectorSeeds(input: SpecialSectorSeedsInput): Spec
     const { col, row } = gridIndices(coord, sizeX, sizeY);
     return shimmerSelectionWeight(col, row, sizeX, sizeY);
   });
-  const shimmerFraction = SHIMMER_FRACTION_MIN + rng.next() * (SHIMMER_FRACTION_MAX - SHIMMER_FRACTION_MIN);
+  const shimmerFraction = shimmerMin + rng.next() * Math.max(0, shimmerMax - shimmerMin);
   const shimmerCount = Math.max(1, Math.floor(shimmerCoords.length * shimmerFraction));
   const shimmerSectors = weightedSampleWithoutReplacement(shimmerCoords, shimmerWeights, shimmerCount, rng);
 

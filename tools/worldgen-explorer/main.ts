@@ -1,13 +1,20 @@
 import { GalaxyMapView } from './galaxyMap';
-import { runPipeline, retryStep } from './pipelineRunner';
+import {
+  canRunStep,
+  findNextRunnableStepId,
+  runPipeline,
+  runSingleStep
+} from './pipelineRunner';
+import { apiKeySourceLabel, isAnthropicApiKeyConfigured } from './apiKey';
+import { bindConfigForm } from './stepConfigForm';
+import { bindOutputViewTabs, renderStepOutput } from './stepOutputView';
 import { ExplorerState } from './state';
-import type { GalaxyShape, WorldFileSlice } from './types';
+import type { WorldFileSlice } from './types';
 import { DEFAULT_LAYERS } from './types';
 
 const state = new ExplorerState();
 
 const canvas = document.getElementById('galaxyCanvas') as HTMLCanvasElement;
-const configForm = document.getElementById('configForm') as HTMLDivElement;
 const stepList = document.getElementById('stepList') as HTMLUListElement;
 const sectorInspect = document.getElementById('sectorInspect') as HTMLDivElement;
 const stepJson = document.getElementById('stepJson') as HTMLPreElement;
@@ -49,114 +56,24 @@ function initLayerControls(): void {
   });
 }
 
-function bindConfigForm(): void {
-  const c = state.config;
-  configForm.innerHTML = `
-    <div class="field">
-      <label>World name</label>
-      <input type="text" id="cfgName" value="${escapeAttr(c.worldName)}" maxlength="48" />
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Size X</label>
-        <input type="number" id="cfgSizeX" min="10" max="80" value="${c.sizeX}" />
-      </div>
-      <div class="field">
-        <label>Size Y</label>
-        <input type="number" id="cfgSizeY" min="10" max="80" value="${c.sizeY}" />
-      </div>
-    </div>
-    <div class="field">
-      <label>Sector size (world units)</label>
-      <input type="number" id="cfgSectorSize" min="1000" max="50000" step="500" value="${c.sectorSize}" />
-    </div>
-    <div class="field">
-      <label>Shape</label>
-      <select id="cfgShape">
-        ${(['disc', 'ring', 'spiral', 'heterogeneous'] as GalaxyShape[])
-          .map((s) => `<option value="${s}"${s === c.shape ? ' selected' : ''}>${s}</option>`)
-          .join('')}
-      </select>
-    </div>
-    <div class="field">
-      <label>Planet density (0–1)</label>
-      <input type="number" id="cfgDensity" min="0" max="1" step="0.05" value="${c.planetDensity}" />
-    </div>
-    <div class="field">
-      <label>Moon probability (0–1)</label>
-      <input type="number" id="cfgMoonProb" min="0" max="1" step="0.05" value="${c.moonProbability}" />
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Moons min</label>
-        <input type="number" id="cfgMoonMin" min="0" max="8" value="${c.moonsPerPlanetRange[0]}" />
-      </div>
-      <div class="field">
-        <label>Moons max</label>
-        <input type="number" id="cfgMoonMax" min="0" max="8" value="${c.moonsPerPlanetRange[1]}" />
-      </div>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label>Seed</label>
-        <input type="number" id="cfgSeed" value="${c.seed}" />
-      </div>
-      <div class="field">
-        <label>Species count</label>
-        <input type="number" id="cfgSpecies" min="1" max="12" value="${c.speciesCount}" />
-      </div>
-    </div>
-    <div class="panel-header" style="margin: 12px -12px 8px; padding-left: 12px">Map layers</div>
-    <div class="layer-toggles" id="layerToggles"></div>
-    <hr class="panel-divider" />
-    <div class="panel-header panel-header-sub">Map key</div>
-    <div class="map-legend panel-legend" id="mapLegend"></div>
-    <div class="btn-row">
-      <button type="button" id="btnRetryStep" disabled>Retry selected step</button>
-    </div>
-  `;
-
-  const sync = (): void => {
-    state.config.worldName = (document.getElementById('cfgName') as HTMLInputElement).value;
-    state.config.sizeX = clampInt((document.getElementById('cfgSizeX') as HTMLInputElement).value, 10, 80);
-    state.config.sizeY = clampInt((document.getElementById('cfgSizeY') as HTMLInputElement).value, 10, 80);
-    state.config.sectorSize = clampInt((document.getElementById('cfgSectorSize') as HTMLInputElement).value, 1000, 50000);
-    state.config.shape = (document.getElementById('cfgShape') as HTMLSelectElement).value as GalaxyShape;
-    state.config.planetDensity = clampFloat((document.getElementById('cfgDensity') as HTMLInputElement).value, 0, 1);
-    state.config.moonProbability = clampFloat((document.getElementById('cfgMoonProb') as HTMLInputElement).value, 0, 1);
-    const moonMin = clampInt((document.getElementById('cfgMoonMin') as HTMLInputElement).value, 0, 8);
-    const moonMax = clampInt((document.getElementById('cfgMoonMax') as HTMLInputElement).value, 0, 8);
-    state.config.moonsPerPlanetRange = [Math.min(moonMin, moonMax), Math.max(moonMin, moonMax)];
-    state.config.seed = Number.parseInt((document.getElementById('cfgSeed') as HTMLInputElement).value, 10) || 0;
-    state.config.speciesCount = clampInt((document.getElementById('cfgSpecies') as HTMLInputElement).value, 1, 12);
-    refresh();
-  };
-
-  for (const id of [
-    'cfgName',
-    'cfgSizeX',
-    'cfgSizeY',
-    'cfgSectorSize',
-    'cfgShape',
-    'cfgDensity',
-    'cfgMoonProb',
-    'cfgMoonMin',
-    'cfgMoonMax',
-    'cfgSeed',
-    'cfgSpecies'
-  ]) {
-    document.getElementById(id)?.addEventListener('change', sync);
-    document.getElementById(id)?.addEventListener('input', sync);
-  }
-
-  renderLayerToggles();
-  updateMapLegend();
-
-  document.getElementById('btnRetryStep')?.addEventListener('click', () => {
-    if (state.selectedStepId && !state.generating) {
-      void retryStep(state, state.selectedStepId);
+function setupConfigForm(): void {
+  bindConfigForm(
+    state,
+    refresh,
+    () => {
+      if (state.selectedStepId && !state.generating) {
+        void runSingleStep(state, state.selectedStepId);
+      }
+    },
+    {
+      renderLayerToggles,
+      updateMapLegend,
+      updatePanelTitle: (title) => {
+        const el = document.getElementById('configPanelTitle');
+        if (el) el.textContent = title;
+      }
     }
-  });
+  );
 }
 
 function renderSteps(): void {
@@ -174,30 +91,59 @@ function renderSteps(): void {
     `;
     li.addEventListener('click', () => {
       state.selectedStepId = step.def.id;
-      renderStepJson();
-      renderSteps();
-      updateRetryButton();
+      setupConfigForm();
+      refresh();
+    });
+    li.addEventListener('dblclick', (ev) => {
+      ev.preventDefault();
+      if (!state.generating) {
+        void runSingleStep(state, step.def.id);
+      }
     });
     stepList.appendChild(li);
   }
-  updateRetryButton();
+  updateRunButtons();
 }
 
-function updateRetryButton(): void {
-  const btn = document.getElementById('btnRetryStep') as HTMLButtonElement | null;
-  if (btn) {
-    btn.disabled = !state.selectedStepId || state.generating;
+function resolveRunStepTarget(): string | null {
+  if (state.selectedStepId) {
+    return state.selectedStepId;
   }
+  return findNextRunnableStepId(state);
 }
 
-function renderStepJson(): void {
-  const id = state.selectedStepId;
-  if (!id) {
-    stepJson.textContent = 'Select a pipeline step';
-    return;
+function updateRunButtons(): void {
+  const selectedBtn = document.getElementById('btnRunSelected') as HTMLButtonElement | null;
+  const runBtn = document.getElementById('btnRunStep') as HTMLButtonElement | null;
+  const targetId = resolveRunStepTarget();
+  const step = targetId ? state.steps.find((s) => s.def.id === targetId) : undefined;
+  const check = targetId ? canRunStep(state, targetId) : { ok: false, reason: 'No runnable step' };
+
+  if (selectedBtn) {
+    const selCheck = state.selectedStepId ? canRunStep(state, state.selectedStepId) : { ok: false };
+    selectedBtn.disabled = !state.selectedStepId || state.generating || !selCheck.ok;
+    if (state.selectedStepId) {
+      const sel = state.steps.find((s) => s.def.id === state.selectedStepId);
+      const n = sel?.def.index ?? '?';
+      selectedBtn.textContent =
+        sel?.status === 'succeeded' ? `Re-run step ${n}` : `Run step ${n}`;
+      selectedBtn.title = selCheck.reason ?? '';
+    } else {
+      selectedBtn.textContent = 'Run selected step';
+      selectedBtn.title = 'Select a step in the pipeline list';
+    }
   }
-  const output = state.stepOutputs[id] ?? state.steps.find((s) => s.def.id === id)?.output;
-  stepJson.textContent = output !== undefined ? JSON.stringify(output, null, 2) : '(no output yet)';
+
+  if (runBtn) {
+    runBtn.disabled = state.generating || !check.ok;
+    if (step && check.ok) {
+      runBtn.textContent = `Run step ${step.def.index}`;
+      runBtn.title = step.def.name;
+    } else {
+      runBtn.textContent = 'Run step';
+      runBtn.title = check.reason ?? '';
+    }
+  }
 }
 
 function renderSectorInspect(): void {
@@ -272,7 +218,7 @@ function updateMapLegend(): void {
 function refresh(): void {
   map.setMapData(state.getMapData());
   renderSteps();
-  renderStepJson();
+  renderStepOutput(state);
   renderSectorInspect();
   renderLog();
   updateToolbarButtons();
@@ -281,17 +227,30 @@ function refresh(): void {
 
 function updateToolbarButtons(): void {
   const gen = document.getElementById('btnGenerate') as HTMLButtonElement;
-  const prev = document.getElementById('btnPreview') as HTMLButtonElement;
   if (gen) {
     gen.disabled = state.generating;
-    gen.textContent = state.generating ? 'Generating…' : 'Generate pipeline';
+    gen.textContent = state.generating ? 'Generating…' : 'Continue pipeline';
   }
-  if (prev) prev.disabled = state.generating;
+  updateRunButtons();
 }
 
-document.getElementById('btnPreview')?.addEventListener('click', () => {
-  state.applyPreview();
-  refresh();
+document.getElementById('btnRunStep')?.addEventListener('click', () => {
+  const targetId = resolveRunStepTarget();
+  if (!targetId) {
+    state.applyPreview();
+    refresh();
+    return;
+  }
+  const check = canRunStep(state, targetId);
+  if (check.ok) {
+    void runSingleStep(state, targetId);
+  } else if (targetId === '01_galaxy_structure') {
+    state.applyPreview();
+    refresh();
+  } else {
+    state.appendLog('warn', check.reason ?? 'Cannot run step', targetId);
+    refresh();
+  }
 });
 
 document.getElementById('btnGenerate')?.addEventListener('click', () => {
@@ -309,7 +268,7 @@ document.getElementById('btnExportCheckpoint')?.addEventListener('click', () => 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `worldgen_checkpoint_${state.config.seed}.json`;
+  a.download = `worldgen_checkpoint_${state.config.global.seed}.json`;
   a.click();
   URL.revokeObjectURL(url);
   state.appendLog('info', 'Exported checkpoint');
@@ -340,7 +299,7 @@ document.getElementById('fileCheckpoint')?.addEventListener('change', async (ev)
     if (!state.importCheckpoint(data)) {
       throw new Error('Invalid checkpoint format');
     }
-    bindConfigForm();
+    setupConfigForm();
     refresh();
   } catch (e) {
     state.appendLog('error', e instanceof Error ? e.message : 'Failed to load checkpoint');
@@ -393,27 +352,20 @@ function loop(now: number): void {
   requestAnimationFrame(loop);
 }
 
-bindConfigForm();
+setupConfigForm();
 initLayerControls();
-state.appendLog('info', 'Worldgen explorer ready — load testWorld.json or run step 1');
+bindOutputViewTabs();
+state.appendLog('info', 'Worldgen explorer ready — select a step to edit its parameters');
+if (
+  isAnthropicApiKeyConfigured(
+    state.anthropicApiKeySource,
+    state.config.steps['03_species'].anthropicApiKey
+  )
+) {
+  state.appendLog('info', apiKeySourceLabel(state.anthropicApiKeySource));
+}
 refresh();
 requestAnimationFrame(loop);
-
-function clampInt(v: string, min: number, max: number): number {
-  const n = Number.parseInt(v, 10);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, n));
-}
-
-function clampFloat(v: string, min: number, max: number): number {
-  const n = Number.parseFloat(v);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, n));
-}
-
-function escapeAttr(s: string): string {
-  return s.replace(/"/g, '&quot;');
-}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

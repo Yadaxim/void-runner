@@ -45,14 +45,47 @@ Separate from **`TechArchetype`**. LLM picks from:
 
 When `count` allows, prefer **unique `techArchetype` per species** so the galaxy has visibly different industrial lines (enforced in validator when count ≤ 5).
 
+### Playable vs NPC (`speciesRole`)
+
+The player must be a **singular character** — not a hive, gestalt, or disembodied phenomenon. Step 3 splits the roster:
+
+| `speciesRole` | Count (for `count` = N) | Who |
+|---------------|-------------------------|-----|
+| `human` | **1** (always) | **`name` must be `Human`** — mandatory in every galaxy; archetype `biotic` only |
+| `playable` | `floor((N−1−1)/2)` after human + void anchor | Other species the player may choose |
+| `npc` | includes **1 void anchor** + others | Nations, cults, hives — void anchor is shimmerborn + void tech |
+| `wildlife` | **11 always (separate array)** | Fauna catalog — all `biotic`, not nations |
+
+Minimum **N = 3** for nation roster (human + void anchor + one other). **Wildlife is not part of N** — step 3 always appends 11 wildlife species in `wildlife[]`.
+
+**Archetype × role (validator + prompt)**
+
+| Species archetype | Human | Playable | NPC | Wildlife |
+|-------------------|-------|----------|-----|----------|
+| `biotic` | ✓ (required) | ✓ | ✓ | ✓ |
+| `amalgam` | — | ✓ | ✓ | ✓ |
+| `construct` | — | ✓ if **one mind / one chassis** | ✓ if gestalt | — |
+| `collective` | — | ✗ | ✓ (hive, swarm) | ✓ (fauna swarms) |
+| `fieldborn` | — | ✗ | ✓ (plasma chorus) | — |
+| `shimmerborn` | — | ✗ | **void anchor only** | ✗ |
+
+**Void anchor (mandatory):** exactly one species with `shimmerborn` + `void` tech + `npc` — the galaxy's void/shimmer presence (*Void Runner* tone). Not playable. No other species uses `shimmerborn` or `void` tech.
+
+**Tech archetype** is mostly independent (ship art line). Human (`Human`) must not use `void`. Playable aliens must not use `void`. Only the void anchor uses `void` tech. Wildlife must not use `void` or `shimmerborn`.
+
+Prose must make NPC species **unambiguously non-singular** (swarm policy, chorus contact, sensor ghosts). Playable construct must state **local consciousness, not distributed**.
+
 ### Should the LLM set `techArchetype` and `preferredHabitat`?
 
 | Field | In prompt? | Why |
 |-------|------------|-----|
+| **`speciesRole`** | **Yes — required** | Player roster vs faction-only species; counts derived from `count`. |
 | **`techArchetype`** | **Yes — required** | Closed enum; drives ships, equipment naming (step 9), and faction tone. Pass the full menu + one-line definitions (table above). |
 | **`preferredHabitat`** | **Yes — optional per species** | Step 6 (faction homes) weights sectors by habitat. Without it, homes are blind to nebula/shimmer/rim. Pass the habitat menu + when to use each. |
 | **`id`** | **No** | Assigned in code (`species_0`, …) for stable references. |
-| **`name`, `archetype`, `physiology`, `ethos`** | **Yes — required** | Core creative output. |
+| **`codex`** | **Yes — required** | Player-facing species text (200–800 chars); clear prose, expands blurbs. |
+| **`worldgenBrief`** | **Yes — required** | Pipeline context for steps 5+ (200–600 chars); economy, diplomacy, ship culture, taboos. |
+| **`name`, `archetype`, `physiology`, `ethos`** | **Yes — required** | Short hooks (20–200 chars) for contrast and compact UI. |
 
 ### Other constraints we enforce (code, not trust)
 
@@ -60,8 +93,10 @@ When `count` allows, prefer **unique `techArchetype` per species** so the galaxy
 - Exactly **`count`** species objects in the array.
 - **`count`** distinct **`archetype`** values (maximize contrast — no duplicate species archetypes).
 - **`count`** distinct **`techArchetype`** values when count ≤ 5 (each industrial line once).
-- **`count`** distinct **`name`** values.
+- **`count`** distinct **`name`** values; human row **`name` must be exactly `Human`**
 - **`physiology`** and **`ethos`**: 20–200 characters each (after trim).
+- **`codex`**: 200–800 characters (player-facing).
+- **`worldgenBrief`**: 200–600 characters (downstream LLM steps).
 - Every enum value must match the allowed sets exactly (case-sensitive).
 - Retry: append validator errors to the user message on failure (max 3 attempts).
 - **Mock mode** (tests / offline): return a fixed roster from `src/worldgen/fixtures/mockSpecies.ts` — no HTTP.

@@ -12,10 +12,20 @@ export interface SectorOverride {
   properties: SectorOverrideProperties;
 }
 
+export interface SpecialSectorSeedsTuning {
+  nebulaClusterCountMin?: number;
+  nebulaClusterCountMax?: number;
+  nebulaClusterSizeMin?: number;
+  nebulaClusterSizeMax?: number;
+  shimmerFractionMin?: number;
+  shimmerFractionMax?: number;
+}
+
 export interface SpecialSectorSeedsInput {
   /** Step 1 output. */
   galaxyStructure: GalaxyStructureOutput;
   seed: number;
+  tuning?: SpecialSectorSeedsTuning;
 }
 
 export interface SpecialSectorSeedsOutput {

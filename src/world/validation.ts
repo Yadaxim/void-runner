@@ -103,6 +103,8 @@ const TECH_ARCHETYPES = new Set([
 
 const HABITAT_PREFERENCES = new Set(['core', 'mid', 'rim', 'nebula', 'radiation', 'shimmer']);
 
+const SPECIES_ROLES = new Set(['human', 'playable', 'npc', 'wildlife']);
+
 const FACTION_TYPES = new Set(['major_nation', 'minor_nation', 'independent']);
 
 const BUBBLE_STANCES = new Set(['reunifier', 'isolationist', 'breaker', 'indifferent']);
@@ -266,8 +268,25 @@ export function validateWorldFile(world: WorldFile): ValidationResult {
     if (typeof entry.ethos !== 'string' || entry.ethos.length < 20 || entry.ethos.length > 200) {
       push(`Species "${entry.id}" ethos must be 20-200 characters`);
     }
+    if (typeof entry.codex !== 'string' || entry.codex.length < 200 || entry.codex.length > 800) {
+      push(`Species "${entry.id}" codex must be 200-800 characters`);
+    }
+    if (
+      typeof entry.worldgenBrief !== 'string' ||
+      entry.worldgenBrief.length < 200 ||
+      entry.worldgenBrief.length > 600
+    ) {
+      push(`Species "${entry.id}" worldgenBrief must be 200-600 characters`);
+    }
     if (!TECH_ARCHETYPES.has(entry.techArchetype)) {
       push(`Species "${entry.id}" has invalid techArchetype: ${String(entry.techArchetype)}`);
+    }
+    if (!SPECIES_ROLES.has(entry.speciesRole)) {
+      push(`Species "${entry.id}" has invalid speciesRole: ${String(entry.speciesRole)}`);
+    } else if (entry.speciesRole === 'wildlife') {
+      if (entry.archetype !== 'biotic') {
+        push(`Species "${entry.id}" wildlife must be biotic`);
+      }
     }
   }
 
