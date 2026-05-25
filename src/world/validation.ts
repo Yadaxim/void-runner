@@ -73,12 +73,12 @@ function validateLandableProceduralBody(land: Landable, push: (msg: string) => v
 }
 
 const SPECIES_ARCHETYPES = new Set([
-  'biological',
-  'machine',
-  'hive',
-  'energy',
-  'voidtouched',
-  'hybrid'
+  'biotic',
+  'construct',
+  'collective',
+  'fieldborn',
+  'shimmerborn',
+  'amalgam'
 ]);
 
 const HULL_SILHOUETTES = new Set([
@@ -91,12 +91,14 @@ const HULL_SILHOUETTES = new Set([
 ]);
 
 const TECH_ARCHETYPES = new Set([
-  'mechanical',
+  'organic',
+  'inorganic',
+  'energy',
+  'void',
+  'hybrid',
   'robotic',
-  'synthetic',
-  'biological',
-  'energetic',
-  'void'
+  'biolume',
+  'compound'
 ]);
 
 const HABITAT_PREFERENCES = new Set(['core', 'mid', 'rim', 'nebula', 'radiation', 'shimmer']);

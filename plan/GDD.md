@@ -265,27 +265,29 @@ Species {
 }
 ```
 
-**`SpeciesArchetype`** — what they are (validated enum):
+**`SpeciesArchetype`** — what they are (validated enum; no overlap with **`TechArchetype`** names):
 
 | Value | Meaning |
 |--------|---------|
-| `biological` | Organic life; conventional ecosystems and bodies |
-| `machine` | Fully artificial or uploaded machine intelligences |
-| `hive` | Collective or swarm intelligence |
-| `energy` | Plasma, field, or radiation-native beings |
-| `voidtouched` | Shaped by void / shimmer exposure |
-| `hybrid` | Mixed lineage or engineered crossbreeds |
+| `biotic` | Organic life; conventional ecosystems and bodies |
+| `construct` | Artificial or uploaded intelligences; synthetic bodies optional |
+| `collective` | Hive, swarm, or distributed consciousness |
+| `fieldborn` | Plasma, field, or radiation-native biology |
+| `shimmerborn` | Shaped by void / shimmer exposure |
+| `amalgam` | Mixed lineage or engineered crossbreeds |
 
-**`TechArchetype`** — dominant engineering tradition (validated enum; drives world-gen equipment/hull flavor):
+**`TechArchetype`** — ship-art style line (validated enum; maps to silhouette `organic` / `inorganic` / `energy` / `void` filters via `techArchetypeToStyleFilters`):
 
-| Value | Meaning |
-|--------|---------|
-| `mechanical` | Gears, hydraulics, industrial fabrication |
-| `robotic` | Autonomous drones, modular automata |
-| `synthetic` | Designer materials, integrated bio-synth |
-| `biological` | Grown hulls, organic systems |
-| `energetic` | Field projectors, plasma conduits |
-| `void` | Exotic void/shimmer-derived systems |
+| Value | Silhouette filters | Meaning |
+|--------|-------------------|---------|
+| `organic` | organic | Grown / wetware hull traditions |
+| `inorganic` | inorganic | Machined plates, fabs, industrial craft |
+| `energy` | energy | Conscious field-craft — orbs, halos, attentive nodes; slight spiritual tone (not industrial plasma) |
+| `void` | void only | Shimmer-native craft; **never** combines with other families |
+| `hybrid` | organic + inorganic | Bio-synth: flesh on frame |
+| `robotic` | inorganic + energy | Autonomous drones, smart fabs, field-coupled machine craft |
+| `biolume` | organic + energy | Living hulls with field / bioluminescent systems |
+| `compound` | organic + inorganic + energy | Full material stack (still no void) |
 
 **`HabitatPreference`** (optional): `core` · `mid` · `rim` · `nebula` · `radiation` · `shimmer` — biases faction home scoring in world-gen.
 

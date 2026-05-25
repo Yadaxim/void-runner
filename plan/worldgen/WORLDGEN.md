@@ -317,7 +317,7 @@ Faction[]   // fully populated except home and faction-control data
 - For each faction pair, compute baseline disposition from:
   - Ideology similarity (text-based heuristic or LLM-precomputed similarity score)
   - Bubble stance compatibility (reunifier-isolationist = hostile, etc.)
-  - Species-archetype affinity (machine–biological often tense, energy–voidtouched odd, etc.)
+  - Species-archetype affinity (construct–biotic often tense, fieldborn–shimmerborn odd, etc.)
 - Result: baseline matrix in [-100, 100]
 
 **LLM deviation pass:**

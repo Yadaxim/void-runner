@@ -1,19 +1,26 @@
+/** What a species *is* (biology/culture) — distinct from {@link TechArchetype} (ship-art style). */
 export type SpeciesArchetype =
-  | 'biological'
-  | 'machine'
-  | 'hive'
-  | 'energy'
-  | 'voidtouched'
-  | 'hybrid';
+  | 'biotic'
+  | 'construct'
+  | 'collective'
+  | 'fieldborn'
+  | 'shimmerborn'
+  | 'amalgam';
 
-
+/**
+ * Ship-art style line — maps to silhouette `organic` / `inorganic` / `energy` filters.
+ * `void` is standalone and never combines; see `techArchetypeToStyleFilters`.
+ */
 export type TechArchetype =
-  | 'mechanical'
+  | 'organic'
+  | 'inorganic'
+  /** Conscious field-craft — orbs, halos, attentive nodes; allowed spiritual tone. */
+  | 'energy'
+  | 'void'
+  | 'hybrid'
   | 'robotic'
-  | 'synthetic'
-  | 'biological'
-  | 'energetic'
-  | 'void';
+  | 'biolume'
+  | 'compound';
 
 export type HabitatPreference = 'core' | 'mid' | 'rim' | 'nebula' | 'radiation' | 'shimmer';
 

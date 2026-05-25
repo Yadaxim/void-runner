@@ -139,7 +139,7 @@ Hull art is composed from **body** primitives (e.g. lens, spade, facet, dart, re
 | **Inorganic** | Mechanical hulls; swept, delta, rect, blade wings |
 | **Energy** | Field bodies (e.g. orb); geometric wings (e.g. **node** orb clusters, **halo** body-centered arc bands) |
 
-The generator picks body type, wing count/shape, attach zones along the hull, and numeric params from seeded ranges. Species identity = **allowed pools** + coherence, scoped by **`techArchetype`** (`mechanical` · `robotic` · `synthetic` · `biological` · `energetic` · `void`).
+The generator picks body type, wing count/shape, attach zones along the hull, and numeric params from seeded ranges. Species identity = **allowed pools** + coherence, scoped by **`techArchetype`** (`organic` · `inorganic` · `energy` · `void` · `hybrid` · `robotic` · `biolume` · `compound` — see `techArchetypeToStyleFilters`).
 
 Energy wings **attach on the hull edge**. Node and halo layouts use **body-centered circular geometry** (equal-angle orb placement, concentric arc lines) — intentional contrast with organic swept-wing forms.
 

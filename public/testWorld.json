@@ -14,37 +14,37 @@
     {
       "id": "kaelen",
       "name": "Kaelen",
-      "archetype": "biological",
+      "archetype": "biotic",
       "physiology": "Oxygen-breathing mammalian bipeds adapted to dense orbital cities and mixed-gravity shipboard life.",
       "ethos": "They prize civic continuity, negotiated law, and practical engineering over heroic individual action.",
-      "techArchetype": "mechanical",
+      "techArchetype": "inorganic",
       "preferredHabitat": "core"
     },
     {
       "id": "tharkan",
       "name": "Tharkan",
-      "archetype": "biological",
+      "archetype": "biotic",
       "physiology": "Broad-framed mineral-adapted humanoids whose dense bones and redundant organs tolerate harsh frontier gravity.",
       "ethos": "They value clan obligation, salvage rights, and earned independence from distant central authorities.",
-      "techArchetype": "mechanical",
+      "techArchetype": "inorganic",
       "preferredHabitat": "rim"
     },
     {
       "id": "veth",
       "name": "Veth",
-      "archetype": "biological",
+      "archetype": "biotic",
       "physiology": "Long-lived arboreal symbiotes whose paired nervous systems support exceptional memory and trade calculation.",
       "ethos": "They treat obligation as a ledger, preserving peace when it improves prosperity and leverage.",
-      "techArchetype": "synthetic",
+      "techArchetype": "organic",
       "preferredHabitat": "mid"
     },
     {
       "id": "driftborn",
       "name": "Driftborn",
-      "archetype": "hybrid",
+      "archetype": "amalgam",
       "physiology": "Mixed-lineage spacer enclaves shaped by sealed habitats, cybernetic medicine, and generations away from planets.",
       "ethos": "They prize survival, anonymity, and flexible loyalty in the shadow economies between formal powers.",
-      "techArchetype": "robotic",
+      "techArchetype": "hybrid",
       "preferredHabitat": "nebula"
     }
   ],
