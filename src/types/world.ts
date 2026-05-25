@@ -40,6 +40,8 @@ export interface SectorMetadata {
   npcSpawnRules: NPCSpawnRule[];
   inRadiationZone: boolean;
   radiationFringeIntensity: number;
+  /** Bubble-edge shimmer zone (step 2). */
+  inShimmerZone?: boolean;
   ambientVisuals: AmbientVisuals;
   seed: number;
   landables: Landable[];

@@ -33,7 +33,7 @@ export function defaultGalaxyStructureInput(
     sizeX: 40,
     sizeY: 40,
     sectorSize: SECTOR_SIZE,
-    shape: 'disc',
+    shape: 'spiral',
     planetDensity: 0.5,
     moonProbability: 0.3,
     moonsPerPlanetRange: [1, 3],

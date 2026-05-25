@@ -104,7 +104,7 @@ Landable stubs use sector-local world-unit positions (origin at sector centre, Â
 - Nebulae: random clusters, 2-5 per galaxy, each spanning 3-8 contiguous sectors.
 - Ruins: 5-10% of sectors, weighted toward unclaimed/border regions (decided after step 7).
   - **Note:** ruins can be seeded here as candidates, but final placement happens after territorial growth.
-- Shimmer: 2-5% of sectors. Bias unclear; uniform random for v1.
+- Shimmer: 2â€“5% of sectors, weighted toward grid-edge torus seams (bubble rim).
 
 For v1, seed shimmer and nebulae here. Defer ruin placement to step 7 (after territory).
 

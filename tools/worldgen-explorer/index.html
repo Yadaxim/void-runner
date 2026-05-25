@@ -37,15 +37,18 @@
         <div class="map-hint">Arrows · click sector · toggle layers (left panel)</div>
       </main>
 
-      <aside class="panel right">
-        <div class="panel-header">Pipeline</div>
-        <div class="panel-scroll" style="max-height: 42%; flex: none">
-          <ul class="step-list" id="stepList"></ul>
-        </div>
+      <aside class="panel inspect">
         <div class="panel-header">Selected sector</div>
         <div class="panel-scroll" id="sectorInspect"></div>
+      </aside>
+
+      <aside class="panel right">
+        <div class="panel-header">Pipeline</div>
+        <div class="panel-scroll pipeline-scroll">
+          <ul class="step-list" id="stepList"></ul>
+        </div>
         <div class="panel-header">Step output</div>
-        <div class="panel-scroll">
+        <div class="panel-scroll panel-scroll-grow">
           <pre class="json-preview" id="stepJson">Select a pipeline step</pre>
         </div>
       </aside>

@@ -41,7 +41,7 @@ function mapSectorFromWorld(
     radiation: sector.inRadiationZone ? Math.max(0.2, sector.radiationFringeIntensity ?? 0.5) : 0,
     hasNebula: sector.ambientVisuals?.hasNebula ?? false,
     hasRuins: false,
-    hasShimmer: false,
+    hasShimmer: sector.inShimmerZone ?? false,
     regionType: sector.regionType
   };
 }
@@ -67,7 +67,7 @@ function buildMapFromStep1(output: GalaxyStructureOutput, config: WorldGenConfig
       radiation: sector.inRadiationZone ? sector.radiationFringeIntensity : 0,
       hasNebula: sector.ambientVisuals.hasNebula,
       hasRuins: false,
-      hasShimmer: false,
+      hasShimmer: sector.inShimmerZone ?? false,
       regionType: sector.regionType
     });
   }
@@ -126,6 +126,7 @@ function applyStep2(base: MapViewData, step2: Step2Output): MapViewData {
     if (override.properties.nebula) {
       sector.hasNebula = true;
       sector.nebulaColor = override.properties.nebula.color;
+      sector.nebulaDensity = override.properties.nebula.density;
     }
     if (override.properties.ruins) {
       sector.hasRuins = true;

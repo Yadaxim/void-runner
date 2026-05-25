@@ -9,11 +9,27 @@ const COLOURS = {
   BASE: 'rgba(52, 58, 74, 0.95)',
   VOID: 'rgba(8, 10, 18, 0.98)',
   RADIATION: 'rgba(255, 90, 40,',
-  NEBULA: 'rgba(120, 80, 220,',
+  NEBULA: 'rgba(160, 110, 255,',
   SHIMMER: 'rgba(180, 255, 220,',
   RUINS: 'rgba(200, 160, 80,',
   LANDABLE: 'rgba(220, 235, 255, 0.95)'
 } as const;
+
+function nebulaFillStyle(sector: MapSectorView, alpha: number): string {
+  const a = Math.min(0.95, Math.max(0.35, alpha));
+  const color = sector.nebulaColor;
+  if (color) {
+    const match = /hsla?\(\s*([^)]+)\)/i.exec(color);
+    if (match) {
+      const parts = match[1].split(',').map((p) => p.trim());
+      const hue = parts[0];
+      const sat = parts[1]?.endsWith('%') ? parts[1] : `${parts[1] ?? 82}%`;
+      const lit = parts[2]?.endsWith('%') ? parts[2] : `${parts[2] ?? 58}%`;
+      return `hsla(${hue}, ${sat}, ${lit}, ${a})`;
+    }
+  }
+  return `${COLOURS.NEBULA}${a})`;
+}
 
 interface MapLayout {
   gridOffsetX: number;
@@ -228,8 +244,11 @@ export class GalaxyMapView {
       ctx.fillRect(x, y, size, size);
     }
     if (layers.nebula && sector?.hasNebula) {
-      ctx.fillStyle = sector.nebulaColor ? `${sector.nebulaColor}55` : `${COLOURS.NEBULA}0.35)`;
+      const alpha = 0.55 + (sector.nebulaDensity ?? 0.7) * 0.4;
+      ctx.fillStyle = nebulaFillStyle(sector, alpha);
       ctx.fillRect(x, y, size, size);
+      ctx.fillStyle = nebulaFillStyle(sector, alpha * 0.45);
+      ctx.fillRect(x + 1, y + 1, Math.max(1, size - 2), Math.max(1, size - 2));
     }
     if (layers.shimmer && sector?.hasShimmer) {
       ctx.fillStyle = `${COLOURS.SHIMMER}0.4)`;

@@ -1,4 +1,6 @@
 import { generateGalaxyStructure } from '../../src/worldgen/steps/01_galaxyStructure';
+import { generateSpecialSectorSeeds } from '../../src/worldgen/steps/02_specialSectorSeeds';
+import type { GalaxyStructureOutput } from '../../src/worldgen/types/galaxyStructure';
 import type { ExplorerState } from './state';
 import type { WorldGenConfig } from './types';
 
@@ -19,7 +21,14 @@ function configToStep1Input(config: WorldGenConfig) {
 
 /** Step runners — wire in src/worldgen as each step is implemented. */
 const STEP_RUNNERS: Partial<Record<string, StepRunner>> = {
-  '01_galaxy_structure': async (config) => generateGalaxyStructure(configToStep1Input(config))
+  '01_galaxy_structure': async (config) => generateGalaxyStructure(configToStep1Input(config)),
+  '02_special_sectors': async (config, outputs) => {
+    const step1 = outputs['01_galaxy_structure'] as GalaxyStructureOutput | undefined;
+    if (!step1?.sectors) {
+      throw new Error('Step 1 output required before special sector seeds');
+    }
+    return generateSpecialSectorSeeds({ galaxyStructure: step1, seed: config.seed });
+  }
 };
 
 export async function runPipeline(state: ExplorerState, fromStepId?: string): Promise<void> {

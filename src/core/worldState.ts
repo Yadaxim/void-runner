@@ -360,6 +360,7 @@ function createRuntimeVoidSector(worldFile: WorldFile, coord: GridCoord): Sector
     npcSpawnRules: [],
     inRadiationZone: false,
     radiationFringeIntensity: 0,
+    inShimmerZone: false,
     ambientVisuals: {
       hasNebula: false,
       nebulaHue: 0,

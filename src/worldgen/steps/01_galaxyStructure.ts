@@ -71,6 +71,7 @@ function createSectorStub(coord: GridCoord, worldSeed: number, shapeWeight: numb
     npcSpawnRules: [],
     inRadiationZone: false,
     radiationFringeIntensity: 0,
+    inShimmerZone: false,
     ambientVisuals: {
       hasNebula: false,
       nebulaHue: 0,

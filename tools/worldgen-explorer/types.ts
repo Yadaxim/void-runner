@@ -90,6 +90,7 @@ export interface MapSectorView {
   radiation: number;
   hasNebula: boolean;
   nebulaColor?: string;
+  nebulaDensity?: number;
   hasRuins: boolean;
   hasShimmer: boolean;
   regionType?: string;
@@ -124,6 +125,7 @@ export interface WorldFileSlice {
     factionId: string | null;
     inRadiationZone?: boolean;
     radiationFringeIntensity?: number;
+    inShimmerZone?: boolean;
     ambientVisuals?: { hasNebula: boolean; nebulaHue?: number };
     regionType?: string;
     landables: { id: string; name: string; type: string }[];
@@ -139,6 +141,7 @@ export interface Step1Output {
     landables: { id: string; type: string; name: string; position: { x: number; y: number } }[];
     inRadiationZone?: boolean;
     radiationFringeIntensity?: number;
+    inShimmerZone?: boolean;
     ambientVisuals?: { hasNebula: boolean };
   }[];
 }
@@ -159,7 +162,7 @@ export const DEFAULT_CONFIG: WorldGenConfig = {
   sizeX: 40,
   sizeY: 40,
   sectorSize: 10000,
-  shape: 'disc',
+  shape: 'spiral',
   planetDensity: 0.5,
   moonProbability: 0.3,
   moonsPerPlanetRange: [1, 3],

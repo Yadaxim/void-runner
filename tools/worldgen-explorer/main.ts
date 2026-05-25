@@ -108,6 +108,8 @@ function bindConfigForm(): void {
     </div>
     <div class="panel-header" style="margin: 12px -12px 8px; padding-left: 12px">Map layers</div>
     <div class="layer-toggles" id="layerToggles"></div>
+    <hr class="panel-divider" />
+    <div class="panel-header panel-header-sub">Map key</div>
     <div class="map-legend panel-legend" id="mapLegend"></div>
     <div class="btn-row">
       <button type="button" id="btnRetryStep" disabled>Retry selected step</button>
@@ -255,7 +257,7 @@ function updateMapLegend(): void {
     { key: 'coords', label: 'Coords', colour: 'rgba(255,255,255,0.5)' },
     { key: 'factions', label: 'Factions', colour: 'rgb(100, 180, 255)' },
     { key: 'radiation', label: 'Radiation', colour: 'rgb(255, 90, 40)' },
-    { key: 'nebula', label: 'Nebula', colour: 'rgb(120, 80, 220)' },
+    { key: 'nebula', label: 'Nebula', colour: 'rgba(160, 110, 255, 0.85)' },
     { key: 'ruins', label: 'Ruins', colour: 'rgb(200, 160, 80)' },
     { key: 'shimmer', label: 'Shimmer', colour: 'rgb(180, 255, 220)' }
   ];
