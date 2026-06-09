@@ -46,7 +46,8 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: resolve(repoRoot, 'index.html'),
-          worldgenExplorer: resolve(repoRoot, 'tools/worldgen-explorer/index.html')
+          worldgenExplorer: resolve(repoRoot, 'tools/worldgen-explorer/index.html'),
+          planetExplorer: resolve(repoRoot, 'tools/planet-explorer/index.html')
         }
       }
     }

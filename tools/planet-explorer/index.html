@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planet &amp; Moon Explorer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Planet &amp; Moon Explorer</h1>
+      <span class="badge">procedural · void_runner_planets.md</span>
+      <div class="tabs">
+        <button type="button" class="active" data-tab="editor">Editor</button>
+        <button type="button" data-tab="gallery">Gallery</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="editor-view" class="view active">
+        <div class="canvas-wrap">
+          <canvas id="editor-canvas" width="280" height="280"></canvas>
+        </div>
+        <aside id="controls"></aside>
+      </div>
+
+      <div id="gallery-view" class="view">
+        <div class="gallery-bar">
+          <label>Gallery seed <input type="number" id="gallery-seed" value="42" style="width: 100px" /></label>
+          <label>Per row <input type="number" id="gallery-variants" value="12" min="4" max="24" style="width: 52px" /></label>
+          <button type="button" id="gallery-random">Random seed</button>
+          <button type="button" id="gallery-open-editor">Open in editor</button>
+          <span class="hint">One row per surface type · click a body to edit it · same renderer as flight</span>
+        </div>
+        <canvas id="gallery-canvas"></canvas>
+      </div>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

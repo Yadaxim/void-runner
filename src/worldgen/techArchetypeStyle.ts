@@ -2,7 +2,7 @@ import type { TechArchetype } from '../types/species';
 
 /**
  * Silhouette explorer style flags (`tools/ship-silhouette-explorer/silhouette-core.js`).
- * `void` is reserved for shimmer-native hull families (explorer support pending).
+ * `void` maps to the standalone `ameba` hull family (no wings).
  */
 export interface ShipStyleFilters {
   organic: boolean;

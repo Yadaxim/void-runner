@@ -318,21 +318,54 @@
       }
       const hint = document.getElementById('gallery-hint');
       if (hint) {
-        hint.textContent = `One row per body type · click a ship to edit it · ${t.targetLength}×${t.targetWidth} px · ${t.id === 'tiny' ? '1–2' : '2–3'} wing pairs`;
+        const wingNote = C.isVoidOnlyFilters(getStyleFilters())
+          ? 'no wings'
+          : `${t.id === 'tiny' ? '1–2' : '2–3'} wing pairs`;
+        hint.textContent = `One row per body type · click a ship to edit it · ${t.targetLength}×${t.targetWidth} px · ${wingNote}`;
       }
     }
 
     function syncWingCountSelect() {
       const wingCountSel = document.getElementById('wing-count-sel');
+      const wingSec = document.getElementById('wing-params');
+      const voidOnly = C.isVoidOnlyFilters(getStyleFilters());
+      if (wingSec) wingSec.classList.toggle('hidden', voidOnly);
       if (!wingCountSel) return;
-      const opts = C.wingCountOptionsForTier(getTier());
+      const opts = C.wingCountOptionsForTierAndFilters(getTier(), getStyleFilters());
       wingCountSel.innerHTML = '';
       opts.forEach((n) => {
         const o = el('option', { value: String(n) });
-        o.textContent = String(n);
+        o.textContent = n === 0 ? '0 (void hull)' : String(n);
         wingCountSel.appendChild(o);
       });
-      wingCountSel.value = String(C.clampWingCount(config.wings.count, getTier()));
+      wingCountSel.value = String(C.clampWingCount(config.wings.count, getTier(), getStyleFilters()));
+      wingCountSel.disabled = voidOnly;
+    }
+
+    function refreshStyleFilterCheckboxes() {
+      const f = getStyleFilters();
+      document.querySelectorAll('.style-filter-cb').forEach((cb) => {
+        const key = cb.dataset.filter;
+        cb.checked = !!f[key];
+        cb.disabled = !!f.void;
+      });
+      document.querySelectorAll('.style-filter-void-cb').forEach((cb) => {
+        cb.checked = !!f.void;
+      });
+      document.querySelectorAll('.style-filter-hint').forEach((node) => {
+        const mode = C.styleModeFromFilters(f);
+        node.textContent = mode === 'none' ? 'none' : mode.charAt(0).toUpperCase() + mode.slice(1);
+      });
+    }
+
+    function onStyleFiltersChanged() {
+      styleFilters = C.normalizeStyleFilters(styleFilters);
+      config = C.normalizeConfig(config, getTier());
+      refreshStyleFilterCheckboxes();
+      syncWingCountSelect();
+      syncControls();
+      redrawEditor();
+      redrawGallery();
     }
 
     function setSizeTier(tierId) {
@@ -418,6 +451,13 @@
         { key: 'w', label: 'Half-width', min: 6, max: 20, step: 0.5 },
         { key: 'stretch', label: 'Y stretch', min: 0.75, max: 1.35, step: 0.01 },
       ],
+      ameba: [
+        { key: 'rad', label: 'Radius', min: 8, max: 24, step: 0.5 },
+        { key: 'points', label: 'Star points (0 = blob)', min: 0, max: 8, step: 1 },
+        { key: 'spike', label: 'Star depth', min: 0, max: 0.5, step: 0.01 },
+        { key: 'wobble', label: 'Wobble', min: 0, max: 0.45, step: 0.01 },
+        { key: 'phase', label: 'Rotation', min: 0, max: 1, step: 0.01 },
+      ],
     };
 
     const WING_DETAIL_DEFS = {
@@ -490,14 +530,7 @@
     function setStyleFilters(next) {
       styleFilters = C.normalizeStyleFilters(next);
       config.styleFilters = { ...styleFilters };
-      document.querySelectorAll('.style-filter-cb').forEach((cb) => {
-        const key = cb.dataset.filter;
-        if (key) cb.checked = styleFilters[key];
-      });
-      document.querySelectorAll('.style-filter-hint').forEach((node) => {
-        const mode = C.styleModeFromFilters(styleFilters);
-        node.textContent = mode === 'none' ? 'none' : mode.charAt(0).toUpperCase() + mode.slice(1);
-      });
+      refreshStyleFilterCheckboxes();
     }
 
     function bodyTypesForCurrentFilters() {
@@ -513,22 +546,39 @@
         cb.dataset.filter = key;
         cb.checked = styleFilters[key];
         cb.addEventListener('change', () => {
-          const next = { ...getStyleFilters(), [key]: cb.checked };
+          if (getStyleFilters().void) return;
+          const next = { ...getStyleFilters(), [key]: cb.checked, void: false };
           if (!next.organic && !next.inorganic && !next.energy) {
             cb.checked = true;
             return;
           }
           setStyleFilters(next);
-          config = C.normalizeConfig(config);
           if (onChange) onChange();
+          else onStyleFiltersChanged();
         });
         lb.appendChild(cb);
         lb.appendChild(document.createTextNode(` ${key.charAt(0).toUpperCase()}${key.slice(1)}`));
         container.appendChild(lb);
       });
+      const voidLb = el('label');
+      const voidCb = el('input', { type: 'checkbox', className: 'style-filter-void-cb' });
+      voidCb.checked = !!styleFilters.void;
+      voidCb.addEventListener('change', () => {
+        if (voidCb.checked) {
+          setStyleFilters({ void: true });
+        } else {
+          setStyleFilters({ organic: true, inorganic: true, energy: false, void: false });
+        }
+        if (onChange) onChange();
+        else onStyleFiltersChanged();
+      });
+      voidLb.appendChild(voidCb);
+      voidLb.appendChild(document.createTextNode(' Void'));
+      container.appendChild(voidLb);
       const hint = el('span', { className: 'style-filter-hint' });
       hint.textContent = C.styleModeFromFilters(styleFilters);
       container.appendChild(hint);
+      refreshStyleFilterCheckboxes();
     }
 
     function shapesForCurrentStyleFilters() {
@@ -655,7 +705,7 @@
 
       if (typeCount === 0) {
         galleryCtx.fillStyle = '#6060a0';
-        galleryCtx.fillText('Select at least one style (organic / inorganic / energy).', 12, 24);
+        galleryCtx.fillText('Select at least one style (organic / inorganic / energy / void).', 12, 24);
         return;
       }
 
@@ -784,15 +834,10 @@
       seedRow.appendChild(randomSeedBtn);
       seedSec.appendChild(seedRow);
       const styleFilterWrap = el('div', { className: 'checks style-filter-group', id: 'editor-style-filters' });
-      mountStyleFilterCheckboxes(styleFilterWrap, () => {
-        fillBodyTypeSelect();
-        syncControls();
-        redrawEditor();
-        redrawGallery();
-      });
+      mountStyleFilterCheckboxes(styleFilterWrap, onStyleFiltersChanged);
       seedSec.appendChild(styleFilterWrap);
       seedSec.appendChild(el('p', { className: 'hint' }, [
-        'Organic / inorganic / energy filters apply to hull types and wing shapes. Combine freely.',
+        'Organic, inorganic, and energy combine freely. Void is standalone (ameba hull, no wings) — matches void techArchetype.',
       ]));
 
       const typeSel = el('select', { id: 'body-type-sel' });
@@ -862,7 +907,7 @@
       const wingCountLb = el('label');
       wingCountLb.appendChild(document.createTextNode('Pair count'));
       const wingCountSel = el('select', { id: 'wing-count-sel' });
-      C.wingCountOptionsForTier(getTier()).forEach((n) => {
+      C.wingCountOptionsForTierAndFilters(getTier(), getStyleFilters()).forEach((n) => {
         const o = el('option', { value: String(n) });
         o.textContent = String(n);
         if (n === config.wings.count) o.selected = true;
@@ -870,7 +915,7 @@
       });
       wingCountLb.appendChild(wingCountSel);
       wingCountSel.addEventListener('change', () => {
-        config.wings.count = C.clampWingCount(Number(wingCountSel.value), getTier());
+        config.wings.count = C.clampWingCount(Number(wingCountSel.value), getTier(), getStyleFilters());
         config = C.normalizeConfig(config, getTier());
         syncControls();
         redrawEditor();
@@ -1147,11 +1192,9 @@
       btn.classList.toggle('active', btn.dataset.tier === currentTier.id);
     });
     updateTierBadge();
-    mountStyleFilterCheckboxes(document.getElementById('gallery-style-filters'), () => {
-      syncControls();
-      redrawGallery();
-    });
+    mountStyleFilterCheckboxes(document.getElementById('gallery-style-filters'), onStyleFiltersChanged);
     redrawEditor();
+    redrawGallery();
   </script>
 </body>
 </html>

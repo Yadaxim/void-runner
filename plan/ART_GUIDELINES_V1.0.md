@@ -121,8 +121,8 @@ Five size classes exist for spacing, camera, and hitboxes. Only **Small** is def
 
 | Tier | Hitbox (length × width) | Status |
 |------|-------------------------|--------|
-| **Tiny** | **30 × 18** | **Defined** — silhouette explorer; 1–2 wing pairs |
-| **Small** | **40 × 24** | **Defined** — silhouette explorer; 2–3 wing pairs (Courier-class reference) |
+| **Tiny** | **30 × 18** | **Defined** — silhouette explorer; 1–2 wing pairs (non-void) |
+| **Small** | **40 × 24** | **Defined** — silhouette explorer; 2–3 wing pairs (Courier-class reference; non-void) |
 | Medium | TBD | — |
 | Large | TBD | — |
 | Capital | TBD | — |
@@ -131,15 +131,25 @@ Five size classes exist for spacing, camera, and hitboxes. Only **Small** is def
 
 ### 4.3 Procedural silhouette generator
 
-Hull art is composed from **body** primitives (e.g. lens, spade, facet, dart, rect, trapezoid, polygon, larva, orb) and optional **wing** shapes, filtered by three **style families** (combinable for hybrids):
+Hull art is composed from **body** primitives (e.g. lens, spade, facet, dart, rect, trapezoid, polygon, larva, orb, **ameba**) and optional **wing** shapes, filtered by style families. Organic, inorganic, and energy **combine** for hybrids; **void is standalone** (never mixed with the other three).
 
 | Family | Typical content |
 |--------|-----------------|
 | **Organic** | Soft hulls; fins, insect, tentacle, lobe wings |
 | **Inorganic** | Mechanical hulls; swept, delta, rect, blade wings |
 | **Energy** | Field bodies (e.g. orb); geometric wings (e.g. **node** orb clusters, **halo** body-centered arc bands) |
+| **Void** | **ameba** hull only (see below) |
 
 The generator picks body type, wing count/shape, attach zones along the hull, and numeric params from seeded ranges. Species identity = **allowed pools** + coherence, scoped by **`techArchetype`** (`organic` · `inorganic` · `energy` · `void` · `hybrid` · `robotic` · `biolume` · `compound` — see `techArchetypeToStyleFilters`).
+
+**Void (`techArchetype: void`)** — how it reads in play:
+
+- **Standalone family.** Void never mixes with organic, inorganic, or energy on the same hull line. A void species always rolls the **ameba** body type only.
+- **No wings.** Silhouettes are a single closed blob; there are no fins, struts, or field appendages.
+- **Not ship-directional.** Unlike fighter-style hulls, amebas are roughly **round** and **centered** in the hitbox. They do not read as “nose forward / engines aft”; rotation in flight is mostly colour and motion, not a fixed bow.
+- **Two simple looks, one generator.** Each ship is either a **wobbly circle** (irregular, soft blob) or a **soft star** (gentle points around the edge). Which you get and how lumpy or pointy it is comes from the species seed and per-ship variation — not from hand-authored sprites.
+- **Same idea at Tiny and Small.** Void craft use the same visual vocabulary at both defined tiers; only the **hitbox** (`30×18` vs `40×24`) and overall scale change. A tiny void drone and a small void skiff should feel like the same species line, not a different art pass.
+- **Same gameplay box as everyone else.** Amebas still fit the tier rectangle used for collisions and weapons; they are not free-form sizes on the map.
 
 Energy wings **attach on the hull edge**. Node and halo layouts use **body-centered circular geometry** (equal-angle orb placement, concentric arc lines) — intentional contrast with organic swept-wing forms.
 

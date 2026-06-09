@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:worldgen": "vite --open /tools/worldgen-explorer/",
+    "dev:planets": "vite --open /tools/planet-explorer/",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

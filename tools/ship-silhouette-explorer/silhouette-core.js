@@ -5,12 +5,14 @@
  * Same seed + bodyType + tier → same ShipConfig.
  */
 (function (global) {
-  const BODY_TYPES = ['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon', 'larva', 'orb'];
+  const BODY_TYPES = ['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon', 'larva', 'orb', 'ameba'];
 
   /** Body style families are not mutually exclusive (hybrid = multiple flags). */
   const BODY_ORGANIC = new Set(['lens', 'polygon', 'larva']);
   const BODY_INORGANIC = new Set(['lens', 'spade', 'facet', 'dart', 'rect', 'trapezoid', 'polygon']);
   const BODY_ENERGY = new Set(['orb']);
+  /** Void tech — standalone; never combined with organic / inorganic / energy. */
+  const BODY_VOID = new Set(['ameba']);
 
   function isBodyOrganic(bodyType) {
     return BODY_ORGANIC.has(bodyType);
@@ -24,13 +26,30 @@
     return BODY_ENERGY.has(bodyType);
   }
 
+  function isBodyVoid(bodyType) {
+    return BODY_VOID.has(bodyType);
+  }
+
   function defaultStyleFilters() {
-    return { organic: true, inorganic: true, energy: false };
+    return { organic: true, inorganic: true, energy: false, void: false };
   }
 
   function normalizeStyleFilters(filters) {
     const f = { ...defaultStyleFilters(), ...(filters || {}) };
-    return { organic: !!f.organic, inorganic: !!f.inorganic, energy: !!f.energy };
+    if (f.void) {
+      return { organic: false, inorganic: false, energy: false, void: true };
+    }
+    return {
+      organic: !!f.organic,
+      inorganic: !!f.inorganic,
+      energy: !!f.energy,
+      void: false,
+    };
+  }
+
+  function isVoidOnlyFilters(filters) {
+    const f = normalizeStyleFilters(filters);
+    return f.void;
   }
 
   function styleModeFromFilters(filters) {
@@ -39,6 +58,7 @@
     if (f.organic) on.push('organic');
     if (f.inorganic) on.push('inorganic');
     if (f.energy) on.push('energy');
+    if (f.void) on.push('void');
     if (!on.length) return 'none';
     if (on.length > 1) return on.join('+');
     return on[0];
@@ -46,12 +66,14 @@
 
   function bodyTypesForFilters(filters) {
     const f = normalizeStyleFilters(filters);
+    if (f.void) return ['ameba'];
     if (!f.organic && !f.inorganic && !f.energy) return [];
     return BODY_TYPES.filter(
       (t) =>
-        (f.organic && isBodyOrganic(t)) ||
-        (f.inorganic && isBodyInorganic(t)) ||
-        (f.energy && isBodyEnergy(t))
+        !isBodyVoid(t) &&
+        ((f.organic && isBodyOrganic(t)) ||
+          (f.inorganic && isBodyInorganic(t)) ||
+          (f.energy && isBodyEnergy(t)))
     );
   }
 
@@ -167,6 +189,48 @@
     const noseY = -len * 0.5;
     const tailY = len * 0.5;
     return { len, w, lobes, lobeDepth, taper, phase, noseY, tailY };
+  }
+
+  /**
+   * Void ameba: round blob centered at origin — wobbly circle or soft star.
+   * Drawn as a closed loop (not the mirrored ship width envelope).
+   */
+  function amebaEdgeFromBody(body) {
+    const rad = body.rad ?? 14;
+    const points = Math.max(0, Math.round(body.points ?? body.lobes ?? 5));
+    const spike = Math.max(0, Number(body.spike ?? body.lobeDepth ?? 0) || 0);
+    const wobble = Math.max(0, Number(body.wobble ?? 0) || 0);
+    const phase = (body.phase ?? 0) * Math.PI * 2;
+    const n = points >= 3 ? points : 0;
+    const steps = n > 0 ? Math.max(n * 2, 24) : 28;
+    const edge = [];
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2 + phase;
+      let rr = 1;
+      if (n >= 3 && spike > 0) {
+        rr += spike * Math.cos(n * a);
+      }
+      rr += wobble * Math.sin(2.17 * a + phase * 0.37);
+      rr += wobble * 0.65 * Math.sin(4.31 * a + phase * 1.47);
+      const r = rad * Math.max(0.5, rr);
+      edge.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    let maxX = 0;
+    let maxY = 0;
+    for (const [x, y] of edge) {
+      maxX = Math.max(maxX, Math.abs(x));
+      maxY = Math.max(maxY, Math.abs(y));
+    }
+    return { edge, noseY: -maxY, tailY: maxY, maxW: maxX, points: n, spike, wobble, phase: body.phase ?? 0 };
+  }
+
+  function traceClosedLoop(ctx, edge) {
+    if (!edge.length) return;
+    ctx.moveTo(edge[0][0], edge[0][1]);
+    for (let i = 1; i < edge.length; i++) {
+      ctx.lineTo(edge[i][0], edge[i][1]);
+    }
+    ctx.closePath();
   }
 
   function orbHalfWidth(y, noseY, tailY, w, rad, stretch) {
@@ -331,12 +395,18 @@
     return [...new Set(tier.wingCountWeights)].sort((a, b) => a - b);
   }
 
-  function clampWingCount(count, tier) {
+  function clampWingCount(count, tier, filters) {
+    if (filters && isVoidOnlyFilters(filters)) return 0;
     const opts = wingCountOptionsForTier(tier);
     const n = Math.round(Number(count) || opts[0]);
     if (n <= opts[0]) return opts[0];
     if (n >= opts[opts.length - 1]) return opts[opts.length - 1];
     return opts.includes(n) ? n : opts[opts.length - 1];
+  }
+
+  function wingCountOptionsForTierAndFilters(tier, filters) {
+    if (isVoidOnlyFilters(filters)) return [0];
+    return wingCountOptionsForTier(tier);
   }
 
   function rng(s) {
@@ -507,6 +577,8 @@
         return { len: mid(34, 48), w: mid(7, 11), lobes: 3, lobeDepth: 0.38, taper: 0.75, phase: 0 };
       case 'orb':
         return { rad: mid(14, 20), w: mid(10, 16), stretch: 1.05 };
+      case 'ameba':
+        return { rad: mid(12, 18), points: 5, spike: 0.22, wobble: 0.14, phase: 0 };
       default:
         return {};
     }
@@ -608,6 +680,17 @@
           rad: r.range(ra, rb),
           w: r.range(wa, wb),
           stretch: r.range(0.85, 1.25),
+        };
+      }
+      case 'ameba': {
+        const [ra, rb] = scaled([11, 19], tier);
+        const points = r.chance(0.28) ? 0 : r.pick([4, 5, 5, 6, 6, 7, 8]);
+        return {
+          rad: r.range(ra, rb),
+          points,
+          spike: points < 3 ? 0 : r.range(0.06, 0.42),
+          wobble: r.range(0.05, 0.38),
+          phase: r.range(0, 1),
         };
       }
       default:
@@ -785,6 +868,21 @@
           },
         };
       }
+      case 'ameba': {
+        const { noseY, tailY, edge, maxW } = amebaEdgeFromBody(body);
+        return {
+          noseY,
+          tailY,
+          midY: 0,
+          w: maxW,
+          isRect: false,
+          amebaEdge: edge,
+          halfWidth(y) {
+            if (y < noseY || y > tailY) return 0;
+            return halfWidthRayCast(y, noseY, tailY, edge);
+          },
+        };
+      }
       default: {
         const noseY = -20;
         const tailY = 20;
@@ -802,7 +900,7 @@
 
   function buildBodySize(bodyType, body) {
     const profile = createHullProfile(bodyType, body);
-    return {
+    const size = {
       w: profile.w,
       tailY: profile.tailY,
       noseY: profile.noseY,
@@ -810,9 +908,15 @@
       isRect: profile.isRect,
       widthAt: profile.halfWidth,
     };
+    if (profile.amebaEdge) size.amebaEdge = profile.amebaEdge;
+    return size;
   }
 
   function traceBodyPath(ctx, bodyType, body, size) {
+    if (bodyType === 'ameba' && size.amebaEdge) {
+      traceClosedLoop(ctx, size.amebaEdge);
+      return;
+    }
     traceWidthEnvelopePath(ctx, size.noseY, size.tailY, size.widthAt, 56);
   }
 
@@ -1296,9 +1400,10 @@
     const body = sampleBodyParams(bodyType, r, tier);
     const size = buildBodySize(bodyType, body);
     const filters = normalizeStyleFilters(styleFilters);
+    const voidOnly = isVoidOnlyFilters(filters);
     const shapePool = wingShapePoolForFilters(filters);
-    const wingCount = r.pick(tier.wingCountWeights);
-    const primaryShape = r.pick(shapePool);
+    const wingCount = voidOnly ? 0 : r.pick(tier.wingCountWeights);
+    const primaryShape = voidOnly ? 'swept' : r.pick(shapePool);
     const pairs = [];
     for (let wi = 0; wi < wingCount; wi++) {
       pairs.push(sampleWingPair(r, size, tier, shapePool, primaryShape, wi, coherence));
@@ -1316,10 +1421,11 @@
   }
 
   function defaultShipConfig(bodyType = 'lens', tier = SIZE_TIER_SMALL, styleFilters = defaultStyleFilters()) {
-    const body = defaultBodyParams(bodyType, tier);
     const filters = normalizeStyleFilters(styleFilters);
+    const resolvedType = isVoidOnlyFilters(filters) ? 'ameba' : bodyType;
+    const body = defaultBodyParams(resolvedType, tier);
     const primaryShape = defaultWingShapeForFilters(filters);
-    const defaultWingCount = tier.id === 'tiny' ? 1 : 2;
+    const defaultWingCount = isVoidOnlyFilters(filters) ? 0 : tier.id === 'tiny' ? 1 : 2;
     const pair = {
       shape: primaryShape,
       attachFrac: attachFracForZone('mid'),
@@ -1333,11 +1439,11 @@
       version: 1,
       tier: tier.id,
       seed: 1,
-      bodyType,
+      bodyType: resolvedType,
       cellIndex: 0,
       styleFilters: filters,
       body,
-      wings: { count: defaultWingCount, primaryShape, coherence: 0.75, pairs: [pair] },
+      wings: { count: defaultWingCount, primaryShape, coherence: 0.75, pairs: defaultWingCount > 0 ? [pair] : [] },
     };
   }
 
@@ -1353,12 +1459,19 @@
     c.body = c.body || defaultBodyParams(c.bodyType, tier);
     c.styleFilters = normalizeStyleFilters(c.styleFilters || c.bodyFilters);
     delete c.bodyFilters;
-    const allowedBodies = bodyTypesForFilters(c.styleFilters);
-    if (allowedBodies.length && !allowedBodies.includes(c.bodyType)) {
+    const filters = c.styleFilters;
+    const allowedBodies = bodyTypesForFilters(filters);
+    if (filters.void) {
+      if (c.bodyType !== 'ameba') {
+        c.bodyType = 'ameba';
+        c.body = defaultBodyParams('ameba', tier);
+      } else if (!c.body || typeof c.body.rad !== 'number') {
+        c.body = { ...defaultBodyParams('ameba', tier), ...(c.body || {}) };
+      }
+    } else if (allowedBodies.length && !allowedBodies.includes(c.bodyType)) {
       c.bodyType = allowedBodies[0];
       c.body = defaultBodyParams(c.bodyType, tier);
     }
-    const filters = c.styleFilters;
     const defaultWingCount = tier.id === 'tiny' ? 1 : 2;
     c.wings = c.wings || {
       count: defaultWingCount,
@@ -1366,7 +1479,7 @@
       coherence: 0.75,
       pairs: [],
     };
-    c.wings.count = clampWingCount(c.wings.count, tier);
+    c.wings.count = clampWingCount(c.wings.count, tier, filters);
     if (c.wings.wingMode != null) delete c.wings.wingMode;
     const allowed = wingShapesForFilters(filters);
     if (allowed.length && !allowed.includes(c.wings.primaryShape)) {
@@ -1441,7 +1554,7 @@
       ctx.lineWidth = lineWidth / scale;
     };
 
-    if (showWidthAt) {
+    if (showWidthAt && cfg.bodyType !== 'ameba') {
       ctx.save();
       ctx.strokeStyle = '#40c080';
       ctx.lineWidth = 1 / scale;
@@ -1590,6 +1703,9 @@
     isBodyInorganic,
     BODY_ENERGY_TYPES: [...BODY_ENERGY],
     isBodyEnergy,
+    BODY_VOID_TYPES: [...BODY_VOID],
+    isBodyVoid,
+    isVoidOnlyFilters,
     defaultStyleFilters,
     normalizeStyleFilters,
     styleModeFromFilters,
@@ -1619,6 +1735,7 @@
     getSizeTier,
     wingCountOptionsForTier,
     clampWingCount,
+    wingCountOptionsForTierAndFilters,
     RNG,
     makeRng,
     sampleShipConfig,
